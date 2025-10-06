@@ -1,0 +1,6 @@
+@crashmap.Server_HostAddress = http://localhost:5120
+
+GET {{crashmap.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
