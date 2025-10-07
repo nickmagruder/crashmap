@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main
-      - deploy2
   workflow_dispatch:
 
 jobs:
@@ -82,19 +81,6 @@ jobs:
         with:
           name: dotnet-app
       
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Configure Azure App Service for .NET
-        run: |
-          az webapp config set \
-            --name crashmap \
-            --resource-group crashmap \
-            --linux-fx-version "DOTNETCORE|9.0" \
-            --startup-file "dotnet crashmap.Server.dll"
-      
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -102,5 +88,5 @@ jobs:
           app-name: 'crashmap'
           slot-name: 'Production'
           package: deployment.zip
-          type: 'zip'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+          startup-command: 'dotnet crashmap.Server.dll'
