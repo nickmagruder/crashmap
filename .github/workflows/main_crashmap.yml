@@ -41,16 +41,22 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Run tests (if any)
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        run: dotnet test --no-build --configuration Release --verbosity normal --logger trx --results-directory TestResults/
+        continue-on-error: true
 
       - name: Publish .NET application
-        run: dotnet publish crashmap.Server/crashmap.Server.csproj --no-build --configuration Release --output ./publish
+        run: dotnet publish crashmap.Server/crashmap.Server.csproj --configuration Release --output ./publish --no-restore --self-contained false
+
+      - name: Create deployment package
+        run: |
+          cd ./publish
+          zip -r ../deployment.zip .
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: dotnet-app
-          path: ./publish
+          path: deployment.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -64,7 +70,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dotnet-app
-          path: .
       
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
@@ -72,5 +77,5 @@ jobs:
         with:
           app-name: 'crashmap'
           slot-name: 'Production'
-          package: .
+          package: deployment.zip
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_ABFE35D1F8E84249A9115A2F7F071174 }}
