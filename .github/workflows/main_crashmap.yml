@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - main
+      - deploy2
   workflow_dispatch:
 
 jobs:
@@ -45,7 +46,17 @@ jobs:
         continue-on-error: true
 
       - name: Publish .NET application
-        run: dotnet publish crashmap.Server/crashmap.Server.csproj --configuration Release --output ./publish --no-restore --self-contained false
+        run: |
+          dotnet publish crashmap.Server/crashmap.Server.csproj \
+            --configuration Release \
+            --output ./publish \
+            --no-restore \
+            --self-contained false
+
+      - name: Copy client files to publish directory
+        run: |
+          mkdir -p ./publish/wwwroot
+          cp -r crashmap.client/dist/* ./publish/wwwroot/ || true
 
       - name: Create deployment package
         run: |
@@ -71,6 +82,19 @@ jobs:
         with:
           name: dotnet-app
       
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Configure Azure App Service for .NET
+        run: |
+          az webapp config set \
+            --name crashmap \
+            --resource-group crashmap \
+            --linux-fx-version "DOTNETCORE|9.0" \
+            --startup-file "dotnet crashmap.Server.dll"
+      
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -78,4 +102,5 @@ jobs:
           app-name: 'crashmap'
           slot-name: 'Production'
           package: deployment.zip
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_ABFE35D1F8E84249A9115A2F7F071174 }}
+          type: 'zip'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
