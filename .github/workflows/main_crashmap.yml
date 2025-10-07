@@ -89,4 +89,3 @@ jobs:
           slot-name: 'Production'
           package: deployment.zip
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
-          startup-command: 'dotnet crashmap.Server.dll'
