@@ -1,4 +1,8 @@
-# React + TypeScript + Vite
+# CrashMap
+
+## A Traffic Safety Map by Nick Magruder
+
+## Original Project Template Instructions
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
