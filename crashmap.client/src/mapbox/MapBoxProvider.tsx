@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 import { MapContext } from '../context/map-context';
 
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
+mapboxgl.accessToken = "pk.eyJ1IjoiaWFtbm90YXRncmVncyIsImEiOiJjbWZyNjVobmQwM3AwMnJvNXpzZm54YzV2In0.U7RKjEMclHKnsVrjnUultA";
 
 type MapComponentProps = {
   mapContainerRef: React.RefObject<HTMLDivElement | null>;
