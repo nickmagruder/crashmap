@@ -1,72 +1,44 @@
-/* Tailwind CSS imports are handled automatically by @tailwindcss/vite plugin in Tailwind v4 */
+@import "tailwindcss";
 
-/* Custom Mapbox Popup Styling - Using pure CSS to avoid Tailwind utility issues */
-.mapboxgl-custom-popup .mapboxgl-popup-content {
-  background-color: white;
-  color: #1f2937;
-  padding: 1.25rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
 }
 
-.mapboxgl-custom-popup .mapboxgl-popup-close-button {
-  font-size: 22px;
-  padding: 0 6px;
-  right: 0;
-  top: 0;
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
-.mapboxgl-custom-popup .mapboxgl-popup-close-button:hover {
-  background-color: transparent;
-}
-
-.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
-  border-bottom-color: white;
-  border-top-color: transparent;
-  border-left-color: transparent;
-  border-right-color: transparent;
-}
-
-.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-  border-top-color: white;
-  border-bottom-color: transparent;
-  border-left-color: transparent;
-  border-right-color: transparent;
-}
-
-.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
-  border-right-color: white;
-  border-top-color: transparent;
-  border-bottom-color: transparent;
-  border-left-color: transparent;
-}
-
-.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
-  border-left-color: white;
-  border-top-color: transparent;
-  border-bottom-color: transparent;
-  border-right-color: transparent;
-}
-
-/* Dark mode variants */
-@media (prefers-color-scheme: dark) {
-  .mapboxgl-custom-popup .mapboxgl-popup-content {
-    background-color: #1f2937;
-    color: white;
-    border-color: #374151;
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
   }
-  
-  .mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
-    border-bottom-color: #1f2937;
+  to {
+    transform: rotate(360deg);
   }
-  .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-    border-top-color: #1f2937;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
   }
-  .mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
-    border-right-color: #1f2937;
-  }
-  .mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
-    border-left-color: #1f2937;
-  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
 }

@@ -10,24 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@mapbox/maki": "^8.2.0",
     "@tailwindcss/vite": "^4.1.16",
-    "@tanstack/react-router": "^1.133.32",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "cmdk": "^1.1.1",
-    "lucide-react": "^0.548.0",
     "mapbox-gl": "^3.16.0",
-    "next-themes": "^0.4.6",
-    "radix-ui": "^1.4.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.16"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
-    "@types/node": "^24.10.0",
+    "@types/node": "^24.6.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.4",
