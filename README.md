@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.1.0
+**Version:** 0.1.1
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -57,6 +57,21 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Updated `.gitignore` with env file handling (`!.env.example`) and `prisma/migrations/`
 - Updated `ARCHITECTURE.md` and `CLAUDE.md` to reflect new `CrashDate` column across schema, Prisma model, GraphQL types, materialized views, and checklists
 - Added `tutorial.md` for step-by-step blog post draft
+
+### 2026-02-17 — Data Validation
+
+- Confirmed 1,315 rows with no null coordinates, no null `CrashDate`, all coordinates within US bounds
+- Normalized `Mode` value "Bicycle" → "Bicyclist" (543 rows updated)
+- Discovered `MostSevereInjuryType` has 8 raw values; defined 4 display buckets (Death, Major Injury, Minor Injury, None) with resolver-level mapping
+- Updated `ARCHITECTURE.md` and `CLAUDE.md` to reflect real severity values and bucket mapping ("Serious Injury" renamed to "Major Injury")
+
+### 2026-02-17 — PostGIS Geometry Column and Indexes
+
+- Added generated `geom geometry(Point, 4326)` column to `crashdata` (computed from `Latitude`/`Longitude`, STORED)
+- Created GIST spatial index (`idx_crashdata_geom`) for bounding-box and radius queries
+- Created B-tree indexes on `MostSevereInjuryType`, `Mode`, `StateOrProvinceName`, `CountyName`, `CityName`
+- Ran `prisma db pull` to pick up new column and indexes; `geom` represented as `Unsupported("geometry")` with GIST index captured as `type: Gist`
+- Ran `prisma generate` to regenerate typed client
 
 ### 2026-02-17 — Prisma Setup
 

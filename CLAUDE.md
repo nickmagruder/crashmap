@@ -52,7 +52,12 @@ CREATE TABLE public.crashdata
 
 - `FullDate` is stored as `text` in ISO 8601 format (`2025-02-23T00:00:00`). Use `CrashDate` (proper DATE column) for all date-range queries and filtering.
 - `Mode` values are "Bicyclist" or "Pedestrian"
-- `MostSevereInjuryType` values include: Death, Serious Injury, Minor Injury, None/Unknown
+- `MostSevereInjuryType` raw DB values and their 4-bucket display mapping:
+  - **Death**: "Dead at Scene", "Died in Hospital", "Dead on Arrival"
+  - **Major Injury**: "Suspected Serious Injury"
+  - **Minor Injury**: "Suspected Minor Injury", "Possible Injury"
+  - **None**: "No Apparent Injury", "Unknown"
+  - Additional values may appear as more data sources are imported — always map dynamically
 - Prisma model uses `@map` decorators to map camelCase TS properties to the existing PascalCase column names
 - A generated PostGIS `geom` column should be added for spatial queries (see ARCHITECTURE.md Section 3)
 
@@ -88,7 +93,7 @@ All filters are combinable (AND logic) and update the map in real time.
 | Mode | `ToggleGroup` | `Mode` |
 | Injury Severity (multi-select) | `Checkbox` + `Label` | `MostSevereInjuryType` |
 
-- None/Unknown injuries are **hidden by default** but can be toggled on
+- None injuries are **hidden by default** but can be toggled on
 - Cascading dropdowns powered by a `filter_metadata` materialized view
 - Year buttons show most recent 4 years as one-click shortcuts
 
@@ -96,12 +101,12 @@ All filters are combinable (AND logic) and update the map in real time.
 
 Severity-based visual hierarchy using color, opacity, AND size:
 
-| Severity | Color | Opacity | Base Size |
+| Severity Bucket | Color | Opacity | Base Size |
 | --- | --- | --- | --- |
 | Death | `#B71C1C` (dark red) | 85% | 8px |
-| Serious Injury | `#E65100` (orange) | 70% | 7px |
+| Major Injury | `#E65100` (orange) | 70% | 7px |
 | Minor Injury | `#F9A825` (yellow) | 55% | 6px |
-| None/Unknown | `#C5E1A5` (pale yellow-green) | 50% | 5px |
+| None | `#C5E1A5` (pale yellow-green) | 50% | 5px |
 
 - All sizes scale with zoom level via Mapbox `interpolate` expressions (small at state zoom, large at street zoom)
 - Stroke color differentiates mode: blue (`#1565C0`) for bicyclists, purple (`#4A148C`) for pedestrians
@@ -160,8 +165,8 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 ## What's Next (Phase 1 remaining)
 
-- [ ] Initialize Tailwind CSS and shadcn/ui (`npx shadcn-ui@latest init`)
-- [ ] Enable PostGIS on Render database (`CREATE EXTENSION postgis;`)
+- [x] Initialize Tailwind CSS and shadcn/ui (`npx shadcn-ui@latest init`)
+- [x] Enable PostGIS on Render database (`CREATE EXTENSION postgis;`)
 - [x] Run `prisma db pull` to introspect the existing `crashdata` table and refine the Prisma model
 - [ ] Add generated `geom` column and create indexes (see ARCHITECTURE.md Section 3)
 - [x] Verify `FullDate` format and add `CrashDate` DATE column with index
