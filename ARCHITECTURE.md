@@ -294,7 +294,7 @@ CrashMap's filter panel allows users to narrow the displayed crash data. All fil
 | **County** | Dropdown (single-select, filtered by selected state) | `Select` | `CountyName` | Cascading: only shows counties within the selected state. |
 | **City** | Dropdown (single-select, filtered by selected county) | `Select` | `CityName` | Cascading: only shows cities within the selected county. |
 | **Mode** | Toggle / segmented control | `ToggleGroup` | `Mode` | Options: Bicyclist / Pedestrian / All. Default: All. |
-| **Injury Severity** | Multi-select checkboxes | `Checkbox` + `Label` | `MostSevereInjuryType` | Options: Death, Serious Injury, Minor Injury, None/Unknown. Default: Death + Serious + Minor (None/Unknown hidden by default but can be toggled on). |
+| **Injury Severity** | Multi-select checkboxes | `Checkbox` + `Label` | `MostSevereInjuryType` | Options: Death, Major Injury, Minor Injury, None. Default: Death + Major + Minor (None hidden by default but can be toggled on). UI displays 4 buckets; resolver maps each to its constituent raw DB values (see Section 5 data notes). |
 
 **Cascading dropdowns:** State → County → City should filter progressively. This requires either client-side filtering of a metadata lookup or a lightweight query. See the metadata view below.
 
@@ -347,12 +347,12 @@ type Query {
 
 Crash points use a **severity-based color and opacity gradient** on the Mapbox circle layer. Bicyclist and pedestrian icons use slightly different hues but follow the same gradient system.
 
-| Severity | Color | Opacity | Size (base) | Default Visibility |
-| --- | --- | --- | --- | --- |
-| **Death** | Dark Red (`#B71C1C`) | ~85% | 8px | ✅ Shown |
-| **Serious Injury** | Orange (`#E65100`) | ~70% | 7px | ✅ Shown |
-| **Minor Injury** | Yellow (`#F9A825`) | ~55% | 6px | ✅ Shown |
-| **None / Unknown** | Pale Yellow-Green (`#C5E1A5`) | ~50% | 5px | ❌ Hidden by default |
+| Severity Bucket | Raw DB Values | Color | Opacity | Size (base) | Default Visibility |
+| --- | --- | --- | --- | --- | --- |
+| **Death** | "Dead at Scene", "Died in Hospital", "Dead on Arrival" | Dark Red (`#B71C1C`) | ~85% | 8px | ✅ Shown |
+| **Major Injury** | "Suspected Serious Injury" | Orange (`#E65100`) | ~70% | 7px | ✅ Shown |
+| **Minor Injury** | "Suspected Minor Injury", "Possible Injury" | Yellow (`#F9A825`) | ~55% | 6px | ✅ Shown |
+| **None** | "No Apparent Injury", "Unknown" | Pale Yellow-Green (`#C5E1A5`) | ~50% | 5px | ❌ Hidden by default |
 
 **Mapbox implementation** using data-driven styling:
 
@@ -369,21 +369,21 @@ map.addLayer({
       // At zoom 4 (state-level): small base sizes
       4, ['match', ['get', 'severity'],
         'Death',          3,
-        'Serious Injury', 2.5,
+        'Major Injury',   2.5,
         'Minor Injury',   2,
         /* None/Unknown */ 1.5
       ],
       // At zoom 10 (city-level): medium sizes
       10, ['match', ['get', 'severity'],
         'Death',          8,
-        'Serious Injury', 7,
+        'Major Injury',   7,
         'Minor Injury',   6,
         /* None/Unknown */ 5
       ],
       // At zoom 16 (street-level): large sizes
       16, ['match', ['get', 'severity'],
         'Death',          14,
-        'Serious Injury', 12,
+        'Major Injury',   12,
         'Minor Injury',   10,
         /* None/Unknown */ 8
       ]
@@ -391,14 +391,14 @@ map.addLayer({
     'circle-color': [
       'match', ['get', 'severity'],
       'Death',          '#B71C1C',
-      'Serious Injury', '#E65100',
+      'Major Injury',   '#E65100',
       'Minor Injury',   '#F9A825',
       /* None/Unknown */ '#C5E1A5'
     ],
     'circle-opacity': [
       'match', ['get', 'severity'],
       'Death',          0.85,
-      'Serious Injury', 0.70,
+      'Major Injury',   0.70,
       'Minor Injury',   0.55,
       /* None/Unknown */ 0.50
     ],
@@ -417,7 +417,7 @@ map.addLayer({
     ]
   },
   // Filter out None/Unknown by default
-  filter: ['in', 'severity', 'Death', 'Serious Injury', 'Minor Injury']
+  filter: ['in', 'severity', 'Death', 'Major Injury', 'Minor Injury']
 });
 ```
 
@@ -715,10 +715,10 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 - [x] Initialize Next.js project with TypeScript (`create-next-app --typescript`)
 - [x] Initialize Tailwind CSS and shadcn/ui (`npx shadcn-ui@latest init`)
 - [x] Set up PostgreSQL with PostGIS extension on your existing Render database (`CREATE EXTENSION postgis;`)
-- [ ] Run `prisma db pull` to introspect your existing `crashdata` table, then refine the generated Prisma model (see Section 3 for the recommended model)
-- [ ] Add the generated `geom` geometry column and create recommended indexes (see Section 3)
+- [x] Run `prisma db pull` to introspect your existing `crashdata` table, then refine the generated Prisma model (see Section 3 for the recommended model)
+- [x] Add the generated `geom` geometry column and create recommended indexes (see Section 3)
 - [x] Verify `FullDate` column format (ISO 8601: `2025-02-23T00:00:00`) and add `CrashDate` DATE column with index
-- [ ] Validate data: check for null `Latitude`/`Longitude` values, confirm `Mode` values are consistent ("Bicyclist"/"Pedestrian"), check `MostSevereInjuryType` distinct values
+- [x] Validate data: check for null `Latitude`/`Longitude` values, confirm `Mode` values are consistent ("Bicyclist"/"Pedestrian"), check `MostSevereInjuryType` distinct values
 - [ ] Create the `filter_metadata` and `available_years` materialized views (see Section 4) for cascading dropdown population
 - [ ] Set up ESLint, Prettier, Husky pre-commit hooks
 

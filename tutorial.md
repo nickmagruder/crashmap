@@ -255,6 +255,173 @@ const crashes = await prisma.crashData.findMany({
 })
 ```
 
+### Step 13: Add the `geom` Column and Database Indexes
+
+With PostGIS enabled and Prisma configured, the next step is to add a generated geometry column and create indexes for all the query patterns the app will use.
+
+#### Why a generated column?
+
+Our `crashdata` table already has `Latitude` and `Longitude` columns. Rather than converting our queries to use PostGIS functions every time, we add a `geom` column that PostgreSQL automatically computes and keeps in sync:
+
+```sql
+ALTER TABLE public.crashdata
+  ADD COLUMN geom geometry(Point, 4326)
+  GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint("Longitude", "Latitude"), 4326)) STORED;
+```
+
+`GENERATED ALWAYS AS ... STORED` means PostgreSQL computes the value from `Longitude` and `Latitude` and physically stores it on disk. We can't insert or update it manually — the database manages it. `4326` is the SRID for WGS 84 (standard GPS coordinates).
+
+#### Spatial index
+
+```sql
+CREATE INDEX idx_crashdata_geom ON public.crashdata USING GIST (geom);
+```
+
+`GIST` is the index type required for PostGIS geometry columns. It enables fast bounding-box and radius queries. Even with tens of thousands of rows, this makes spatial lookups sub-millisecond.
+
+#### Filter indexes
+
+These B-tree indexes cover every filter the UI will use:
+
+```sql
+CREATE INDEX idx_crashdata_severity ON public.crashdata ("MostSevereInjuryType");
+CREATE INDEX idx_crashdata_mode ON public.crashdata ("Mode");
+CREATE INDEX idx_crashdata_state ON public.crashdata ("StateOrProvinceName");
+CREATE INDEX idx_crashdata_county ON public.crashdata ("CountyName");
+CREATE INDEX idx_crashdata_city ON public.crashdata ("CityName");
+```
+
+Note: `idx_crashdata_date` was already created in Step 5 — don't run it again.
+
+Verify all indexes are in place:
+
+```sql
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE tablename = 'crashdata'
+ORDER BY indexname;
+```
+
+You should see 8 entries: the primary key plus 7 named indexes.
+
+#### Re-introspect and regenerate
+
+With the database updated, pull the new schema into Prisma:
+
+```bash
+npx prisma db pull
+```
+
+Prisma doesn't have a native PostGIS geometry type, so the `geom` column is represented as `Unsupported("geometry")`. That's expected — you can still read it using `prisma.$queryRaw` for raw spatial queries. Importantly, Prisma did pick up the GIST index (`type: Gist`), so the full index set is reflected in the schema.
+
+The new field and indexes in `prisma/schema.prisma`:
+
+```prisma
+geom Unsupported("geometry")? @default(dbgenerated("st_setsrid(st_makepoint(\"Longitude\", \"Latitude\"), 4326)"))
+
+@@index([crashDate], map: "idx_crashdata_date")
+@@index([cityName], map: "idx_crashdata_city")
+@@index([countyName], map: "idx_crashdata_county")
+@@index([geom], map: "idx_crashdata_geom", type: Gist)
+@@index([mode], map: "idx_crashdata_mode")
+@@index([mostSevereInjuryType], map: "idx_crashdata_severity")
+@@index([stateOrProvinceName], map: "idx_crashdata_state")
+```
+
+Regenerate the Prisma client:
+
+```bash
+npx prisma generate
+```
+
+### Step 14: Validate the Data
+
+Before building the API or UI, it's worth running a few sanity checks on the data to catch any surprises early.
+
+#### Row count
+
+```sql
+SELECT COUNT(*) FROM crashdata;
+-- 1,315 rows
+```
+
+#### Null coordinates
+
+Rows with null `Latitude` or `Longitude` can't be placed on the map:
+
+```sql
+SELECT COUNT(*)
+FROM crashdata
+WHERE "Latitude" IS NULL OR "Longitude" IS NULL;
+-- 0 — every row is mappable
+```
+
+#### Mode values
+
+```sql
+SELECT "Mode", COUNT(*)
+FROM crashdata
+GROUP BY "Mode"
+ORDER BY COUNT(*) DESC;
+```
+
+This revealed that the raw data contained `"Bicycle"` rather than the expected `"Bicyclist"`. We normalized it:
+
+```sql
+UPDATE crashdata SET "Mode" = 'Bicyclist' WHERE "Mode" = 'Bicycle';
+-- UPDATE 543
+```
+
+After the update: Pedestrian (772), Bicyclist (543). No null `Mode` values.
+
+#### MostSevereInjuryType values
+
+```sql
+SELECT "MostSevereInjuryType", COUNT(*)
+FROM crashdata
+GROUP BY "MostSevereInjuryType"
+ORDER BY COUNT(*) DESC;
+```
+
+The raw values are more granular than initially documented:
+
+| Raw DB Value | Count | Display Bucket |
+| --- | --- | --- |
+| Suspected Minor Injury | 673 | Minor Injury |
+| Possible Injury | 280 | Minor Injury |
+| Suspected Serious Injury | 255 | Major Injury |
+| No Apparent Injury | 55 | None |
+| Dead at Scene | 27 | Death |
+| Died in Hospital | 14 | Death |
+| Unknown | 7 | None |
+| Dead on Arrival | 4 | Death |
+
+The UI will display 4 buckets (Death, Major Injury, Minor Injury, None). The GraphQL resolver maps each bucket to its constituent raw DB values using an `IN (...)` clause. This approach is flexible — as more data sources are imported and new raw values appear, only the resolver mapping needs updating.
+
+#### Date range and null CrashDate
+
+```sql
+SELECT COUNT(*) FROM crashdata WHERE "CrashDate" IS NULL;
+-- 0
+
+SELECT MIN("CrashDate"), MAX("CrashDate") FROM crashdata;
+-- 2025-01-01 to 2025-12-31
+```
+
+All data is from 2025. The year quick-select filter UI should gracefully handle years with no data — either by showing only years that exist in the data, or by greying out empty year buttons.
+
+#### Coordinate bounds check
+
+```sql
+SELECT COUNT(*)
+FROM crashdata
+WHERE "Latitude" NOT BETWEEN 24 AND 50
+   OR "Longitude" NOT BETWEEN -125 AND -66;
+-- 0 — all coordinates fall within the contiguous US bounding box
+```
+
+All 1,315 rows passed every check. The data is clean and ready for the API layer.
+
 ---
 
 *This tutorial is a work in progress. More steps will be added as the project progresses.*
