@@ -159,15 +159,101 @@ prisma/migrations/
 - `.env*` with `!.env.example` ensures all env files with secrets are ignored, but the placeholder template is committed
 - `prisma/migrations/` is ignored because we use `prisma db pull` (introspection) rather than `prisma migrate` since our table already exists with data
 
-### Next Steps
+### Step 9: Initialize Prisma
 
-With Prisma installed and environment variables configured, the next steps are:
+With Prisma installed and the database URL configured, initialize Prisma in the project:
 
-1. Run `npx prisma init` to create the Prisma schema file
-2. Set the `DATABASE_URL` in `.env` with our Render connection string
-3. Run `npx prisma db pull` to introspect the existing `crashdata` table
-4. Refine the generated Prisma model with camelCase field names and `@map` decorators
-5. Run `npx prisma generate` to create the type-safe TypeScript client
+```bash
+npx prisma init --datasource-provider postgresql
+```
+
+This creates two files:
+
+- `prisma/schema.prisma` — the Prisma schema file where your data models live
+- `prisma.config.ts` — a config file that loads the `DATABASE_URL` from `.env` via `dotenv/config`
+
+Since `prisma.config.ts` uses `import "dotenv/config"`, install `dotenv`:
+
+```bash
+npm install dotenv --save-dev
+```
+
+### Step 10: Introspect the Existing Database
+
+Because our `crashdata` table already exists with data on Render, we use `prisma db pull` to generate the Prisma model from the live database rather than writing it by hand or using `prisma migrate`:
+
+```bash
+npx prisma db pull
+```
+
+Prisma connects to your database using `DATABASE_URL`, reads the table structure, and writes a model into `prisma/schema.prisma`. The raw generated output looks like this:
+
+```prisma
+model crashdata {
+  ColliRptNum          String    @id
+  Jurisdiction         String?
+  StateOrProvinceName  String?
+  // ... all columns in PascalCase
+  CrashDate            DateTime? @db.Date
+
+  @@index([CrashDate], map: "idx_crashdata_date")
+}
+```
+
+You'll also see a `spatial_ref_sys` model — this is a PostGIS system table that was included automatically. We keep it in the schema but won't use it directly.
+
+### Step 11: Refine the Prisma Model
+
+The auto-generated model uses the raw PascalCase database column names as field names. We refine it to use idiomatic camelCase TypeScript names, with `@map` decorators linking each field back to its actual column name, and `@@map` linking the model to the table name:
+
+```prisma
+model CrashData {
+  colliRptNum          String    @id @map("ColliRptNum")
+  jurisdiction         String?   @map("Jurisdiction")
+  stateOrProvinceName  String?   @map("StateOrProvinceName")
+  regionName           String?   @map("RegionName")
+  countyName           String?   @map("CountyName")
+  cityName             String?   @map("CityName")
+  fullDate             String?   @map("FullDate")
+  fullTime             String?   @map("FullTime")
+  mostSevereInjuryType String?   @map("MostSevereInjuryType")
+  ageGroup             String?   @map("AgeGroup")
+  involvedPersons      Int?      @map("InvolvedPersons") @db.SmallInt
+  crashStatePlaneX     Float?    @map("CrashStatePlaneX") @db.Real
+  crashStatePlaneY     Float?    @map("CrashStatePlaneY") @db.Real
+  latitude             Float?    @map("Latitude")
+  longitude            Float?    @map("Longitude")
+  mode                 String?   @map("Mode")
+  crashDate            DateTime? @map("CrashDate") @db.Date
+
+  @@index([crashDate], map: "idx_crashdata_date")
+  @@map("crashdata")
+}
+```
+
+This gives you clean TypeScript property names (e.g., `crash.stateOrProvinceName`) while Prisma handles the translation to the actual PascalCase column names in SQL.
+
+### Step 12: Generate the Prisma Client
+
+With the schema refined, generate the TypeScript client:
+
+```bash
+npx prisma generate
+```
+
+This creates a fully typed client in `lib/generated/prisma/` (as specified by the `output` field in the schema's `generator` block). The generated client is gitignored since it can always be regenerated from the schema.
+
+You can now import and use the Prisma client in your API resolvers with full TypeScript autocompletion:
+
+```typescript
+import { PrismaClient } from '../lib/generated/prisma'
+
+const prisma = new PrismaClient()
+
+const crashes = await prisma.crashData.findMany({
+  where: { mode: 'Bicyclist' }
+})
+```
 
 ---
 

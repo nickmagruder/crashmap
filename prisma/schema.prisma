@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model CrashData {
+  colliRptNum          String    @id @map("ColliRptNum")
+  jurisdiction         String?   @map("Jurisdiction")
+  stateOrProvinceName  String?   @map("StateOrProvinceName")
+  regionName           String?   @map("RegionName")
+  countyName           String?   @map("CountyName")
+  cityName             String?   @map("CityName")
+  fullDate             String?   @map("FullDate")
+  fullTime             String?   @map("FullTime")
+  mostSevereInjuryType String?   @map("MostSevereInjuryType")
+  ageGroup             String?   @map("AgeGroup")
+  involvedPersons      Int?      @map("InvolvedPersons") @db.SmallInt
+  crashStatePlaneX     Float?    @map("CrashStatePlaneX") @db.Real
+  crashStatePlaneY     Float?    @map("CrashStatePlaneY") @db.Real
+  latitude             Float?    @map("Latitude")
+  longitude            Float?    @map("Longitude")
+  mode                 String?   @map("Mode")
+  crashDate            DateTime? @map("CrashDate") @db.Date
+
+  @@index([crashDate], map: "idx_crashdata_date")
+  @@map("crashdata")
+}
+
+/// PostGIS system table — do not use directly.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
