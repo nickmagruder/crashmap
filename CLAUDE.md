@@ -9,6 +9,7 @@
 ## Key Decisions Made
 
 ### Stack
+
 - **Frontend:** Next.js (App Router) + React + TypeScript
 - **UI Components:** shadcn/ui (Radix UI + Tailwind CSS) — copy-paste ownership model
 - **State Management:** React Context for local UI state (filter selections, sidebar toggle, view preferences)
@@ -48,6 +49,7 @@ CREATE TABLE public.crashdata
 ```
 
 **Important notes on this schema:**
+
 - `FullDate` is stored as `text` in ISO 8601 format (`2025-02-23T00:00:00`). Use `CrashDate` (proper DATE column) for all date-range queries and filtering.
 - `Mode` values are "Bicyclist" or "Pedestrian"
 - `MostSevereInjuryType` values include: Death, Serious Injury, Minor Injury, None/Unknown
@@ -55,6 +57,7 @@ CREATE TABLE public.crashdata
 - A generated PostGIS `geom` column should be added for spatial queries (see ARCHITECTURE.md Section 3)
 
 ### Data Scale & Traffic
+
 - Starts at a few thousand rows, may grow to tens of thousands
 - Low daily active users (public-facing but niche)
 - No real-time data streams needed
@@ -62,6 +65,7 @@ CREATE TABLE public.crashdata
 - Apollo Client InMemoryCache is the only caching layer
 
 ### Architecture Simplifications (intentional)
+
 - **Single table** — no joins, no N+1 concerns
 - **No auth for public views** — all crash data queries are open
 - **Offset-based pagination** — fine at this scale
@@ -72,10 +76,11 @@ CREATE TABLE public.crashdata
 ## MVP Features
 
 ### Filters
+
 All filters are combinable (AND logic) and update the map in real time.
 
 | Filter | shadcn/ui Component | DB Column |
-|---|---|---|
+| --- | --- | --- |
 | Date Range / Year | `Popover` + `Calendar` + `Button` (4 year quick-select buttons) | `CrashDate` |
 | State | `Select` | `StateOrProvinceName` |
 | County (cascading from State) | `Select` | `CountyName` |
@@ -88,10 +93,11 @@ All filters are combinable (AND logic) and update the map in real time.
 - Year buttons show most recent 4 years as one-click shortcuts
 
 ### Map Icon Design
+
 Severity-based visual hierarchy using color, opacity, AND size:
 
 | Severity | Color | Opacity | Base Size |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Death | `#B71C1C` (dark red) | 85% | 8px |
 | Serious Injury | `#E65100` (orange) | 70% | 7px |
 | Minor Injury | `#F9A825` (yellow) | 55% | 6px |
@@ -102,21 +108,50 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - Stroke width also scales with zoom
 
 ### UI Layout (Mobile-First)
+
 - **Full-viewport map** on all screen sizes (`100dvh`)
 - **Mobile (<768px):** Floating overlay controls, full-screen filter overlay (toggle open/close), persistent summary bar with crash count + active filter badges
 - **Desktop (≥768px):** Toggleable right sidebar (~320px) using shadcn/ui `Sheet` component
 - Must call `map.resize()` after sidebar open/close transitions
 
 ## Stretch Goals (not MVP)
+
 1. **Dashboard charts** — Recharts/D3 visualizations (severity, mode, time trends, geographic breakdowns)
 2. **Mobile bottom sheet** — Upgrade from full-screen overlay; recommended library: `vaul` or `react-modal-sheet`
 3. **Light/Dark mode** — shadcn/ui built-in theming + `next-themes` + Mapbox style swap (`light-v11` ↔ `dark-v11`)
 
+## Tutorial / Blog Post
+
+- `tutorial.md` — Running draft of a step-by-step tutorial following this project from start to finish, intended for an eventual blog post
+- When completing significant steps (new tool setup, config changes, database operations, etc.), update `tutorial.md` with clear step-by-step instructions explaining what was done and why
+- Write in a tutorial tone — assume the reader is following along and building the project from scratch
+
+## Versioning
+
+- Semantic versioning: **MAJOR.MINOR.PATCH**
+- Current version is tracked on **line 2 of `README.md`** as `**Version:** x.x.x`
+- Started at `0.1.0` during pre-launch development
+- **PATCH** — bug fixes, dependency updates, config/docs changes
+- **MINOR** — new user-facing features (new filter, dashboard charts, dark mode)
+- **MAJOR** — breaking changes to the API or data schema
+- Bump to **1.0.0** at public launch on crashmap.io
+
+## Changelog
+
+- Maintain a running changelog at the bottom of `README.md`
+- When completing significant changes (new features, config changes, database operations, dependency additions), append a dated entry summarizing what was done
+- Group related changes under a single date heading
+- Keep entries concise — one bullet per change
+
 ## Key Files
+
 - `ARCHITECTURE.md` — Full architecture document with data model, GraphQL schema, Prisma model, SQL indexes, action plan, and all technical details
+- `tutorial.md` — Step-by-step tutorial draft for blog post
+- `README.md` — Project readme with changelog at the bottom
 - Prisma schema should use `@@map("crashdata")` and `@map("ColumnName")` for each field
 
 ## What's Done
+
 - [x] Domain purchased (crashmap.io)
 - [x] Next.js project created
 - [x] Render Professional plan (web service)
@@ -124,9 +159,10 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Architecture document complete
 
 ## What's Next (Phase 1 remaining)
+
 - [ ] Initialize Tailwind CSS and shadcn/ui (`npx shadcn-ui@latest init`)
 - [ ] Enable PostGIS on Render database (`CREATE EXTENSION postgis;`)
-- [ ] Run `prisma db pull` to introspect the existing `crashdata` table
+- [x] Run `prisma db pull` to introspect the existing `crashdata` table and refine the Prisma model
 - [ ] Add generated `geom` column and create indexes (see ARCHITECTURE.md Section 3)
 - [x] Verify `FullDate` format and add `CrashDate` DATE column with index
 - [ ] Set up ESLint, Prettier, Husky pre-commit hooks

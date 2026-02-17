@@ -84,19 +84,22 @@ CrashMap follows a **classic three-tier architecture** (Client → Server → Da
 
 ### Component Interaction Details
 
-**Frontend (React + Next.js)**
+#### Frontend (React + Next.js)
+
 - **Next.js App Router** handles SSR/SSG for SEO-friendly pages and fast initial loads
 - **Apollo Client** manages GraphQL state, caching, and optimistic updates
 - **shadcn/ui** provides the component library (Select, Checkbox, Button, Sheet, DatePicker, Popover) styled with Tailwind CSS. Components are copied into the project for full ownership and customization — critical for overlay/sidebar controls that sit on top of the Mapbox canvas.
 - **Mapbox GL JS** (via `react-map-gl`) powers the map with WebGL rendering. If the dashboard stretch goal is implemented, Recharts/D3 handle charts. Both bind directly to Apollo cache data.
 - **React Context** for local UI state (filter selections, view preferences, sidebar open/closed)
 
-**API Layer (Apollo Server in Next.js)**
+#### API Layer (Apollo Server in Next.js)
+
 - Single `/api/graphql` endpoint handles all data queries
 - Resolvers are thin — they delegate to a service layer that uses Prisma
 - Since you have a single table, resolvers will be straightforward with no complex joins or N+1 concerns
 
-**Data Layer (PostgreSQL + PostGIS on Render)**
+#### Data Layer (PostgreSQL + PostGIS on Render)
+
 - **PostGIS** extension enables spatial queries (e.g., "all pedestrian crashes within 5km of downtown")
 - **Prisma ORM** provides type-safe database access with migration support
 - Single `crashdata` table keeps things simple — at tens of thousands of rows, PostgreSQL handles this comfortably without any caching layer
@@ -675,6 +678,7 @@ Since this is your own collected data (not sourced from a third-party API with u
 You're on Render's **Professional plan** (web services) with the **Basic PostgreSQL plan** (5GB storage). Here are platform-specific notes:
 
 **Advantages of all-on-Render:**
+
 - **No spin-down:** Professional plan keeps your web service running 24/7 — no cold starts, no UptimeRobot hacks needed. This eliminates the biggest UX problem low-traffic apps face on Render.
 - **Persistent database:** Basic plan with 5GB storage has no expiration. At your data scale (tens of thousands of rows with text and coordinate fields), 5GB is more than sufficient — you'd need hundreds of thousands of rows before storage becomes a concern. Back up regularly with `pg_dump` as standard practice.
 - **Internal networking:** Render services in the same region can communicate over a private network, meaning your Next.js app connects to PostgreSQL with minimal latency and no public internet exposure. Use the internal database URL (`postgresql://...@dpg-xxx-a.oregon-postgres.render.com/...`) rather than the external one.
@@ -904,6 +908,7 @@ All charts should respond to the same active filters as the map, powered by the 
 The MVP uses a full-screen overlay for the mobile filter panel (~1 day to implement). A **bottom sheet** (like Google Maps or Uber) is a significant UX upgrade for a map-centric app — users can peek at filters without losing map context — but adds meaningful complexity (~3–5 days).
 
 **What makes it harder than a full-screen overlay:**
+
 - Drag gesture handling with momentum and velocity-based snap decisions
 - Multiple snap points (peek/summary → half-open → fully expanded)
 - Scroll locking: the sheet content needs to scroll internally when fully expanded, but drag-to-dismiss when at scroll top
