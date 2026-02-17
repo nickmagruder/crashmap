@@ -37,6 +37,9 @@ yarn-error.log*
 # prisma
 prisma/migrations/
 
+# claude
+.claude/
+
 # vercel
 .vercel
 
