@@ -584,6 +584,74 @@ npm run format:check  # All matched files use Prettier code style!
 
 From this point on, every `git commit` automatically runs ESLint and Prettier on staged files. Commits with lint errors will be blocked.
 
+### Step 17: GitHub Actions CI Pipeline
+
+Pre-commit hooks are a local safety net but can be bypassed with `git commit --no-verify`. A CI pipeline on GitHub is the real enforcement gate — it runs on every push and blocks merges to `main` if any check fails.
+
+#### Add a `typecheck` script
+
+`tsc --noEmit` does a full TypeScript type check without emitting output files. ESLint catches some type issues, but `tsc` is authoritative:
+
+```json
+"typecheck": "tsc --noEmit"
+```
+
+#### Create `.github/workflows/ci.yml`
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+```
+
+A few design notes:
+
+- **`npm ci`** uses the lockfile exactly and fails if `package-lock.json` is out of sync — stricter than `npm install`
+- **Steps run in order** — lint and format are fast and fail early; build is slowest and runs last
+- **`npm run build`** is the most important check pre-commit hooks don't cover — it catches broken imports and Next.js-specific errors
+- **Triggers on all branches** so you get feedback on feature branches, not just PRs
+
+#### Enable branch protection on GitHub
+
+In your repo settings → Branches → Add rule for `main`:
+
+- ✅ Require status checks to pass before merging
+- ✅ Select the `check` job from the CI workflow
+- ✅ Require branches to be up to date before merging
+
+This makes the CI gate mandatory — no merges to `main` without a green build.
+
 ---
 
 _This tutorial is a work in progress. More steps will be added as the project progresses._
