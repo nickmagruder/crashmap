@@ -2056,4 +2056,87 @@ npm run dev
 
 Resize the browser to a mobile width (<768px). The `SlidersHorizontal` button should be visible in the top-right. Tapping it covers the entire viewport with the filter overlay (white background, "Filters" header, X close button). Tapping X returns to the map. At desktop width, the button switches to opening the Sheet sidebar instead.
 
+### Step N+12: Build the SummaryBar Component
+
+With the map, sidebar, and mobile overlay in place, the next persistent UI element is the **SummaryBar** — a floating pill at the bottom of the viewport that shows the current crash count and any active filter badges. It's always visible, on both mobile and desktop.
+
+#### Why a summary bar?
+
+When filters are applied to a map, users need immediate feedback: how many results match the current selection, and which filters are active. The SummaryBar provides this at a glance without opening a panel. It also serves as the entry point for "clear filter" interactions in later iterations.
+
+#### Create `components/summary/SummaryBar.tsx`
+
+```tsx
+'use client'
+
+import { Badge } from '@/components/ui/badge'
+
+interface SummaryBarProps {
+  crashCount?: number | null
+  activeFilters?: string[]
+}
+
+export function SummaryBar({ crashCount = null, activeFilters = [] }: SummaryBarProps) {
+  const countLabel = crashCount === null ? '—' : crashCount.toLocaleString()
+
+  return (
+    <div
+      className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background/90 px-4 py-2 shadow-md backdrop-blur-sm"
+      role="status"
+      aria-live="polite"
+      aria-label="Summary"
+    >
+      <span className="text-sm font-medium tabular-nums whitespace-nowrap">
+        {countLabel} crashes
+      </span>
+
+      {activeFilters.length > 0 && (
+        <>
+          <div className="h-4 w-px bg-border" aria-hidden="true" />
+          <div className="flex flex-wrap gap-1.5">
+            {activeFilters.map((filter) => (
+              <Badge key={filter} variant="secondary" className="text-xs">
+                {filter}
+              </Badge>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+```
+
+Key design choices:
+
+- **`absolute bottom-6 left-1/2 -translate-x-1/2`** — horizontally centered, floating 24px above the bottom edge; `absolute` works because the page wrapper in `page.tsx` has `position: relative`
+- **`bg-background/90 backdrop-blur-sm`** — 90% opaque with blur so the map bleeds through slightly; keeps the bar readable over any map tile color
+- **`rounded-full`** — pill shape signals this is a status indicator, not a navigation element
+- **`z-10`** — same stacking level as the toggle buttons; sits above the Mapbox canvas
+- **`tabular-nums`** — prevents the count from causing layout shift as digits change width (e.g., `1,315` → `999` keeps the bar from resizing)
+- **`role="status" aria-live="polite"`** — announces count changes to screen readers without interrupting current speech
+- **Divider + badges** — the `h-4 w-px bg-border` vertical rule only renders when there are active filters; the badge area is empty (and hidden) by default
+- **`crashCount === null` → `"—"`** — communicates "loading" state without false data; a real number replaces it once the query resolves
+
+#### Wire it into `AppShell`
+
+Add the import and drop `<SummaryBar />` between the toggle buttons and the panels:
+
+```tsx
+import { SummaryBar } from '@/components/summary/SummaryBar'
+
+// inside AppShell return:
+;<SummaryBar />
+```
+
+No props are passed yet — `crashCount` defaults to `null` (showing `"—"`) and `activeFilters` defaults to `[]`. Both will be wired to real query results and filter state in a later step when the filter panel is built.
+
+#### Test the SummaryBar
+
+```bash
+npm run dev
+```
+
+A floating pill labeled `"— crashes"` should appear centered at the bottom of the viewport. Resize to both mobile and desktop widths to confirm it stays centered and doesn't overlap the toggle button or other controls.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

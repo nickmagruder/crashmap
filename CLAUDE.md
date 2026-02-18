@@ -176,6 +176,11 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - `lib/graphql/__tests__/helpers.test.ts` — Unit tests for `rawToBucket`, `bucketsToRawValues`, `buildWhere`
 - `lib/graphql/__tests__/queries.test.ts` — Integration tests for all GraphQL queries via `executeOperation` with mocked Prisma
 - `vitest.config.ts` — Vitest configuration with `@` path alias
+- `components/layout/AppShell.tsx` — `'use client'` layout orchestrator; owns sidebar/overlay open state, renders SummaryBar
+- `components/map/MapContainer.tsx` — `'use client'` Mapbox map filling parent container
+- `components/sidebar/Sidebar.tsx` — Sheet-based right panel (desktop, ≥768px)
+- `components/overlay/FilterOverlay.tsx` — Full-screen filter overlay (mobile, <768px)
+- `components/summary/SummaryBar.tsx` — Floating pill with crash count + active filter badges (all screen sizes)
 - `lib/generated/prisma/` — Generated Prisma client (gitignored; regenerated via `postinstall: prisma generate`)
 
 ## What's Done
@@ -258,7 +263,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - `style={{ width: '100%', height: '100%' }}` — fills parent; parent owns `100dvh`
 - [x] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
 - [x] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
-- [ ] Build `SummaryBar` component: persistent bar with placeholder crash count and empty filter badge area, visible on all screen sizes
+- [x] Build `SummaryBar` component: persistent bar with placeholder crash count and empty filter badge area, visible on all screen sizes
 - [ ] Wire `map.resize()` to sidebar and overlay open/close transitions
 - [ ] Smoke test responsive layout at mobile (<768px) and desktop (≥768px) breakpoints
 - [ ] Import Domain into Render settings
