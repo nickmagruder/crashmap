@@ -244,11 +244,12 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - Import `mapbox-gl/dist/mapbox-gl.css` in `app/layout.tsx` (required for popups, markers, controls)
   - `NEXT_PUBLIC_MAPBOX_TOKEN` must be set in `.env.local` (already in `.env.example`)
 - [x] Secure Mapbox access token via environment variable (`NEXT_PUBLIC_MAPBOX_TOKEN`)
-- [ ] Replace `app/page.tsx` with a full-viewport root layout container (`100dvh`, relative positioning)
+- [x] Replace `app/page.tsx` with a full-viewport root layout container (`100dvh`, relative positioning)
   - Strip all Next.js boilerplate; render `<MapContainer />` inside `<div style={{ position: 'relative', width: '100%', height: '100dvh' }}>`
   - `position: relative` is the anchor for future absolutely-positioned overlays
   - `page.tsx` stays a Server Component; client code is isolated in `MapContainer`
-- [ ] Build `MapContainer` component: `react-map-gl` map filling 100% of its container, Mapbox token from env var, no data layers yet
+  - Added `devIndicators: false` to `next.config.ts` to suppress the Next.js dev-mode badge
+- [x] Build `MapContainer` component: `react-map-gl` map filling 100% of its container, Mapbox token from env var, no data layers yet
   - File: `components/map/MapContainer.tsx` — `'use client'` (Mapbox has no SSR support)
   - Import `Map` from `react-map-gl/mapbox` (required for mapbox-gl >= 3.5)
   - `mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`

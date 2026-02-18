@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.3.3
+**Version:** 0.3.4
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -151,6 +151,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Exported `SEVERITY_BUCKETS`, `rawToBucket`, `bucketsToRawValues`, `buildWhere` from `lib/graphql/resolvers.ts` for testability
 - Created `lib/graphql/__tests__/helpers.test.ts` — 37 unit tests for severity mapping and filter-to-where-clause logic
 - Created `lib/graphql/__tests__/queries.test.ts` — 19 integration tests using Apollo Server `executeOperation` with mocked Prisma (crashes, crash, crashStats, filterOptions queries + Crash field resolver edge cases)
+
+### 2026-02-18 — Map Page Built
+
+- Created `components/map/MapContainer.tsx` — `'use client'` component with `react-map-gl/mapbox`, centered on Washington state, `light-v11` basemap
+- Replaced `app/page.tsx` boilerplate with a full-viewport layout (`100dvh`, `position: relative` for future overlays)
+- Added `devIndicators: false` to `next.config.ts` to suppress the Next.js dev-mode badge overlapping the map
 
 ### 2026-02-18 — Mapbox Token Configured
 
