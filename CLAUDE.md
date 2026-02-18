@@ -256,11 +256,12 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - `initialViewState`: longitude -120.5, latitude 47.5, zoom 7 (Washington state)
   - `mapStyle="mapbox://styles/mapbox/light-v11"` — clean light basemap for data visualization
   - `style={{ width: '100%', height: '100%' }}` — fills parent; parent owns `100dvh`
-- [ ] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
+- [x] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
 - [ ] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
 - [ ] Build `SummaryBar` component: persistent bar with placeholder crash count and empty filter badge area, visible on all screen sizes
 - [ ] Wire `map.resize()` to sidebar and overlay open/close transitions
 - [ ] Smoke test responsive layout at mobile (<768px) and desktop (≥768px) breakpoints
+- [ ] Import Domain into Render settings
 
 #### Milestone: Interactive map with filters
 
