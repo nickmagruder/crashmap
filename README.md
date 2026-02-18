@@ -45,6 +45,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-18 — Mobile Filter Overlay Scaffold
+
+- Created `components/overlay/FilterOverlay.tsx` — full-screen fixed overlay (`md:hidden`), with header, close button, and scrollable content area; renders `null` when closed
+- Updated `AppShell.tsx` — added `overlayOpen` state and a mobile-only floating toggle button (`md:hidden`) at the same position as the desktop button; both swap cleanly at the `md` breakpoint
+
 ### 2026-02-17 — Apollo Client Setup (Phase 3 Start)
 
 - Installed `@apollo/client` and `@apollo/client-integration-nextjs` (the current successor to the deprecated `@apollo/experimental-nextjs-app-support`)

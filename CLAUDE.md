@@ -257,7 +257,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - `mapStyle="mapbox://styles/mapbox/light-v11"` — clean light basemap for data visualization
   - `style={{ width: '100%', height: '100%' }}` — fills parent; parent owns `100dvh`
 - [x] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
-- [ ] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
+- [x] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
 - [ ] Build `SummaryBar` component: persistent bar with placeholder crash count and empty filter badge area, visible on all screen sizes
 - [ ] Wire `map.resize()` to sidebar and overlay open/close transitions
 - [ ] Smoke test responsive layout at mobile (<768px) and desktop (≥768px) breakpoints
