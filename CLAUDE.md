@@ -16,7 +16,7 @@
 - **Map:** Mapbox GL JS via `react-map-gl`
 - **API:** Apollo Server integrated into Next.js API route (`/app/api/graphql`)
 - **GraphQL Client:** Apollo Client with InMemoryCache
-- **ORM:** Prisma (use `prisma db pull` to introspect existing table — do NOT use `prisma migrate dev`)
+- **ORM:** Prisma 7 with `provider = "prisma-client"` generator and `@prisma/adapter-pg` driver adapter (use `prisma db pull` to introspect existing table — do NOT use `prisma migrate dev`)
 - **Database:** PostgreSQL + PostGIS on Render (Basic plan, 5GB)
 - **Hosting:** Render — Professional plan (web service), Basic plan (database)
 - **Domain:** crashmap.io (purchased)
@@ -59,7 +59,21 @@ CREATE TABLE public.crashdata
   - **None**: "No Apparent Injury", "Unknown"
   - Additional values may appear as more data sources are imported — always map dynamically
 - Prisma model uses `@map` decorators to map camelCase TS properties to the existing PascalCase column names
-- A generated PostGIS `geom` column should be added for spatial queries (see ARCHITECTURE.md Section 3)
+- A generated PostGIS `geom` column exists for spatial queries (see ARCHITECTURE.md Section 3)
+
+### Prisma 7 Client Notes
+
+- Generator: `provider = "prisma-client"` (new WASM-based compiler, NOT the legacy `prisma-client-js`)
+- Generated output: `lib/generated/prisma/` (gitignored — regenerated via `postinstall: prisma generate`)
+- **Import path:** `@/lib/generated/prisma/client` (no bare `index.ts` — use `/client` suffix)
+- **Constructor requires a driver adapter** — `new PrismaClient()` with no args will not type-check. Use:
+
+  ```ts
+  import { PrismaPg } from '@prisma/adapter-pg'
+  new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL!) })
+  ```
+
+- Prisma singleton lives in `lib/prisma.ts`; use `globalThis` pattern to prevent connection pool exhaustion in dev hot reloads
 
 ### Data Scale & Traffic
 
@@ -153,7 +167,12 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - `ARCHITECTURE.md` — Full architecture document with data model, GraphQL schema, Prisma model, SQL indexes, action plan, and all technical details
 - `tutorial.md` — Step-by-step tutorial draft for blog post
 - `README.md` — Project readme with changelog at the bottom
-- Prisma schema should use `@@map("crashdata")` and `@map("ColumnName")` for each field
+- `prisma/schema.prisma` — Prisma schema (introspected via `prisma db pull`; do NOT run `prisma migrate dev`)
+- `lib/prisma.ts` — PrismaClient singleton (with `@prisma/adapter-pg`)
+- `lib/graphql/typeDefs.ts` — Full GraphQL schema (SDL string)
+- `lib/graphql/resolvers.ts` — All resolvers with severity bucket mapping and `buildWhere` helper
+- `app/api/graphql/route.ts` — Apollo Server route handler
+- `lib/generated/prisma/` — Generated Prisma client (gitignored; regenerated via `postinstall: prisma generate`)
 
 ## What's Done
 
@@ -163,11 +182,106 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Render Basic PostgreSQL (5GB) with data loaded
 - [x] Architecture document complete
 
-## What's Next (Phase 1 remaining)
+---
 
+## 8. Step-by-Step Action Plan
+
+### Phase 1: Foundation (Day 1)
+
+#### Milestone: Project scaffolding and data model\*\*
+
+- [x] Purchase domain: **crashmap.io** ✓
+- [x] Initialize Next.js project with TypeScript (`create-next-app --typescript`)
 - [x] Initialize Tailwind CSS and shadcn/ui (`npx shadcn-ui@latest init`)
-- [x] Enable PostGIS on Render database (`CREATE EXTENSION postgis;`)
-- [x] Run `prisma db pull` to introspect the existing `crashdata` table and refine the Prisma model
-- [ ] Add generated `geom` column and create indexes (see ARCHITECTURE.md Section 3)
-- [x] Verify `FullDate` format and add `CrashDate` DATE column with index
-- [ ] Set up ESLint, Prettier, Husky pre-commit hooks
+- [x] Set up PostgreSQL with PostGIS extension on your existing Render database (`CREATE EXTENSION postgis;`)
+- [x] Run `prisma db pull` to introspect your existing `crashdata` table, then refine the generated Prisma model (see Section 3 for the recommended model)
+- [x] Add the generated `geom` geometry column and create recommended indexes (see Section 3)
+- [x] Verify `FullDate` column format (ISO 8601: `2025-02-23T00:00:00`) and add `CrashDate` DATE column with index
+- [x] Validate data: check for null `Latitude`/`Longitude` values, confirm `Mode` values are consistent ("Bicyclist"/"Pedestrian"), check `MostSevereInjuryType` distinct values
+- [x] Create the `filter_metadata` and `available_years` materialized views (see Section 4) for cascading dropdown population
+- [x] Set up ESLint, Prettier, Husky pre-commit hooks
+
+**Deliverables:** Running Next.js app, populated database, Prisma client generated
+
+### Phase 2: API Layer (Week 1)
+
+#### Milestone: Functional GraphQL API with core queries
+
+- [x] Install Apollo Server and configure in `/app/api/graphql/route.ts`
+- [x] Define GraphQL schema matching the types in Section 3:
+  - Queries: `crashes(filter, limit, offset)`, `crash(colliRptNum)`, `crashStats(filter)`, `filterOptions`
+  - Filters: by date/year, state, county, city, mode (Bicyclist/Pedestrian), severity (multi-select), bounding box
+  - No mutations needed for public-facing app (add later if you build an admin interface)
+- [x] Implement resolvers with Prisma (single-table queries — straightforward)
+- [ ] Set up `graphql-codegen` for automatic TypeScript type generation
+- [ ] Implement simple offset-based pagination
+- [ ] Add query depth limiting for public API protection
+- [ ] Write integration tests for all resolvers
+- [ ] Set up GitHub Actions CI pipeline (lint, format check, typecheck, build, `.next/cache` caching) with branch protection on `main`
+
+**Deliverables:** Fully tested GraphQL API accessible via Apollo Sandbox
+
+### Phase 3: Frontend Core (Weeks 2-3)
+
+#### Milestone: Interactive map with filters
+
+- [ ] Set up Apollo Client with InMemoryCache and type policies
+- [ ] Install shadcn/ui components needed for the UI:
+  - `npx shadcn-ui@latest add button select checkbox toggle-group sheet dialog badge popover calendar`
+- [ ] Build interactive map component with Mapbox GL JS (`react-map-gl`):
+  - GeoJSON source built from `Latitude`/`Longitude` fields
+  - Circle layer with severity-based color/opacity gradient (see Section 4 for palette)
+  - Stroke color differentiation for bicyclist vs. pedestrian mode
+  - None/Unknown injuries hidden by default via Mapbox layer filter
+  - Heatmap layer for density visualization at low zoom levels
+  - Built-in clustering with `cluster: true` on the GeoJSON source
+  - Popup/tooltip on click showing crash details (date, severity, mode, location, age group)
+- [ ] Secure Mapbox access token via environment variable (`NEXT_PUBLIC_MAPBOX_TOKEN`)
+- [ ] Implement filter panel (see Section 4 for full spec):
+  - Date Range: year quick-select buttons (most recent 4 years) + custom date range picker
+  - State → County → City cascading dropdowns (powered by `filter_metadata` view)
+  - Mode toggle: Bicyclist / Pedestrian / All
+  - Severity multi-select: Death, Serious, Minor (None/Unknown opt-in)
+- [ ] Load filter options on app init via `filterOptions` GraphQL query
+- [ ] Connect filters to GraphQL query variables
+- [ ] Implement mobile-first responsive layout (see Section 4 — UI Layout):
+  - Full-viewport map as the base layer on all screen sizes
+  - Mobile: floating overlay controls + full-screen filter overlay (toggle open/close)
+  - Desktop: toggleable right sidebar (~320px) for filters
+  - Persistent summary bar showing crash count and active filter chips
+  - Call `map.resize()` on sidebar open/close transitions
+
+**Deliverables:** Working app with map and filters
+
+### Phase 4: Security, Polish & Deployment (Weeks TBD)
+
+#### Milestone: Production-ready public application
+
+- [ ] Add rate limiting middleware for public API abuse prevention
+- [ ] Configure CSP headers and CORS in Next.js
+- [ ] Add loading states, error boundaries, skeleton screens
+- [ ] Implement URL-based state for shareable filter configurations (e.g., `?severity=Death&mode=Pedestrian&state=Ohio&county=Franklin`)
+- [ ] Add data export (CSV/PDF) for filtered results
+- [ ] Accessibility audit (WCAG 2.1 AA)
+- [ ] Add a data disclaimer, methodology page, and links to bicycle/pedestrian safety resources
+- [ ] Deploy to Render with staging and production environments (Web Service for Next.js app, existing PostgreSQL database)
+- [ ] Configure custom domain `crashmap.io` in Render and set up DNS records
+- [ ] Configure Render auto-deploy from your GitHub repo's `main` branch
+- [ ] Set up CI/CD pipeline (GitHub Actions):
+  - Lint → Type check → Test → Codegen → Build → Deploy
+- [ ] Configure basic monitoring (Sentry for errors, Lighthouse CI for web vitals)
+
+**Deliverables:** Deployed, public-facing production application
+
+### Phase 5: Iteration (Ongoing)
+
+- [ ] Gather user feedback and iterate on visualizations
+- [ ] **Stretch goal: Dashboard charts** (see Section 11) — add Recharts/D3 visualizations for severity, mode, time trends, and geographic breakdowns
+- [ ] **Stretch goal: Mobile bottom sheet** (see Section 11) — upgrade from full-screen overlay using `vaul` or `react-modal-sheet` for peek/half/full snap states
+- [ ] **Stretch goal: Light/Dark mode** (see Section 11) — swap Mapbox basemap, chart themes, and UI via CSS custom properties
+- [ ] Add comparative analysis features (year-over-year, area comparison)
+- [ ] Add an admin interface for uploading new crash data (protected with NextAuth.js)
+- [ ] Monitor query performance — add materialized views only if aggregation queries become slow
+- [ ] If data grows beyond 50K rows or traffic increases, revisit the caching strategy
+
+---

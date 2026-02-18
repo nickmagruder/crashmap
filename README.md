@@ -94,6 +94,16 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Ran `prisma db pull` to pick up new column and indexes; `geom` represented as `Unsupported("geometry")` with GIST index captured as `type: Gist`
 - Ran `prisma generate` to regenerate typed client
 
+### 2026-02-17 — GraphQL Resolvers
+
+- Implemented full Prisma resolvers in `lib/graphql/resolvers.ts`: `crashes`, `crash`, `crashStats`, `filterOptions` queries
+- Added severity bucket mapping (`Death`/`Major Injury`/`Minor Injury`/`None`) with `rawToBucket` and `bucketsToRawValues` helpers
+- Added `buildWhere` helper translating `CrashFilter` input to Prisma where clauses (mode, geography, date range, year shortcut, bbox, severity, `includeNoInjury`)
+- `FilterOptions` field resolvers query `filter_metadata` and `available_years` materialized views via `$queryRaw`
+- Created `lib/prisma.ts` singleton with `@prisma/adapter-pg` (required by Prisma 7's new `prisma-client` generator)
+- Added `"postinstall": "prisma generate"` to `package.json` so CI generates the client after `npm ci`
+- Installed `@prisma/adapter-pg`
+
 ### 2026-02-17 — GraphQL Schema
 
 - Defined full GraphQL schema in `lib/graphql/typeDefs.ts`: `Crash`, `CrashResult`, `CrashStats`, `FilterOptions` types; `CrashFilter` and `BBoxInput` inputs; `crashes`, `crash`, `crashStats`, `filterOptions` queries

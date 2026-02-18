@@ -748,6 +748,149 @@ Expected result:
 }
 ```
 
+### Step 19: Prisma Singleton and the Prisma 7 Driver Adapter
+
+Before writing resolvers, we need a `PrismaClient` instance. In Next.js, the dev server uses hot module replacement — if you create a new `PrismaClient` on every hot reload you'll exhaust the database connection pool. The solution is a module-level singleton stored on `globalThis`.
+
+**Prisma 7 gotcha — driver adapter required:**
+
+The new `provider = "prisma-client"` generator in Prisma 7 no longer reads `DATABASE_URL` from the environment automatically. Instead, it requires an explicit driver adapter passed to the constructor. For a PostgreSQL connection, that's `@prisma/adapter-pg`:
+
+```bash
+npm install @prisma/adapter-pg
+```
+
+**`lib/prisma.ts`:**
+
+```typescript
+import { PrismaClient } from '@/lib/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
+
+function createPrismaClient() {
+  const adapter = new PrismaPg(process.env.DATABASE_URL!)
+  return new PrismaClient({ adapter })
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+A few things to note:
+
+- **Import path:** Unlike traditional Prisma (which exports from `@prisma/client`), the new generator outputs to a custom path. With `output = "../lib/generated/prisma"` in the schema, there's no `index.ts` — the entry point is `@/lib/generated/prisma/client`.
+- **`globalThis` pattern:** In production (persistent Node.js process on Render), the module is cached normally so a single instance is created. In development, `globalForPrisma.prisma` persists across hot reloads so the same instance is reused.
+- **`DATABASE_URL!`:** The `!` non-null assertion is appropriate here — if `DATABASE_URL` is missing, we want a hard crash at startup rather than a confusing error later.
+
+**Also add `postinstall: prisma generate` to `package.json`:**
+
+```json
+"postinstall": "prisma generate"
+```
+
+This ensures the generated client is created after `npm ci` in CI, since `lib/generated/prisma/` is gitignored.
+
+### Step 20: Implement GraphQL Resolvers
+
+With the schema defined and Prisma set up, we can implement the resolvers in `lib/graphql/resolvers.ts`. All resolvers delegate to Prisma — no raw SQL except for the materialized view queries in `FilterOptions`.
+
+#### Severity bucket mapping
+
+The database stores raw severity values like `"Dead at Scene"` and `"Died in Hospital"`, but the UI works with four display buckets: `Death`, `Major Injury`, `Minor Injury`, and `None`. We define this mapping once and use it in both directions:
+
+```typescript
+const SEVERITY_BUCKETS: Record<string, string[]> = {
+  Death: ['Dead at Scene', 'Died in Hospital', 'Dead on Arrival'],
+  'Major Injury': ['Suspected Serious Injury'],
+  'Minor Injury': ['Suspected Minor Injury', 'Possible Injury'],
+  None: ['No Apparent Injury', 'Unknown'],
+}
+```
+
+`rawToBucket` converts a single raw DB value to its display bucket (with a passthrough for any unmapped values — this handles future data imports gracefully). `bucketsToRawValues` does the reverse, expanding a list of bucket names to all their constituent raw values for `WHERE IN (...)` queries.
+
+#### `buildWhere` — translating GraphQL filter input to a Prisma where clause
+
+All four queries share the same filter logic. Rather than repeating it, we extract a `buildWhere` function:
+
+- `mode`, `state`, `county`, `city` → simple equality filters on the mapped Prisma field names
+- `year` → shortcut that sets `crashDate >= Jan 1` and `crashDate <= Dec 31` of that year
+- `dateFrom` / `dateTo` → direct date range on `crashDate`
+- `bbox` → latitude/longitude range filters (hits the indexed columns)
+- `severity` (array of bucket names) → expands to raw DB values and filters with `IN`
+- `includeNoInjury: false` (default) → excludes the `None` bucket raw values with `NOT IN`
+
+#### Query resolvers
+
+`crashes` runs `findMany` and `count` in parallel using `Promise.all`:
+
+```typescript
+const [items, totalCount] = await Promise.all([
+  prisma.crashData.findMany({ where, skip: offset, take: limit }),
+  prisma.crashData.count({ where }),
+])
+return { items, totalCount }
+```
+
+`crashStats` runs five queries in parallel: total count, fatal count, and three `groupBy` queries for mode, severity, and county breakdowns. Because multiple raw DB values map to the same severity bucket, the severity counts are aggregated client-side using a `Map` before returning:
+
+```typescript
+const bucketTotals = new Map<string, number>()
+for (const g of severityGroups) {
+  const bucket = rawToBucket(g.mostSevereInjuryType) ?? 'Unknown'
+  bucketTotals.set(bucket, (bucketTotals.get(bucket) ?? 0) + g._count._all)
+}
+```
+
+#### `Crash` field resolvers
+
+The GraphQL `Crash` type uses shorter field names (`state`, `county`, `severity`) while the Prisma model uses the full column names (`stateOrProvinceName`, `countyName`, `mostSevereInjuryType`). Apollo resolves fields automatically when names match — only the mismatched ones need explicit resolvers:
+
+```typescript
+Crash: {
+  state: (p) => p.stateOrProvinceName,
+  county: (p) => p.countyName,
+  severity: (p) => rawToBucket(p.mostSevereInjuryType),
+  crashDate: (p) => p.crashDate?.toISOString().slice(0, 10) ?? null,
+  // ... etc
+}
+```
+
+The `crashDate` resolver formats Prisma's `Date` object as a `YYYY-MM-DD` string. `.toISOString()` returns UTC midnight, so `.slice(0, 10)` reliably extracts the date portion.
+
+#### `FilterOptions` field resolvers
+
+`filterOptions` at the Query level returns an empty object `{}`. Apollo then calls each field resolver on that object, passing any field-level arguments (e.g. `counties(state: "Washington")`):
+
+```typescript
+FilterOptions: {
+  states: async () => {
+    const rows = await prisma.$queryRaw<{ state: string }[]>`
+      SELECT DISTINCT state FROM filter_metadata WHERE state IS NOT NULL ORDER BY state
+    `
+    return rows.map((r) => r.state)
+  },
+  counties: async (_, { state }) => {
+    const rows = state
+      ? await prisma.$queryRaw<{ county: string }[]>`
+          SELECT DISTINCT county FROM filter_metadata
+          WHERE state = ${state} AND county IS NOT NULL ORDER BY county
+        `
+      : await prisma.$queryRaw<{ county: string }[]>`
+          SELECT DISTINCT county FROM filter_metadata WHERE county IS NOT NULL ORDER BY county
+        `
+    return rows.map((r) => r.county)
+  },
+  // ... cities, years similarly
+  severities: () => ['Death', 'Major Injury', 'Minor Injury', 'None'],
+  modes: () => ['Bicyclist', 'Pedestrian'],
+}
+```
+
+Prisma's tagged template `$queryRaw` automatically parameterizes interpolated values, so `WHERE state = ${state}` is safe from SQL injection. The `severities` and `modes` resolvers return static arrays — no DB call needed.
+
 ---
 
 _This tutorial is a work in progress. More steps will be added as the project progresses._
