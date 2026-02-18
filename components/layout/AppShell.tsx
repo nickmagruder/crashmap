@@ -5,6 +5,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
 import { FilterOverlay } from '@/components/overlay/FilterOverlay'
+import { SummaryBar } from '@/components/summary/SummaryBar'
 import { Button } from '@/components/ui/button'
 
 export function AppShell() {
@@ -38,6 +39,8 @@ export function AppShell() {
           <SlidersHorizontal className="size-4" />
         </Button>
       </div>
+
+      <SummaryBar />
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />

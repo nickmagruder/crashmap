@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.3.5
+**Version:** 0.3.6
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -45,10 +45,50 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-18 — SummaryBar Component
+
+- Created `components/summary/SummaryBar.tsx` — floating pill centered at viewport bottom showing crash count (`"—"` placeholder) and active filter badges; `bg-background/90 backdrop-blur-sm` overlay style; `role="status" aria-live="polite"` for screen readers
+- Updated `AppShell.tsx` to render `<SummaryBar />` (no props wired yet — count and filters connected when filter panel is built)
+
 ### 2026-02-18 — Mobile Filter Overlay Scaffold
 
 - Created `components/overlay/FilterOverlay.tsx` — full-screen fixed overlay (`md:hidden`), with header, close button, and scrollable content area; renders `null` when closed
 - Updated `AppShell.tsx` — added `overlayOpen` state and a mobile-only floating toggle button (`md:hidden`) at the same position as the desktop button; both swap cleanly at the `md` breakpoint
+
+### 2026-02-18 — Desktop Sidebar Scaffold
+
+- Created `components/sidebar/Sidebar.tsx` — Sheet-based right panel (320px), desktop-only overlay with "Filters" header and placeholder content
+- Created `components/layout/AppShell.tsx` — `'use client'` wrapper managing sidebar open/close state; renders `MapContainer`, a floating `SlidersHorizontal` toggle button (hidden on mobile via `hidden md:block`), and `Sidebar`
+- Updated `app/page.tsx` to render `AppShell` instead of `MapContainer` directly; page stays a Server Component
+
+### 2026-02-18 — Map Page Built
+
+- Created `components/map/MapContainer.tsx` — `'use client'` component with `react-map-gl/mapbox`, centered on Washington state, `light-v11` basemap
+- Replaced `app/page.tsx` boilerplate with a full-viewport layout (`100dvh`, `position: relative` for future overlays)
+- Added `devIndicators: false` to `next.config.ts` to suppress the Next.js dev-mode badge overlapping the map
+
+### 2026-02-18 — Mapbox Token Configured
+
+- Added `NEXT_PUBLIC_MAPBOX_TOKEN` to `.env.local` for local development (gitignored)
+- Set `NEXT_PUBLIC_MAPBOX_TOKEN` in Render dashboard for production (already declared in `render.yaml` with `sync: false`)
+- Applied URL restrictions to the Mapbox public token (localhost, Render URL, crashmap.io)
+
+### 2026-02-18 — Map Dependencies Installed
+
+- Installed `react-map-gl@8.1.0`, `mapbox-gl@3.18.1`, `@types/mapbox-gl@3.4.1`
+- Added `transpilePackages: ['react-map-gl', 'mapbox-gl']` to `next.config.ts` for ESM/App Router compatibility
+- Added `import 'mapbox-gl/dist/mapbox-gl.css'` to `app/layout.tsx` (required for popups, markers, and controls to render correctly)
+
+### 2026-02-18 — shadcn/ui Components
+
+- Added 10 shadcn/ui components to `components/ui/`: `button`, `select`, `checkbox`, `toggle-group`, `toggle`, `sheet`, `dialog`, `badge`, `popover`, `calendar`
+- New runtime dependencies: `date-fns`, `react-day-picker` (required by `calendar`)
+- CLI command changed from `npx shadcn-ui@latest` to `npx shadcn@latest` (package was renamed)
+
+### 2026-02-18 — Render Smoke-Test Deploy Confirmed
+
+- Created Render web service linked to GitHub `main` branch; auto-deploy set to **After CI Checks Pass**
+- `/api/graphql` GraphQL endpoint verified live on Render; full stack confirmed working in production
 
 ### 2026-02-17 — Apollo Client Setup (Phase 3 Start)
 
@@ -156,41 +196,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Exported `SEVERITY_BUCKETS`, `rawToBucket`, `bucketsToRawValues`, `buildWhere` from `lib/graphql/resolvers.ts` for testability
 - Created `lib/graphql/__tests__/helpers.test.ts` — 37 unit tests for severity mapping and filter-to-where-clause logic
 - Created `lib/graphql/__tests__/queries.test.ts` — 19 integration tests using Apollo Server `executeOperation` with mocked Prisma (crashes, crash, crashStats, filterOptions queries + Crash field resolver edge cases)
-
-### 2026-02-18 — Desktop Sidebar Scaffold
-
-- Created `components/sidebar/Sidebar.tsx` — Sheet-based right panel (320px), desktop-only overlay with "Filters" header and placeholder content
-- Created `components/layout/AppShell.tsx` — `'use client'` wrapper managing sidebar open/close state; renders `MapContainer`, a floating `SlidersHorizontal` toggle button (hidden on mobile via `hidden md:block`), and `Sidebar`
-- Updated `app/page.tsx` to render `AppShell` instead of `MapContainer` directly; page stays a Server Component
-
-### 2026-02-18 — Map Page Built
-
-- Created `components/map/MapContainer.tsx` — `'use client'` component with `react-map-gl/mapbox`, centered on Washington state, `light-v11` basemap
-- Replaced `app/page.tsx` boilerplate with a full-viewport layout (`100dvh`, `position: relative` for future overlays)
-- Added `devIndicators: false` to `next.config.ts` to suppress the Next.js dev-mode badge overlapping the map
-
-### 2026-02-18 — Mapbox Token Configured
-
-- Added `NEXT_PUBLIC_MAPBOX_TOKEN` to `.env.local` for local development (gitignored)
-- Set `NEXT_PUBLIC_MAPBOX_TOKEN` in Render dashboard for production (already declared in `render.yaml` with `sync: false`)
-- Applied URL restrictions to the Mapbox public token (localhost, Render URL, crashmap.io)
-
-### 2026-02-18 — Map Dependencies Installed
-
-- Installed `react-map-gl@8.1.0`, `mapbox-gl@3.18.1`, `@types/mapbox-gl@3.4.1`
-- Added `transpilePackages: ['react-map-gl', 'mapbox-gl']` to `next.config.ts` for ESM/App Router compatibility
-- Added `import 'mapbox-gl/dist/mapbox-gl.css'` to `app/layout.tsx` (required for popups, markers, and controls to render correctly)
-
-### 2026-02-18 — shadcn/ui Components
-
-- Added 10 shadcn/ui components to `components/ui/`: `button`, `select`, `checkbox`, `toggle-group`, `toggle`, `sheet`, `dialog`, `badge`, `popover`, `calendar`
-- New runtime dependencies: `date-fns`, `react-day-picker` (required by `calendar`)
-- CLI command changed from `npx shadcn-ui@latest` to `npx shadcn@latest` (package was renamed)
-
-### 2026-02-18 — Render Smoke-Test Deploy Confirmed
-
-- Created Render web service linked to GitHub `main` branch; auto-deploy set to **After CI Checks Pass**
-- `/api/graphql` GraphQL endpoint verified live on Render; full stack confirmed working in production
 
 ### 2026-02-17 — Render Deployment Setup
 
