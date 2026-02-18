@@ -1542,4 +1542,75 @@ A response with actual state names confirms the full stack is working in product
 
 ---
 
+### Step N+6: Install shadcn/ui Components
+
+With the deployment confirmed and Apollo Client wired up, we can now install the UI component library that powers the filters, sidebar, and other interactive elements.
+
+[shadcn/ui](https://ui.shadcn.com/) was initialized back in Step 2 (during project scaffolding), which created `components.json` and set up the `lib/utils.ts` helper. At that time, we ran `npx shadcn-ui@latest init` — but the package has since been renamed. The current CLI is simply `shadcn`.
+
+> **Package rename note:** The shadcn CLI was renamed from `shadcn-ui` to `shadcn` at some point after v2. If you scaffolded your project with the old name, that's fine — the `components.json` is compatible. Going forward, all component additions use `npx shadcn@latest add ...` (or just `npx shadcn add ...` if it's already in your devDependencies).
+
+#### What we're installing
+
+These components cover every UI element needed for the filter panel, sidebar, and summary bar in the CrashMap MVP:
+
+| Component      | Used for                                              |
+| -------------- | ----------------------------------------------------- |
+| `button`       | Year quick-select, filter apply/reset, sidebar toggle |
+| `select`       | State, County, City cascading dropdowns               |
+| `checkbox`     | Severity multi-select (Death, Major, Minor, None)     |
+| `toggle-group` | Mode filter (Bicyclist / Pedestrian / All)            |
+| `sheet`        | Desktop sidebar panel (~320px, slides in from right)  |
+| `dialog`       | Confirmation modals (future use)                      |
+| `badge`        | Active filter labels in the summary bar               |
+| `popover`      | Date range picker container                           |
+| `calendar`     | Date range picker calendar UI                         |
+
+#### Install all components at once
+
+```bash
+npx shadcn@latest add button select checkbox toggle-group sheet dialog badge popover calendar
+```
+
+shadcn also installs `toggle` as a peer dependency of `toggle-group`, so you'll see 10 files created even though 9 components were listed.
+
+The `calendar` component has two additional runtime dependencies that shadcn installs automatically:
+
+- **`date-fns`** — date utility library used by the calendar for date arithmetic
+- **`react-day-picker`** — the underlying headless calendar component
+
+Both are added to `dependencies` in `package.json`.
+
+#### What gets created
+
+All components are copied into `components/ui/` as plain TypeScript/React files that you own:
+
+```text
+components/ui/
+  badge.tsx
+  button.tsx
+  calendar.tsx
+  checkbox.tsx
+  dialog.tsx
+  popover.tsx
+  select.tsx
+  sheet.tsx
+  toggle-group.tsx
+  toggle.tsx
+```
+
+Unlike traditional component libraries, these files are part of your codebase — you can modify styles, behavior, and props directly. shadcn is a code generator, not a runtime dependency.
+
+#### Verify
+
+Run the type checker to confirm all new component imports are valid:
+
+```bash
+npm run typecheck   # no output = clean
+```
+
+The components are ready to use anywhere in the app via `@/components/ui/button`, `@/components/ui/sheet`, etc.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
