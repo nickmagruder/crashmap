@@ -1925,4 +1925,135 @@ npm run dev
 
 On desktop: a `≡` (sliders) button appears in the top-right. Click it to open the filter panel; click the X or the dark overlay to close. On mobile: the button is hidden and the sidebar cannot be opened (mobile filter UI is the next step).
 
+---
+
+### Step N+11: Build the Mobile Filter Overlay
+
+On desktop, filters slide in via the `Sheet` sidebar. On mobile (<768px), a sheet panel is awkward — the viewport is too narrow for a side panel and too tall for a bottom drawer at this stage. Instead, we use a **full-screen overlay**: a fixed panel that covers the entire viewport with a header and scrollable content area.
+
+#### The approach
+
+The overlay is a fixed-positioned `div` that:
+
+- Covers the full viewport (`fixed inset-0`)
+- Is hidden at `md` and above (`md:hidden`) — desktop users get the Sheet sidebar
+- Has a header row with a title and close button
+- Has a scrollable content area below the header (`flex-1 overflow-y-auto`)
+- Renders `null` when closed so it has zero DOM overhead
+
+#### Create `components/overlay/FilterOverlay.tsx`
+
+```tsx
+'use client'
+
+import { X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
+interface FilterOverlayProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
+  if (!isOpen) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-20 flex flex-col bg-background md:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Filters"
+    >
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <h2 className="text-base font-semibold">Filters</h2>
+        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close filters">
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <p className="text-sm text-muted-foreground">Filter controls coming soon.</p>
+      </div>
+    </div>
+  )
+}
+```
+
+A few details:
+
+- **`fixed inset-0`** — covers the full viewport regardless of scroll position; `inset-0` is shorthand for `top: 0; right: 0; bottom: 0; left: 0`
+- **`z-20`** — sits above the map (`z-10`) and the floating toggle button
+- **`md:hidden`** — the overlay is completely absent from the DOM tree at desktop widths; the `Sheet` sidebar handles that breakpoint
+- **`bg-background`** — uses the shadcn/ui CSS custom property for the page background color so it respects any future theming
+- **`flex flex-col`** — header is fixed-height; the content area grows to fill the rest with `flex-1`
+- **`role="dialog"` + `aria-modal="true"`** — tells screen readers this is a modal dialog; `aria-label="Filters"` provides the accessible name
+
+#### Wire up the toggle button in `AppShell`
+
+The overlay needs a floating toggle button on mobile — the same `SlidersHorizontal` icon as the desktop button, but visible only when the desktop button is hidden:
+
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { SlidersHorizontal } from 'lucide-react'
+import { MapContainer } from '@/components/map/MapContainer'
+import { Sidebar } from '@/components/sidebar/Sidebar'
+import { FilterOverlay } from '@/components/overlay/FilterOverlay'
+import { Button } from '@/components/ui/button'
+
+export function AppShell() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [overlayOpen, setOverlayOpen] = useState(false)
+
+  return (
+    <>
+      <MapContainer />
+
+      {/* Sidebar toggle button — desktop only */}
+      <div className="absolute top-4 right-4 z-10 hidden md:block">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open filters"
+        >
+          <SlidersHorizontal className="size-4" />
+        </Button>
+      </div>
+
+      {/* Filter overlay toggle button — mobile only */}
+      <div className="absolute top-4 right-4 z-10 md:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setOverlayOpen(true)}
+          aria-label="Open filters"
+        >
+          <SlidersHorizontal className="size-4" />
+        </Button>
+      </div>
+
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />
+    </>
+  )
+}
+```
+
+The two toggle buttons sit at the same position (`top-4 right-4`) but swap at the `md` breakpoint:
+
+- `hidden md:block` — desktop button: hidden below `md`, visible at `md` and above
+- `md:hidden` — mobile button: visible below `md`, hidden at `md` and above
+
+This means exactly one button is rendered at any viewport width. Both trigger different state variables — `sidebarOpen` and `overlayOpen` — which control their respective panels independently.
+
+#### Test
+
+```bash
+npm run dev
+```
+
+Resize the browser to a mobile width (<768px). The `SlidersHorizontal` button should be visible in the top-right. Tapping it covers the entire viewport with the filter overlay (white background, "Filters" header, X close button). Tapping X returns to the map. At desktop width, the button switches to opening the Sheet sidebar instead.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

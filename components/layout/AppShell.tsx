@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { SlidersHorizontal } from 'lucide-react'
 import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
+import { FilterOverlay } from '@/components/overlay/FilterOverlay'
 import { Button } from '@/components/ui/button'
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [overlayOpen, setOverlayOpen] = useState(false)
 
   return (
     <>
@@ -25,7 +27,20 @@ export function AppShell() {
         </Button>
       </div>
 
+      {/* Filter overlay toggle button — mobile only */}
+      <div className="absolute top-4 right-4 z-10 md:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setOverlayOpen(true)}
+          aria-label="Open filters"
+        >
+          <SlidersHorizontal className="size-4" />
+        </Button>
+      </div>
+
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />
     </>
   )
 }
