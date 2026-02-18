@@ -62,6 +62,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 - Created `.github/workflows/ci.yml` with lint, format check, typecheck, and build steps
 - Added `typecheck` script (`tsc --noEmit`) to `package.json`
+- Added `.next/cache` caching to CI workflow to eliminate Next.js build cache warning and speed up repeat builds
 
 ### 2026-02-17 — Linting & Formatting
 
