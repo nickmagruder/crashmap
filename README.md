@@ -58,6 +58,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Updated `ARCHITECTURE.md` and `CLAUDE.md` to reflect new `CrashDate` column across schema, Prisma model, GraphQL types, materialized views, and checklists
 - Added `tutorial.md` for step-by-step blog post draft
 
+### 2026-02-17 — Linting & Formatting
+
+- Installed Prettier, `eslint-config-prettier`, Husky, and lint-staged
+- Added `.prettierrc` (no semis, single quotes, 100 char width) and `.prettierignore`
+- Updated `eslint.config.mjs` to include `eslint-config-prettier` and ignore `lib/generated/**`
+- Initialized Husky with pre-commit hook running `lint-staged` on staged files
+- Added `format` and `format:check` scripts to `package.json`
+- Formatted all existing files with Prettier; ESLint and Prettier both pass clean
+
 ### 2026-02-17 — Materialized Views
 
 - Created `filter_metadata` materialized view (distinct state/county/city combinations) with `idx_filter_metadata_geo` index for cascading dropdown queries
