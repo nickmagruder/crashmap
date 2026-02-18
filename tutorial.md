@@ -2139,4 +2139,96 @@ npm run dev
 
 A floating pill labeled `"— crashes"` should appear centered at the bottom of the viewport. Resize to both mobile and desktop widths to confirm it stays centered and doesn't overlap the toggle button or other controls.
 
+### Step N+13: Wire map.resize() to Sidebar and Overlay Transitions
+
+Whenever the sidebar or filter overlay opens or closes, the Mapbox canvas needs to be told about the size change. Without this, Mapbox holds onto its old canvas dimensions and the map can appear offset or mis-sized until the user interacts with it.
+
+The solution involves two changes:
+
+1. Expose the Mapbox `MapRef` from `MapContainer` via `forwardRef`
+2. Call `mapRef.current?.resize()` in `AppShell` whenever sidebar or overlay state changes
+
+#### Why `map.resize()`?
+
+Mapbox GL JS renders into an HTML canvas. The canvas size is computed once on initialization and again whenever you explicitly call `map.resize()`. CSS changes to the surrounding layout (even animated ones) don't trigger Mapbox's internal resize logic — you have to call it manually.
+
+The Sheet sidebar animates open/closed with a CSS transition (~300ms). Calling `resize()` immediately when state changes means Mapbox recomputes size before the animation finishes, which can cause a momentary glitch. A short `setTimeout` deferred past the animation duration fixes this.
+
+#### Convert `MapContainer` to `forwardRef`
+
+The `Map` component from `react-map-gl/mapbox` accepts a `ref` that exposes the underlying `MapRef` instance. We need to surface this ref to `AppShell`, which means converting `MapContainer` from a plain function to a `forwardRef` component:
+
+```tsx
+'use client'
+
+import { forwardRef } from 'react'
+import Map from 'react-map-gl/mapbox'
+import type { MapRef } from 'react-map-gl/mapbox'
+
+export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
+  return (
+    <Map
+      ref={ref}
+      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+      initialViewState={{ longitude: -120.5, latitude: 47.5, zoom: 7 }}
+      style={{ width: '100%', height: '100%' }}
+      mapStyle="mapbox://styles/mapbox/light-v11"
+    />
+  )
+})
+```
+
+Key details:
+
+- **`forwardRef<MapRef>`** — declares that the ref this component forwards is of type `MapRef`
+- **`MapRef` from `react-map-gl/mapbox`** — important: import from `react-map-gl/mapbox`, not `react-map-gl`. In this project configuration, the root `react-map-gl` package is not resolvable as a TypeScript module (only the subpath export `react-map-gl/mapbox` is). This is a v8 package-structure quirk.
+- **`(_, ref)`** — the component takes no props (`_` is unused), but `forwardRef` always passes props as the first argument and ref as the second
+- **Named function** — using `forwardRef(function MapContainer(...))` instead of an arrow function preserves the component name in React DevTools
+
+#### Hold the ref in `AppShell` and call `resize()`
+
+```tsx
+'use client'
+
+import { useRef, useEffect, useState } from 'react'
+import type { MapRef } from 'react-map-gl/mapbox'
+import { MapContainer } from '@/components/map/MapContainer'
+// ...other imports...
+
+export function AppShell() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [overlayOpen, setOverlayOpen] = useState(false)
+  const mapRef = useRef<MapRef>(null)
+
+  // Call resize() after sidebar/overlay transitions so Mapbox recomputes canvas size.
+  // 300ms matches the shadcn Sheet slide animation duration.
+  useEffect(() => {
+    const id = setTimeout(() => mapRef.current?.resize(), 300)
+    return () => clearTimeout(id)
+  }, [sidebarOpen, overlayOpen])
+
+  return (
+    <>
+      <MapContainer ref={mapRef} />
+      {/* ...rest of the shell... */}
+    </>
+  )
+}
+```
+
+How this works:
+
+- **`useRef<MapRef>(null)`** — a stable ref that holds the Mapbox map instance across renders; `null` before the map mounts
+- **`useEffect` with `[sidebarOpen, overlayOpen]`** — runs once on mount (no-op since the map is already sized correctly) and again whenever either state variable flips
+- **`setTimeout(..., 300)`** — defers the `resize()` call until after the Sheet animation completes. The cleanup function (`clearTimeout`) cancels the timer if the state changes again before the timeout fires, preventing stale calls
+- **`mapRef.current?.resize()`** — optional chaining guards against the map not yet being mounted; `resize()` is a synchronous Mapbox method that recomputes canvas dimensions from the current container size
+
+#### Test the Change
+
+```bash
+npm run dev
+```
+
+Open the sidebar on desktop. As the Sheet slides in, the map should fill the remaining space correctly with no visual glitch. Close the sidebar — same behavior. On mobile, open and close the filter overlay; the map canvas should remain correctly sized throughout.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
