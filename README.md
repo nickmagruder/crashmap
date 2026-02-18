@@ -152,6 +152,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Created `lib/graphql/__tests__/helpers.test.ts` — 37 unit tests for severity mapping and filter-to-where-clause logic
 - Created `lib/graphql/__tests__/queries.test.ts` — 19 integration tests using Apollo Server `executeOperation` with mocked Prisma (crashes, crash, crashStats, filterOptions queries + Crash field resolver edge cases)
 
+### 2026-02-18 — Mapbox Token Configured
+
+- Added `NEXT_PUBLIC_MAPBOX_TOKEN` to `.env.local` for local development (gitignored)
+- Set `NEXT_PUBLIC_MAPBOX_TOKEN` in Render dashboard for production (already declared in `render.yaml` with `sync: false`)
+- Applied URL restrictions to the Mapbox public token (localhost, Render URL, crashmap.io)
+
 ### 2026-02-18 — Map Dependencies Installed
 
 - Installed `react-map-gl@8.1.0`, `mapbox-gl@3.18.1`, `@types/mapbox-gl@3.4.1`

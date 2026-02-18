@@ -1677,4 +1677,60 @@ import Map from 'react-map-gl' // ← don't use this with mapbox-gl v3
 npx tsc --noEmit   # no output = clean
 ```
 
+### Step N+7: Secure the Mapbox Access Token
+
+The `NEXT_PUBLIC_MAPBOX_TOKEN` env var is referenced in `MapContainer` but it needs to be provisioned in two places: locally for development and on Render for production.
+
+#### What kind of token?
+
+Mapbox issues two types of tokens:
+
+- **Public tokens** (`pk.xxx`) — intended for client-side use. They're embedded in your JS bundle, which means they're visible to anyone who inspects your page. This is expected and by design — Mapbox's security model relies on **URL restrictions**, not token secrecy.
+- **Secret tokens** (`sk.xxx`) — for server-side use only (e.g., uploading tilesets). Never use these in client code.
+
+Use your **Default public token** (`pk.xxx`) from [account.mapbox.com/access-tokens](https://account.mapbox.com/access-tokens), or create a dedicated one for CrashMap.
+
+#### Restrict the token by URL (recommended)
+
+Public tokens can be scoped to specific URLs so they can't be used from other domains even if scraped:
+
+1. Open the token in the Mapbox dashboard
+2. Under **Allowed URLs**, add:
+   - `http://localhost:3000`
+   - `https://crashmap.onrender.com`
+   - `https://crashmap.io` (when live)
+
+This won't affect functionality — requests from these origins will work normally. Requests from any other origin will be rejected by Mapbox's API.
+
+#### Local development — `.env.local`
+
+The existing `.env` file is used by Prisma's CLI (loaded via `dotenv/config` in `prisma.config.ts`) and should stay focused on database configuration. `NEXT_PUBLIC_*` variables for Next.js go in `.env.local`, which is also gitignored by `.env*` in `.gitignore`.
+
+Create `.env.local` at the project root:
+
+```bash
+NEXT_PUBLIC_MAPBOX_TOKEN=pk.eyJ1IjoiWU9VUl9VU0VSTkFNRSI...
+```
+
+Next.js automatically loads `.env.local` in all environments. The `NEXT_PUBLIC_` prefix makes the value available in client-side code (it gets inlined at build time into the JS bundle).
+
+#### Production — Render dashboard
+
+`render.yaml` already declares `NEXT_PUBLIC_MAPBOX_TOKEN` with `sync: false`, which means Render knows the variable exists but requires you to set the value manually in the dashboard (it's never committed to the repo):
+
+1. Open [dashboard.render.com](https://dashboard.render.com) → **crashmap** web service
+2. Click **Environment** → find `NEXT_PUBLIC_MAPBOX_TOKEN`
+3. Paste the `pk.` token value → **Save Changes**
+4. Render triggers a new deploy automatically
+
+**Verify locally:**
+
+```bash
+npm run dev
+```
+
+The `NEXT_PUBLIC_MAPBOX_TOKEN` value is now available to `MapContainer` at `process.env.NEXT_PUBLIC_MAPBOX_TOKEN`. The map won't render yet (we haven't built `MapContainer`), but the token is wired up and ready.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
