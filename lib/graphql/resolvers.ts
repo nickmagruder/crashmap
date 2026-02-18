@@ -7,7 +7,7 @@ import type { CrashFilter, Resolvers } from './__generated__/types'
 // New raw values from future data imports will fall through to rawToBucket's
 // passthrough return, so they render as-is rather than silently disappearing.
 
-const SEVERITY_BUCKETS: Record<string, string[]> = {
+export const SEVERITY_BUCKETS: Record<string, string[]> = {
   Death: ['Dead at Scene', 'Died in Hospital', 'Dead on Arrival'],
   'Major Injury': ['Suspected Serious Injury'],
   'Minor Injury': ['Suspected Minor Injury', 'Possible Injury'],
@@ -16,7 +16,7 @@ const SEVERITY_BUCKETS: Record<string, string[]> = {
 
 const NONE_VALUES = SEVERITY_BUCKETS['None']
 
-function rawToBucket(raw: string | null | undefined): string | null {
+export function rawToBucket(raw: string | null | undefined): string | null {
   if (!raw) return null
   for (const [bucket, values] of Object.entries(SEVERITY_BUCKETS)) {
     if (values.includes(raw)) return bucket
@@ -27,13 +27,13 @@ function rawToBucket(raw: string | null | undefined): string | null {
 // Expand display bucket names to the raw DB values they represent.
 // Accepts nullable elements because the generated CrashFilter.severity type is
 // Array<string | null | undefined> (GraphQL [String] allows null list items).
-function bucketsToRawValues(buckets: ReadonlyArray<string | null | undefined>): string[] {
+export function bucketsToRawValues(buckets: ReadonlyArray<string | null | undefined>): string[] {
   return buckets.flatMap((b) => (b ? (SEVERITY_BUCKETS[b] ?? [b]) : []))
 }
 
 // ── Build Prisma where clause from GraphQL filter input ───────────────────────
 
-function buildWhere(filter?: CrashFilter | null) {
+export function buildWhere(filter?: CrashFilter | null) {
   const { severity, mode, state, county, city, dateFrom, dateTo, year, bbox, includeNoInjury } =
     filter ?? {}
 
