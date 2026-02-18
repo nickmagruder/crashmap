@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
+    "codegen": "graphql-codegen --config codegen.ts",
     "postinstall": "prisma generate",
     "prepare": "husky"
   },
@@ -38,6 +39,10 @@
     "tailwind-merge": "^3.4.1"
   },
   "devDependencies": {
+    "@graphql-codegen/add": "^6.0.0",
+    "@graphql-codegen/cli": "^6.1.1",
+    "@graphql-codegen/typescript": "^5.0.7",
+    "@graphql-codegen/typescript-resolvers": "^5.1.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
