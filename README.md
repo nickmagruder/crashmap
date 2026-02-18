@@ -94,6 +94,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Ran `prisma db pull` to pick up new column and indexes; `geom` represented as `Unsupported("geometry")` with GIST index captured as `type: Gist`
 - Ran `prisma generate` to regenerate typed client
 
+### 2026-02-17 — GraphQL Schema
+
+- Defined full GraphQL schema in `lib/graphql/typeDefs.ts`: `Crash`, `CrashResult`, `CrashStats`, `FilterOptions` types; `CrashFilter` and `BBoxInput` inputs; `crashes`, `crash`, `crashStats`, `filterOptions` queries
+- Added stub resolvers in `lib/graphql/resolvers.ts` (Prisma implementation next)
+- Updated `app/api/graphql/route.ts` to import from `lib/graphql/`
+
 ### 2026-02-17 — Apollo Server Setup
 
 - Installed `@apollo/server`, `graphql`, and `@as-integrations/next`
