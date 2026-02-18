@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.2.3
+**Version:** 0.3.0
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -63,6 +63,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Created `.github/workflows/ci.yml` with lint, format check, typecheck, and build steps
 - Added `typecheck` script (`tsc --noEmit`) to `package.json`
 - Added `.next/cache` caching to CI workflow to eliminate Next.js build cache warning and speed up repeat builds
+- Added Vitest test step to CI workflow (runs all unit and integration tests before build)
+- Configured `main` branch protection: require CI to pass before merging
 
 ### 2026-02-17 — Linting & Formatting
 

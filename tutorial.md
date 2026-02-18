@@ -639,6 +639,9 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Test
+        run: npm run test
+
       - name: Build
         run: npm run build
 ```
@@ -648,6 +651,7 @@ A few design notes:
 - **`npm ci`** uses the lockfile exactly and fails if `package-lock.json` is out of sync — stricter than `npm install`
 - **Next.js build cache** — the `actions/cache` step caches `.next/cache` between runs. The primary key includes both a lockfile hash and source file hash, so it's invalidated when dependencies or code changes. The restore key falls back to a lockfile-only match so at least module compilation is reused even when source changes. Without this, Next.js emits a `⚠ No build cache found` warning and rebuilds everything from scratch each run.
 - **Steps run in order** — lint and format are fast and fail early; build is slowest and runs last
+- **Test step runs before build** — catches logic errors without paying the full Next.js compilation cost. Because Prisma is fully mocked in the test suite, no `DATABASE_URL` secret is needed in CI
 - **`npm run build`** is the most important check pre-commit hooks don't cover — it catches broken imports and Next.js-specific errors
 - **Triggers on all branches** so you get feedback on feature branches, not just PRs
 
@@ -1279,6 +1283,8 @@ npm run test:watch  # watch mode for development
 ```
 
 The full suite runs in under 2 seconds — fast enough for watch mode during development and CI.
+
+With the test suite in place, adding a `Test` step to the CI workflow is straightforward — `npm run test` runs `vitest run`, which exits with a non-zero code on any failure. Because Prisma is fully mocked, CI requires no database connection. The final CI step order is: Lint → Format check → Type check → Test → Build.
 
 ---
 

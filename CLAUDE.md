@@ -192,7 +192,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 ### Phase 1: Foundation (Day 1)
 
-#### Milestone: Project scaffolding and data model\*\*
+#### Milestone: Project scaffolding and data model
 
 - [x] Purchase domain: **crashmap.io** ✓
 - [x] Initialize Next.js project with TypeScript (`create-next-app --typescript`)
@@ -221,7 +221,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Implement simple offset-based pagination
 - [x] Add query depth limiting for public API protection
 - [x] Write integration tests for all resolvers
-- [ ] Set up GitHub Actions CI pipeline (lint, format check, typecheck, build, `.next/cache` caching) with branch protection on `main`
+- [x] Set up GitHub Actions CI pipeline (lint, format check, typecheck, build, `.next/cache` caching) with branch protection on `main`
 
 **Deliverables:** Fully tested GraphQL API accessible via Apollo Sandbox
 
