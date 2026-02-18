@@ -1613,4 +1613,68 @@ The components are ready to use anywhere in the app via `@/components/ui/button`
 
 ---
 
+### Step N+6: Install Map Dependencies
+
+With the GraphQL API complete and Apollo Client wired up, Phase 3 begins: building the interactive map UI. The first step is installing the mapping libraries.
+
+**Why react-map-gl?**
+
+[react-map-gl](https://visgl.github.io/react-map-gl/) is the standard React wrapper for Mapbox GL JS (and MapLibre GL). Rather than managing a raw `mapboxgl.Map` instance in a `useEffect`, react-map-gl exposes the map as a declarative React tree — GeoJSON sources, layers, popups, and markers are all React components. This integrates naturally with our state-driven filter system.
+
+**Packages:**
+
+```bash
+npm install react-map-gl mapbox-gl @types/mapbox-gl
+```
+
+- `react-map-gl@8` — React component wrapper; v8 restructured imports by library: use `react-map-gl/mapbox` for mapbox-gl >= 3.5
+- `mapbox-gl@3` — the GL rendering engine (current: v3.18.1); CSS must be imported separately
+- `@types/mapbox-gl` — TypeScript type definitions (react-map-gl v7+ requires this as an explicit dependency)
+
+#### Next.js App Router compatibility
+
+Mapbox GL JS uses Web Workers and browser-only APIs — it has no SSR support. In Next.js App Router, the correct approach is:
+
+1. **Mark map components `'use client'`** — this is the standard pattern for browser-only libraries in App Router
+2. **Add `transpilePackages`** — Next.js needs to transpile these ESM packages for the bundler
+
+In `next.config.ts`:
+
+```ts
+const nextConfig: NextConfig = {
+  output: 'standalone',
+  transpilePackages: ['react-map-gl', 'mapbox-gl'],
+}
+```
+
+> **Note:** Some older guides recommend `dynamic(() => import('./MapComponent'), { ssr: false })`. With App Router and `'use client'`, this is no longer necessary — the `'use client'` boundary already ensures the component only runs in the browser.
+
+#### Mapbox CSS
+
+Mapbox GL JS requires its stylesheet for the map to render correctly, and for popups, markers, and controls to display properly. Import it globally in `app/layout.tsx`:
+
+```ts
+import 'mapbox-gl/dist/mapbox-gl.css'
+```
+
+This goes in `layout.tsx` (not in the map component) so the CSS loads once for the whole app, regardless of which page the map appears on.
+
+#### Import path for react-map-gl v8
+
+react-map-gl v8 changed its import structure. For mapbox-gl >= 3.5, **always import from `react-map-gl/mapbox`**, not from `react-map-gl`:
+
+```ts
+// Correct for mapbox-gl >= 3.5:
+import Map, { Source, Layer, Popup, Marker } from 'react-map-gl/mapbox'
+
+// Old (v7 and earlier):
+import Map from 'react-map-gl' // ← don't use this with mapbox-gl v3
+```
+
+**Verify:**
+
+```bash
+npx tsc --noEmit   # no output = clean
+```
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

@@ -238,9 +238,23 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - Build and deploy confirmed successful; `/api/graphql` endpoint live at `https://crashmap.onrender.com/api/graphql`
 - [x] Install shadcn/ui components needed for the UI:
   - `npx shadcn@latest add button select checkbox toggle-group sheet dialog badge popover calendar`
-- [ ] Install map dependencies: `react-map-gl`, `mapbox-gl`
+- [x] Install map dependencies: `react-map-gl`, `mapbox-gl`
+  - `npm install react-map-gl mapbox-gl @types/mapbox-gl`
+  - Add `transpilePackages: ['react-map-gl', 'mapbox-gl']` to `next.config.ts` (ESM/App Router compat)
+  - Import `mapbox-gl/dist/mapbox-gl.css` in `app/layout.tsx` (required for popups, markers, controls)
+  - `NEXT_PUBLIC_MAPBOX_TOKEN` must be set in `.env.local` (already in `.env.example`)
+- [ ] Secure Mapbox access token via environment variable (`NEXT_PUBLIC_MAPBOX_TOKEN`)
 - [ ] Replace `app/page.tsx` with a full-viewport root layout container (`100dvh`, relative positioning)
+  - Strip all Next.js boilerplate; render `<MapContainer />` inside `<div style={{ position: 'relative', width: '100%', height: '100dvh' }}>`
+  - `position: relative` is the anchor for future absolutely-positioned overlays
+  - `page.tsx` stays a Server Component; client code is isolated in `MapContainer`
 - [ ] Build `MapContainer` component: `react-map-gl` map filling 100% of its container, Mapbox token from env var, no data layers yet
+  - File: `components/map/MapContainer.tsx` — `'use client'` (Mapbox has no SSR support)
+  - Import `Map` from `react-map-gl/mapbox` (required for mapbox-gl >= 3.5)
+  - `mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+  - `initialViewState`: longitude -120.5, latitude 47.5, zoom 7 (Washington state)
+  - `mapStyle="mapbox://styles/mapbox/light-v11"` — clean light basemap for data visualization
+  - `style={{ width: '100%', height: '100%' }}` — fills parent; parent owns `100dvh`
 - [ ] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
 - [ ] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
 - [ ] Build `SummaryBar` component: persistent bar with placeholder crash count and empty filter badge area, visible on all screen sizes
@@ -257,7 +271,6 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - Heatmap layer for density visualization at low zoom levels
   - Built-in clustering with `cluster: true` on the GeoJSON source
   - Popup/tooltip on click showing crash details (date, severity, mode, location, age group)
-- [ ] Secure Mapbox access token via environment variable (`NEXT_PUBLIC_MAPBOX_TOKEN`)
 - [ ] Implement filter panel (see Section 4 for full spec):
   - Date Range: year quick-select buttons (most recent 4 years) + custom date range picker
   - State → County → City cascading dropdowns (powered by `filter_metadata` view)
