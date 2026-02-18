@@ -1797,7 +1797,7 @@ const nextConfig: NextConfig = {
 
 This is a dev-only setting with no effect in production.
 
-#### Verify
+#### Verification
 
 ```bash
 npm run dev
@@ -1806,5 +1806,123 @@ npm run dev
 Open `http://localhost:3000`. You should see a full-viewport Mapbox map centered on Washington state with no boilerplate and no dev badge. The map is interactive — pan, zoom, and rotate work out of the box.
 
 ---
+
+### Step N+10: Build the Desktop Sidebar
+
+With the map on screen, the next piece of UI is the filter sidebar. On desktop (≥768px), filters live in a right-side panel that slides in over the map. On mobile, filters will be a separate full-screen overlay (a later step). For now, we scaffold the desktop sidebar so the layout is in place before any filter controls exist.
+
+#### Architecture: why `AppShell`?
+
+`app/page.tsx` is currently a Server Component that renders `MapContainer` directly. But the sidebar needs client-side state — specifically, whether it's open or closed. This state must live in a `'use client'` component.
+
+The cleanest approach is an `AppShell` client component that:
+
+1. Owns the sidebar open/closed state
+2. Renders the map, the toggle button, and the sidebar panel
+
+`page.tsx` stays a Server Component — all client code is isolated in `AppShell`. This follows the same pattern as `MapContainer`: client boundaries are pushed as deep as possible.
+
+#### Create `components/sidebar/Sidebar.tsx`
+
+The sidebar is built on shadcn/ui's `Sheet` component — a slide-in panel backed by Radix UI's Dialog primitive. We use the controlled form (passing `open` and `onOpenChange`) rather than the trigger-based form, so the toggle button can live elsewhere:
+
+```tsx
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+
+interface SidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
+  return (
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-80 sm:max-w-80">
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-4">
+          <p className="text-sm text-muted-foreground">Filter controls coming soon.</p>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+```
+
+Key details:
+
+- **`side="right"`** — slides in from the right edge
+- **`w-80 sm:max-w-80`** — `w-80` = 320px. The default Sheet has `sm:max-w-sm` (384px) at the `sm` breakpoint; we override both to pin the width to exactly 320px
+- **`onOpenChange`** — Sheet's close button and clicking the dark overlay both trigger this callback; `!open && onClose()` converts that to a simple `onClose` call
+- No `'use client'` needed here — `Sheet` is already a client component (it imports from Radix), so Next.js automatically marks this as client-side
+
+#### Create `components/layout/AppShell.tsx`
+
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { SlidersHorizontal } from 'lucide-react'
+import { MapContainer } from '@/components/map/MapContainer'
+import { Sidebar } from '@/components/sidebar/Sidebar'
+import { Button } from '@/components/ui/button'
+
+export function AppShell() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  return (
+    <>
+      <MapContainer />
+
+      {/* Sidebar toggle button — desktop only */}
+      <div className="absolute top-4 right-4 z-10 hidden md:block">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open filters"
+        >
+          <SlidersHorizontal className="size-4" />
+        </Button>
+      </div>
+
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    </>
+  )
+}
+```
+
+A few design decisions:
+
+- **`hidden md:block`** — the toggle button only appears at the `md` breakpoint (≥768px). Mobile users will get a separate filter entry point (the `FilterOverlay` component, next step).
+- **`absolute top-4 right-4 z-10`** — the button floats over the map. The `position: relative` wrapper in `page.tsx` is the positioning anchor. `z-10` keeps the button above the Mapbox canvas.
+- **`SlidersHorizontal` icon** — communicates "filters" clearly without text. From lucide-react, which ships with shadcn/ui.
+- **React Fragments `<>`** — no wrapper div needed; `MapContainer` fills the parent, and the button + sidebar are positioned elements that don't affect document flow.
+
+#### Update `app/page.tsx`
+
+```tsx
+import { AppShell } from '@/components/layout/AppShell'
+
+export default function Home() {
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100dvh' }}>
+      <AppShell />
+    </div>
+  )
+}
+```
+
+The `position: relative` wrapper is unchanged — it still anchors all absolutely-positioned overlays (toggle button, future summary bar, mobile filter toggle). Only the import changes from `MapContainer` to `AppShell`.
+
+#### Test Before PR
+
+```bash
+npx tsc --noEmit   # no output = clean
+npm run dev
+```
+
+On desktop: a `≡` (sliders) button appears in the top-right. Click it to open the filter panel; click the X or the dark overlay to close. On mobile: the button is hidden and the sidebar cannot be opened (mobile filter UI is the next step).
 
 _This tutorial is a work in progress. More steps will be added as the project progresses._
