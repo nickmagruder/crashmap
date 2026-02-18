@@ -764,8 +764,8 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 
 #### Milestone: Functional GraphQL API with core queries
 
-- [ ] Install Apollo Server and configure in `/app/api/graphql/route.ts`
-- [ ] Define GraphQL schema matching the types in Section 3:
+- [x] Install Apollo Server and configure in `/app/api/graphql/route.ts`
+- [x] Define GraphQL schema matching the types in Section 3:
   - Queries: `crashes(filter, limit, offset)`, `crash(colliRptNum)`, `crashStats(filter)`, `filterOptions`
   - Filters: by date/year, state, county, city, mode (Bicyclist/Pedestrian), severity (multi-select), bounding box
   - No mutations needed for public-facing app (add later if you build an admin interface)

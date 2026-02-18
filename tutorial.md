@@ -711,12 +711,20 @@ const server = new ApolloServer({ typeDefs, resolvers })
 
 const handler = startServerAndCreateNextHandler<NextRequest>(server)
 
-export { handler as GET, handler as POST }
+export async function GET(request: NextRequest) {
+  return handler(request)
+}
+
+export async function POST(request: NextRequest) {
+  return handler(request)
+}
 ```
 
 The `#graphql` comment in the template literal is a convention that enables GraphQL syntax highlighting in editors that support it (VS Code with the GraphQL extension, for example).
 
 The `<NextRequest>` generic ensures the request type is properly inferred if you later add a `context` function to expose the request object to resolvers.
+
+> **Next.js 16 gotcha:** You might expect to write `export { handler as GET, handler as POST }` — but this fails to compile with Next.js 16, which requires route exports to be explicit `async function` signatures typed as `(request: NextRequest) => Promise<Response>`. The `@as-integrations/next` handler is overloaded to support both Pages Router and App Router, so re-exporting it directly fails the type check. Wrapping it in explicit async functions resolves the conflict.
 
 **Verify the endpoint:**
 
