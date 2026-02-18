@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma'
 
+import type { CrashFilter, Resolvers } from './__generated__/types'
+
 // ── Severity bucket mapping ───────────────────────────────────────────────────
 // Maps display bucket names to their raw DB values in MostSevereInjuryType.
 // New raw values from future data imports will fall through to rawToBucket's
@@ -23,28 +25,15 @@ function rawToBucket(raw: string | null | undefined): string | null {
 }
 
 // Expand display bucket names to the raw DB values they represent.
-function bucketsToRawValues(buckets: string[]): string[] {
-  return buckets.flatMap((b) => SEVERITY_BUCKETS[b] ?? [b])
-}
-
-// ── Filter input type ─────────────────────────────────────────────────────────
-
-interface CrashFilterInput {
-  severity?: string[] | null
-  mode?: string | null
-  state?: string | null
-  county?: string | null
-  city?: string | null
-  dateFrom?: string | null
-  dateTo?: string | null
-  year?: number | null
-  bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number } | null
-  includeNoInjury?: boolean | null
+// Accepts nullable elements because the generated CrashFilter.severity type is
+// Array<string | null | undefined> (GraphQL [String] allows null list items).
+function bucketsToRawValues(buckets: ReadonlyArray<string | null | undefined>): string[] {
+  return buckets.flatMap((b) => (b ? (SEVERITY_BUCKETS[b] ?? [b]) : []))
 }
 
 // ── Build Prisma where clause from GraphQL filter input ───────────────────────
 
-function buildWhere(filter?: CrashFilterInput | null) {
+function buildWhere(filter?: CrashFilter | null) {
   const { severity, mode, state, county, city, dateFrom, dateTo, year, bbox, includeNoInjury } =
     filter ?? {}
 
@@ -90,34 +79,14 @@ function buildWhere(filter?: CrashFilterInput | null) {
   }
 }
 
-// ── Crash field parent type ───────────────────────────────────────────────────
-// GraphQL Crash fields that differ from Prisma field names need explicit
-// resolvers. This type captures just the fields those resolvers read.
-// Codegen (next step) will replace this with generated types.
-
-interface CrashParent {
-  stateOrProvinceName: string | null
-  regionName: string | null
-  countyName: string | null
-  cityName: string | null
-  fullDate: string | null
-  fullTime: string | null
-  mostSevereInjuryType: string | null
-  crashDate: Date | null
-}
-
 // ── Resolvers ─────────────────────────────────────────────────────────────────
+// Typed with the generated Resolvers type — argument types, parent types, and
+// return types are all enforced. Crash field resolvers receive CrashData
+// (Prisma model) as parent, via the mapper in codegen.ts.
 
-export const resolvers = {
+export const resolvers: Resolvers = {
   Query: {
-    crashes: async (
-      _: unknown,
-      {
-        filter,
-        limit = 1000,
-        offset = 0,
-      }: { filter?: CrashFilterInput | null; limit?: number; offset?: number }
-    ) => {
+    crashes: async (_, { filter, limit, offset }) => {
       const where = buildWhere(filter)
       const [items, totalCount] = await Promise.all([
         prisma.crashData.findMany({ where, skip: offset, take: limit }),
@@ -126,10 +95,9 @@ export const resolvers = {
       return { items, totalCount }
     },
 
-    crash: async (_: unknown, { colliRptNum }: { colliRptNum: string }) =>
-      prisma.crashData.findUnique({ where: { colliRptNum } }),
+    crash: async (_, { colliRptNum }) => prisma.crashData.findUnique({ where: { colliRptNum } }),
 
-    crashStats: async (_: unknown, { filter }: { filter?: CrashFilterInput | null }) => {
+    crashStats: async (_, { filter }) => {
       const where = buildWhere(filter)
       const deathValues = SEVERITY_BUCKETS['Death']
 
@@ -185,17 +153,18 @@ export const resolvers = {
   // where a type transform is needed) require explicit resolvers. All other
   // fields (colliRptNum, jurisdiction, latitude, longitude, mode, etc.) resolve
   // automatically by name match.
+  // Parent type is CrashData (Prisma model) — enforced by the generated Resolvers type.
 
   Crash: {
-    state: (p: CrashParent) => p.stateOrProvinceName,
-    region: (p: CrashParent) => p.regionName,
-    county: (p: CrashParent) => p.countyName,
-    city: (p: CrashParent) => p.cityName,
-    date: (p: CrashParent) => p.fullDate,
-    time: (p: CrashParent) => p.fullTime,
-    severity: (p: CrashParent) => rawToBucket(p.mostSevereInjuryType),
+    state: (parent) => parent.stateOrProvinceName,
+    region: (parent) => parent.regionName,
+    county: (parent) => parent.countyName,
+    city: (parent) => parent.cityName,
+    date: (parent) => parent.fullDate,
+    time: (parent) => parent.fullTime,
+    severity: (parent) => rawToBucket(parent.mostSevereInjuryType),
     // crashDate is a Date object from Prisma — format as YYYY-MM-DD string.
-    crashDate: (p: CrashParent) => p.crashDate?.toISOString().slice(0, 10) ?? null,
+    crashDate: (parent) => parent.crashDate?.toISOString().slice(0, 10) ?? null,
   },
 
   // ── FilterOptions field resolvers ─────────────────────────────────────────
@@ -210,7 +179,7 @@ export const resolvers = {
       return rows.map((r) => r.state)
     },
 
-    counties: async (_: unknown, { state }: { state?: string | null }) => {
+    counties: async (_, { state }) => {
       const rows = state
         ? await prisma.$queryRaw<{ county: string }[]>`
             SELECT DISTINCT county FROM filter_metadata
@@ -222,10 +191,7 @@ export const resolvers = {
       return rows.map((r) => r.county)
     },
 
-    cities: async (
-      _: unknown,
-      { state, county }: { state?: string | null; county?: string | null }
-    ) => {
+    cities: async (_, { state, county }) => {
       const rows =
         state && county
           ? await prisma.$queryRaw<{ city: string }[]>`

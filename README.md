@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.2.0
+**Version:** 0.2.1
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -103,6 +103,14 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Created `lib/prisma.ts` singleton with `@prisma/adapter-pg` (required by Prisma 7's new `prisma-client` generator)
 - Added `"postinstall": "prisma generate"` to `package.json` so CI generates the client after `npm ci`
 - Installed `@prisma/adapter-pg`
+
+### 2026-02-17 — GraphQL Codegen
+
+- Installed `@graphql-codegen/cli`, `@graphql-codegen/typescript`, `@graphql-codegen/typescript-resolvers`
+- Created `codegen.ts` — points `CodeFileLoader` at `lib/graphql/typeDefs.ts`; maps `Crash` parent to `CrashData` (Prisma model), `FilterOptions` parent to `{}`
+- Added `"codegen": "graphql-codegen --config codegen.ts"` script to `package.json`
+- Generated `lib/graphql/__generated__/types.ts` with full resolver and input types
+- Updated `lib/graphql/resolvers.ts` to use generated `Resolvers` type — removed manual `CrashFilterInput` and `CrashParent` interfaces; all argument and parent types now enforced by codegen
 
 ### 2026-02-17 — GraphQL Schema
 
