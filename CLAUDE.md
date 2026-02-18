@@ -236,8 +236,8 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - `output: 'standalone'` set in `next.config.ts`; start command: `node .next/standalone/server.js`
   - Auto-deploy configured to **After CI Checks Pass**
   - Build and deploy confirmed successful; `/api/graphql` endpoint live at `https://crashmap.onrender.com/api/graphql`
-- [ ] Install shadcn/ui components needed for the UI:
-  - `npx shadcn-ui@latest add button select checkbox toggle-group sheet dialog badge popover calendar`
+- [x] Install shadcn/ui components needed for the UI:
+  - `npx shadcn@latest add button select checkbox toggle-group sheet dialog badge popover calendar`
 - [ ] Install map dependencies: `react-map-gl`, `mapbox-gl`
 - [ ] Replace `app/page.tsx` with a full-viewport root layout container (`100dvh`, relative positioning)
 - [ ] Build `MapContainer` component: `react-map-gl` map filling 100% of its container, Mapbox token from env var, no data layers yet
