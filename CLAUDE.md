@@ -229,7 +229,16 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 #### Milestone: Interactive map with filters
 
-- [ ] Set up Apollo Client with InMemoryCache and type policies
+- [x] Set up Apollo Client with InMemoryCache and type policies
+- [ ] **Smoke-test deployment to Render** (verify production build before frontend work begins):
+  - Create `render.yaml` at project root specifying build command (`npm ci && npm run build`), start command (`npm start`), Node 20, and env var declarations
+  - Create `.env.example` documenting all required env vars (`DATABASE_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`) so Render dashboard setup is clear
+  - Remove plaintext `DATABASE_URL` from tracked `.env` file (rotate credentials on Render if needed); set only in Render dashboard as an environment variable
+  - Create Render web service via dashboard: link to GitHub repo `main` branch, set `DATABASE_URL` env var, enable auto-deploy on push
+  - Set `output: 'standalone'` in `next.config.ts` for optimal builds on Render
+  - Verify `npm run build && npm start` passes locally against production database (confirms Prisma 7 adapter-pg and Apollo Server work outside dev mode)
+  - Push to `main`, confirm CI passes, confirm Render auto-deploy succeeds
+  - Hit `/api/graphql` on the Render-assigned `.onrender.com` URL to verify the GraphQL endpoint responds (no frontend needed yet)
 - [ ] Install shadcn/ui components needed for the UI:
   - `npx shadcn-ui@latest add button select checkbox toggle-group sheet dialog badge popover calendar`
 - [ ] Build interactive map component with Mapbox GL JS (`react-map-gl`):
