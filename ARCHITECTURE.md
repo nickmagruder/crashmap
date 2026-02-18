@@ -774,7 +774,7 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 - [ ] Implement simple offset-based pagination
 - [ ] Add query depth limiting for public API protection
 - [ ] Write integration tests for all resolvers
-- [ ] Set up GitHub Actions CI pipeline (lint, format check, typecheck, build) with branch protection on `main`
+- [ ] Set up GitHub Actions CI pipeline (lint, format check, typecheck, build, `.next/cache` caching) with branch protection on `main`
 
 **Deliverables:** Fully tested GraphQL API accessible via Apollo Sandbox
 

@@ -622,6 +622,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
       - name: Lint
         run: npm run lint
 
@@ -638,6 +646,7 @@ jobs:
 A few design notes:
 
 - **`npm ci`** uses the lockfile exactly and fails if `package-lock.json` is out of sync — stricter than `npm install`
+- **Next.js build cache** — the `actions/cache` step caches `.next/cache` between runs. The primary key includes both a lockfile hash and source file hash, so it's invalidated when dependencies or code changes. The restore key falls back to a lockfile-only match so at least module compilation is reused even when source changes. Without this, Next.js emits a `⚠ No build cache found` warning and rebuilds everything from scratch each run.
 - **Steps run in order** — lint and format are fast and fail early; build is slowest and runs last
 - **`npm run build`** is the most important check pre-commit hooks don't cover — it catches broken imports and Next.js-specific errors
 - **Triggers on all branches** so you get feedback on feature branches, not just PRs
