@@ -730,6 +730,12 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 | **Build times**                  | Next.js + Prisma generate + codegen can be slow.                                                                                                                                                      | Cache `node_modules` and Prisma client in Render's build settings. Use `npm ci` instead of `npm install`.                                  |
 | **No built-in analytics**        | Render doesn't include web analytics like Vercel Analytics.                                                                                                                                           | Add Plausible, Fathom, or a self-hosted analytics solution. Or just rely on Lighthouse CI in your CI/CD pipeline for performance tracking. |
 
+### Smoke-Test Deployment
+
+**Deploy early — before frontend work begins.** Before building the map and filters, do a smoke-test deploy: create `render.yaml`, set `DATABASE_URL` in the Render dashboard (remove it from the tracked `.env` file), push to `main`, and verify the GraphQL endpoint responds at `https://<app>.onrender.com/api/graphql`. Catching deployment blockers (Prisma adapter issues, missing env vars, build failures) before Phase 3 is complete saves significant rework.
+
+Set `output: 'standalone'` in `next.config.ts` for optimal builds on Render (already called out in the issues table above).
+
 ### Testing Challenges
 
 | Challenge                          | Mitigation                                                                                                                                                             |

@@ -1288,4 +1288,147 @@ With the test suite in place, adding a `Test` step to the CI workflow is straigh
 
 ---
 
+---
+
+## Phase 3: Frontend Core
+
+### Step N+4: Set Up Apollo Client
+
+With a working GraphQL API, we now need a way to query it from the browser. The map and filter panel are both highly interactive client-side components — when a user changes a filter, the app needs to re-query the server and update the map in real time. That's inherently client-side reactive behavior that can't be handled by React Server Components alone.
+
+**Why Apollo Client?**
+
+Apollo Client is the natural companion to Apollo Server: consistent tooling, shared `graphql` peer dependency, and InMemoryCache for automatic deduplication (switching a filter back and forth reuses cached results). The alternative would be TanStack Query + `fetch`, which is lighter but adds its own abstraction layer.
+
+#### The current package name
+
+The integration package has been renamed. Install:
+
+```bash
+npm install @apollo/client@latest @apollo/client-integration-nextjs
+```
+
+> **Note:** The old package `@apollo/experimental-nextjs-app-support` has been superseded by `@apollo/client-integration-nextjs`. If you see tutorials or blog posts referencing the old name, they are outdated. The new package re-exports `ApolloClient`, `InMemoryCache`, and `ApolloNextAppProvider` directly — you do not need to import these from `@apollo/client` separately.
+
+#### Two clients: RSC and client-side
+
+The Next.js App Router has two rendering environments:
+
+- **React Server Components (RSC)** — run on the server, can use `async/await` directly, no browser APIs
+- **Client Components** (`"use client"`) — run in the browser, can use React hooks and browser APIs
+
+Apollo provides a different entry point for each. We set both up now even though the map and filters will be client-side — the RSC client (`getClient()`) is useful for server-rendered data like page metadata or initial state.
+
+#### `lib/apollo-client.ts` — RSC client
+
+```ts
+import { HttpLink } from '@apollo/client'
+import {
+  ApolloClient,
+  InMemoryCache,
+  registerApolloClient,
+} from '@apollo/client-integration-nextjs'
+
+function makeCache() {
+  return new InMemoryCache({
+    typePolicies: {
+      Crash: { keyFields: ['colliRptNum'] },
+      CrashResult: { keyFields: false },
+      CrashStats: { keyFields: false },
+      FilterOptions: { keyFields: false },
+      ModeStat: { keyFields: false },
+      SeverityStat: { keyFields: false },
+      CountyStat: { keyFields: false },
+    },
+  })
+}
+
+export const { getClient, query, PreloadQuery } = registerApolloClient(() => {
+  return new ApolloClient({
+    cache: makeCache(),
+    link: new HttpLink({
+      uri: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/graphql`,
+    }),
+  })
+})
+```
+
+The RSC client needs an absolute URL — server-side `fetch` has no concept of a relative origin. `NEXT_PUBLIC_APP_URL` will be set to the production URL during the smoke-test deployment step; for local dev it falls back to `http://localhost:3000`.
+
+#### `app/apollo-provider.tsx` — client boundary
+
+```tsx
+'use client'
+
+import { HttpLink } from '@apollo/client'
+import {
+  ApolloClient,
+  ApolloNextAppProvider,
+  InMemoryCache,
+} from '@apollo/client-integration-nextjs'
+
+function makeClient() {
+  const httpLink = new HttpLink({ uri: '/api/graphql' })
+  return new ApolloClient({
+    cache: new InMemoryCache({
+      typePolicies: {
+        Crash: { keyFields: ['colliRptNum'] },
+        CrashResult: { keyFields: false },
+        CrashStats: { keyFields: false },
+        FilterOptions: { keyFields: false },
+        ModeStat: { keyFields: false },
+        SeverityStat: { keyFields: false },
+        CountyStat: { keyFields: false },
+      },
+    }),
+    link: httpLink,
+  })
+}
+
+export function ApolloProvider({ children }: React.PropsWithChildren) {
+  return <ApolloNextAppProvider makeClient={makeClient}>{children}</ApolloNextAppProvider>
+}
+```
+
+The client-side provider uses a relative `/api/graphql` URL — the browser knows the origin automatically. `makeClient` is a function (not a constant) so `ApolloNextAppProvider` can create the client lazily and handle SSR correctly.
+
+#### InMemoryCache type policies
+
+By default, Apollo normalizes cached objects using an `id` or `_id` field. Our `Crash` type uses `colliRptNum` as its primary key, so we tell Apollo explicitly:
+
+```ts
+Crash: {
+  keyFields: ['colliRptNum']
+}
+```
+
+The aggregate and wrapper types (`CrashResult`, `CrashStats`, `FilterOptions`, etc.) have no natural ID — they're query-level response shapes, not individual entities. Setting `keyFields: false` tells Apollo to skip normalization for these types and store them inline in the parent query's cache entry. Without this, Apollo logs warnings about missing cache keys on every query.
+
+#### Wire the provider into `app/layout.tsx`
+
+```tsx
+import { ApolloProvider } from './apollo-provider'
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ApolloProvider>{children}</ApolloProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+Any Client Component in the tree can now call `useQuery`, `useLazyQuery`, or `useSuspenseQuery` from `@apollo/client` without any additional setup.
+
+**Verify:**
+
+```bash
+npm run typecheck   # no output = clean
+npm run build       # should complete successfully
+```
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
