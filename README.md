@@ -58,6 +58,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Updated `ARCHITECTURE.md` and `CLAUDE.md` to reflect new `CrashDate` column across schema, Prisma model, GraphQL types, materialized views, and checklists
 - Added `tutorial.md` for step-by-step blog post draft
 
+### 2026-02-17 — Materialized Views
+
+- Created `filter_metadata` materialized view (distinct state/county/city combinations) with `idx_filter_metadata_geo` index for cascading dropdown queries
+- Created `available_years` materialized view (distinct years from `CrashDate`)
+- Fixed import artifact: 51 King County, WA rows with `CityName = "'"` set to NULL; refreshed `filter_metadata`
+
 ### 2026-02-17 — Data Validation
 
 - Confirmed 1,315 rows with no null coordinates, no null `CrashDate`, all coordinates within US bounds

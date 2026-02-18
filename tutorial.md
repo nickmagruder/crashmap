@@ -422,6 +422,69 @@ WHERE "Latitude" NOT BETWEEN 24 AND 50
 
 All 1,315 rows passed every check. The data is clean and ready for the API layer.
 
+### Step 15: Create Materialized Views for Filter Dropdowns
+
+The cascading filter dropdowns (State → County → City) and the year quick-select buttons need a list of valid values. We could query the full `crashdata` table on every page load, but a **materialized view** is a better approach: PostgreSQL computes the result once and stores it as a physical table that can be indexed and queried instantly.
+
+#### `filter_metadata` — distinct geographic combinations
+
+```sql
+CREATE MATERIALIZED VIEW filter_metadata AS
+SELECT DISTINCT
+    "StateOrProvinceName" AS state,
+    "CountyName" AS county,
+    "CityName" AS city
+FROM public.crashdata
+WHERE "StateOrProvinceName" IS NOT NULL
+ORDER BY state, county, city;
+```
+
+This gives us every distinct state/county/city combination in the data. The cascading dropdowns query this view rather than scanning 1,300+ crash records on every interaction.
+
+Add an index to support the cascading query pattern (e.g., `WHERE state = 'Washington'`):
+
+```sql
+CREATE INDEX idx_filter_metadata_geo
+ON filter_metadata (state, county, city);
+```
+
+#### `available_years` — distinct years for the year filter
+
+```sql
+CREATE MATERIALIZED VIEW available_years AS
+SELECT DISTINCT
+    EXTRACT(YEAR FROM "CrashDate")::int AS year
+FROM public.crashdata
+WHERE "CrashDate" IS NOT NULL
+ORDER BY year DESC;
+```
+
+Result: one row, `year = 2025`. As more years of data are imported, this view will grow automatically (after a refresh).
+
+#### Data cleanup discovered during verification
+
+When verifying `filter_metadata`, we found 51 rows in King County, Washington with `CityName = "'"` — a single apostrophe that was clearly an import artifact (likely unincorporated county crashes where the source system wrote a SQL escape character instead of NULL). We set these to NULL:
+
+```sql
+UPDATE crashdata SET "CityName" = NULL WHERE "CityName" = '''';
+-- UPDATE 51
+
+REFRESH MATERIALIZED VIEW filter_metadata;
+```
+
+After the refresh, the `'` city was gone and only real city names remained.
+
+#### Refreshing the views
+
+Materialized views don't update automatically. After importing new crash data, run:
+
+```sql
+REFRESH MATERIALIZED VIEW filter_metadata;
+REFRESH MATERIALIZED VIEW available_years;
+```
+
+This will be part of the data import workflow when new state data is added.
+
 ---
 
 *This tutorial is a work in progress. More steps will be added as the project progresses.*

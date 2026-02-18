@@ -719,7 +719,7 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 - [x] Add the generated `geom` geometry column and create recommended indexes (see Section 3)
 - [x] Verify `FullDate` column format (ISO 8601: `2025-02-23T00:00:00`) and add `CrashDate` DATE column with index
 - [x] Validate data: check for null `Latitude`/`Longitude` values, confirm `Mode` values are consistent ("Bicyclist"/"Pedestrian"), check `MostSevereInjuryType` distinct values
-- [ ] Create the `filter_metadata` and `available_years` materialized views (see Section 4) for cascading dropdown population
+- [x] Create the `filter_metadata` and `available_years` materialized views (see Section 4) for cascading dropdown population
 - [ ] Set up ESLint, Prettier, Husky pre-commit hooks
 
 **Deliverables:** Running Next.js app, populated database, Prisma client generated
