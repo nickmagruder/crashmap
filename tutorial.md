@@ -1,4 +1,4 @@
-# Building CrashMap: A Full-Stack Crash Data Visualization App
+# Building CrashMap: A Full-Stack Crash Data Visualization Map
 
 > A step-by-step tutorial for building a public-facing web application that visualizes bicyclist and pedestrian crash data on an interactive map.
 
@@ -1517,6 +1517,8 @@ Expected output: `✓ Compiled successfully`, all pages generated, `.next/standa
 3. Render will detect `render.yaml`. Confirm the build and start commands match.
 4. Set env vars in **Environment** tab: `DATABASE_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_APP_URL` (your `.onrender.com` URL to start)
 5. Under **Deploy**, set auto-deploy to **After CI Checks Pass** — Render will wait for your GitHub Actions workflow to go green before deploying. A broken commit can never reach production.
+
+> **Gotcha — push config before first deploy:** If you trigger a Render deploy before committing `next.config.ts` with `output: 'standalone'`, the build will succeed but the `cp` commands will fail with `cannot create directory '.next/standalone/public': No such file or directory` — because standalone output only exists when Next.js is configured to produce it. Always commit and push all config changes before the first deploy attempt.
 
 #### Verify the GraphQL endpoint
 
