@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.2.1
+**Version:** 0.2.2
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -103,6 +103,16 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Created `lib/prisma.ts` singleton with `@prisma/adapter-pg` (required by Prisma 7's new `prisma-client` generator)
 - Added `"postinstall": "prisma generate"` to `package.json` so CI generates the client after `npm ci`
 - Installed `@prisma/adapter-pg`
+
+### 2026-02-17 — Query Depth Limiting
+
+- Added inline `depthLimitRule` validation rule to Apollo Server in `app/api/graphql/route.ts` (max depth: 5)
+- No external dependency — rule walks the AST using graphql-js built-in types (`ValidationRule`, `ValidationContext`, `ASTNode`)
+
+### 2026-02-17 — Pagination
+
+- `crashes` query already had `limit`/`offset` args and `CrashResult.totalCount` from initial schema design; confirmed offset-based pagination is fully functional
+- Added server-side `limit` cap of 5000 in resolver to prevent unbounded queries (`Math.min(limit ?? 1000, 5000)`)
 
 ### 2026-02-17 — GraphQL Codegen
 
