@@ -1111,4 +1111,175 @@ For the CrashMap use case, the map loads the full filtered dataset client-side s
 
 ---
 
+## Step N+3: Resolver Integration Tests with Vitest
+
+With a working GraphQL API, we need tests to verify our resolver logic stays correct as the codebase evolves. We'll use [Vitest](https://vitest.dev/) — a modern test runner with native TypeScript support, built-in mocking, and zero-config setup.
+
+### Why Vitest?
+
+Vitest is the natural choice for a modern TypeScript project:
+
+- **Native TypeScript** — no `ts-jest` or separate compilation step
+- **Built-in mocking** — `vi.fn()`, `vi.mock()`, `vi.hoisted()` replace `jest.fn()` and `jest.mock()`
+- **Fast** — uses Vite's transform pipeline, so tests start in under a second
+- **Compatible** — same `describe`/`it`/`expect` API as Jest, so the learning curve is minimal
+
+### Install Vitest
+
+```bash
+npm install --save-dev vitest
+```
+
+### Configure Vitest
+
+Create `vitest.config.ts` in the project root:
+
+```typescript
+import { defineConfig } from 'vitest/config'
+import path from 'path'
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '.'),
+    },
+  },
+})
+```
+
+Key detail: the `@` alias must be configured here to match `tsconfig.json`'s `"@/*": ["./*"]`. Vitest does not read tsconfig paths by default — without this alias, any `@/lib/...` import in your source files would fail during tests.
+
+`globals: true` makes `describe`, `it`, and `expect` available without explicit imports (though you can still import them for clarity).
+
+### Add test scripts
+
+In `package.json`:
+
+```json
+"test": "vitest run",
+"test:watch": "vitest"
+```
+
+`vitest run` executes all tests once and exits (for CI). `vitest` starts in watch mode (for development).
+
+### Testing strategy: mock Prisma, not the database
+
+Our resolvers import `prisma` from `@/lib/prisma` at the module level. Rather than spinning up a test database (which would require replicating our Render PostgreSQL with PostGIS, materialized views, and seed data), we **mock the Prisma module** using `vi.mock()`. This lets us test:
+
+- Severity bucket mapping (`rawToBucket`, `bucketsToRawValues`)
+- Filter-to-where-clause building (`buildWhere`)
+- Pagination capping (limit at 5000)
+- Crash field resolver transformations (severity mapping, date formatting, field name mapping)
+- Full GraphQL query execution via Apollo Server's `executeOperation()`
+
+All without a database connection.
+
+### Export helper functions
+
+The helper functions `rawToBucket`, `bucketsToRawValues`, `buildWhere`, and `SEVERITY_BUCKETS` were previously module-private in `resolvers.ts`. To test them directly, add the `export` keyword:
+
+```typescript
+export const SEVERITY_BUCKETS: Record<string, string[]> = { ... }
+export function rawToBucket(raw: string | null | undefined): string | null { ... }
+export function bucketsToRawValues(buckets: ReadonlyArray<string | null | undefined>): string[] { ... }
+export function buildWhere(filter?: CrashFilter | null) { ... }
+```
+
+This is a non-breaking change — existing imports of `resolvers` continue to work.
+
+### Test file 1: `lib/graphql/__tests__/helpers.test.ts`
+
+This file tests the three pure helper functions with no mocking needed.
+
+**`rawToBucket`** — 12 tests covering:
+
+- All 8 raw DB values map to the correct display bucket (Death, Major Injury, Minor Injury, None)
+- `null`, `undefined`, and empty string return `null`
+- Unmapped values pass through as-is (handles future data imports gracefully)
+
+**`bucketsToRawValues`** — 8 tests covering:
+
+- Each bucket expands to its constituent raw values
+- Multiple buckets combine correctly
+- Empty arrays return empty arrays
+- `null`/`undefined` elements are filtered out
+- Unknown bucket names pass through as-is
+
+**`buildWhere`** — 17 tests covering:
+
+- Default behavior: excludes "None" severity when no filter is provided
+- `includeNoInjury: true` removes the default exclusion
+- Severity filter expands bucket names to raw values with `{ in: [...] }`
+- Each simple field filter (mode, state, county, city) maps to the correct Prisma field
+- Year shortcut converts to a `crashDate` range (Jan 1 to Dec 31)
+- `dateFrom`/`dateTo` produce `gte`/`lte` on `crashDate`
+- Year takes precedence over `dateFrom`/`dateTo`
+- Bounding box produces `latitude`/`longitude` range filters
+- Combined filters merge correctly
+
+### Test file 2: `lib/graphql/__tests__/queries.test.ts`
+
+This file uses Apollo Server's `executeOperation()` to send real GraphQL queries through the full resolver chain, with Prisma mocked at the module level.
+
+#### Mocking Prisma with `vi.hoisted()`
+
+The key challenge: `vi.mock()` factories are hoisted to the top of the file by Vitest, which means any variable declared with `const` is in the temporal dead zone when the factory runs. The solution is `vi.hoisted()`:
+
+```typescript
+const mockPrisma = vi.hoisted(() => ({
+  crashData: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    count: vi.fn(),
+    groupBy: vi.fn(),
+  },
+  $queryRaw: vi.fn(),
+}))
+
+vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+```
+
+`vi.hoisted()` creates the mock object in the hoisted scope so it's available when `vi.mock()` executes. Each test then configures return values with `mockPrisma.crashData.findMany.mockResolvedValue(...)`.
+
+#### `executeOperation` — testing without HTTP
+
+Apollo Server's `executeOperation()` sends a query through the full server pipeline (parsing → validation → execution) without starting an HTTP server. This tests the complete resolver chain including field resolvers, argument handling, and error propagation:
+
+```typescript
+const result = await server.executeOperation({
+  query: CRASHES_QUERY,
+  variables: { filter: { severity: ['Death'] } },
+})
+
+assert(result.body.kind === 'single')
+expect(result.body.singleResult.data?.crashes.totalCount).toBe(1)
+```
+
+#### Test coverage (19 tests)
+
+**`crashes` query** — 6 tests: items + totalCount returned, field resolvers map correctly, limit capped at 5000, default limit 1000, offset passed, severity filter forwarded to Prisma
+
+**`crash` query** — 2 tests: found (returns crash), not found (returns null)
+
+**`crashStats` query** — 2 tests: aggregation returns correct shape, multiple raw severity values merge into same display bucket (e.g., "Dead at Scene" + "Dead on Arrival" → "Death")
+
+**`filterOptions` query** — 6 tests: states/counties/cities/years from `$queryRaw` mock, hardcoded severities, hardcoded modes
+
+**Crash field resolvers** — 3 tests: null severity → null, null crashDate → null, unmapped severity values pass through
+
+### Running the tests
+
+```bash
+npm test          # 56 tests, all passing
+npm run test:watch  # watch mode for development
+```
+
+The full suite runs in under 2 seconds — fast enough for watch mode during development and CI.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

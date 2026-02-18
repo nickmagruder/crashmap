@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.2.2
+**Version:** 0.2.3
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -133,6 +133,14 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Installed `@apollo/server`, `graphql`, and `@as-integrations/next`
 - Created `app/api/graphql/route.ts` with a stub hello-world schema using `startServerAndCreateNextHandler`
 - GraphQL endpoint accessible at `/api/graphql`; Apollo Sandbox Explorer available on GET
+
+### 2026-02-17 — Resolver Integration Tests
+
+- Installed Vitest (`vitest`) and created `vitest.config.ts` with `@` path alias matching tsconfig
+- Added `test` and `test:watch` scripts to `package.json`
+- Exported `SEVERITY_BUCKETS`, `rawToBucket`, `bucketsToRawValues`, `buildWhere` from `lib/graphql/resolvers.ts` for testability
+- Created `lib/graphql/__tests__/helpers.test.ts` — 37 unit tests for severity mapping and filter-to-where-clause logic
+- Created `lib/graphql/__tests__/queries.test.ts` — 19 integration tests using Apollo Server `executeOperation` with mocked Prisma (crashes, crash, crashStats, filterOptions queries + Crash field resolver edge cases)
 
 ### 2026-02-17 — Prisma Setup
 

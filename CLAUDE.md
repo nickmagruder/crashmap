@@ -171,7 +171,11 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - `lib/prisma.ts` — PrismaClient singleton (with `@prisma/adapter-pg`)
 - `lib/graphql/typeDefs.ts` — Full GraphQL schema (SDL string)
 - `lib/graphql/resolvers.ts` — All resolvers with severity bucket mapping and `buildWhere` helper
-- `app/api/graphql/route.ts` — Apollo Server route handler
+- `app/api/graphql/route.ts` — Apollo Server route handler; also contains the inline `depthLimitRule` validation rule (max depth: 5)
+- `lib/graphql/__generated__/types.ts` — Generated GraphQL types (committed; regenerated via `npm run codegen`)
+- `lib/graphql/__tests__/helpers.test.ts` — Unit tests for `rawToBucket`, `bucketsToRawValues`, `buildWhere`
+- `lib/graphql/__tests__/queries.test.ts` — Integration tests for all GraphQL queries via `executeOperation` with mocked Prisma
+- `vitest.config.ts` — Vitest configuration with `@` path alias
 - `lib/generated/prisma/` — Generated Prisma client (gitignored; regenerated via `postinstall: prisma generate`)
 
 ## What's Done
@@ -203,7 +207,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 **Deliverables:** Running Next.js app, populated database, Prisma client generated
 
-### Phase 2: API Layer (Week 1)
+### Phase 2: API Layer (Day 1)
 
 #### Milestone: Functional GraphQL API with core queries
 
@@ -216,12 +220,12 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Set up `graphql-codegen` for automatic TypeScript type generation
 - [x] Implement simple offset-based pagination
 - [x] Add query depth limiting for public API protection
-- [ ] Write integration tests for all resolvers
+- [x] Write integration tests for all resolvers
 - [ ] Set up GitHub Actions CI pipeline (lint, format check, typecheck, build, `.next/cache` caching) with branch protection on `main`
 
 **Deliverables:** Fully tested GraphQL API accessible via Apollo Sandbox
 
-### Phase 3: Frontend Core (Weeks 2-3)
+### Phase 3: Frontend Core (Week 1)
 
 #### Milestone: Interactive map with filters
 
