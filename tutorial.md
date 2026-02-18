@@ -1613,7 +1613,7 @@ The components are ready to use anywhere in the app via `@/components/ui/button`
 
 ---
 
-### Step N+6: Install Map Dependencies
+### Step N+7: Install Map Dependencies
 
 With the GraphQL API complete and Apollo Client wired up, Phase 3 begins: building the interactive map UI. The first step is installing the mapping libraries.
 
@@ -1677,7 +1677,7 @@ import Map from 'react-map-gl' // ← don't use this with mapbox-gl v3
 npx tsc --noEmit   # no output = clean
 ```
 
-### Step N+7: Secure the Mapbox Access Token
+### Step N+8: Secure the Mapbox Access Token
 
 The `NEXT_PUBLIC_MAPBOX_TOKEN` env var is referenced in `MapContainer` but it needs to be provisioned in two places: locally for development and on Render for production.
 
@@ -1730,6 +1730,80 @@ npm run dev
 ```
 
 The `NEXT_PUBLIC_MAPBOX_TOKEN` value is now available to `MapContainer` at `process.env.NEXT_PUBLIC_MAPBOX_TOKEN`. The map won't render yet (we haven't built `MapContainer`), but the token is wired up and ready.
+
+---
+
+### Step N+9: Build the Map Page
+
+With the Mapbox token wired up, we can now build the two pieces that put the map on screen: the `MapContainer` component and the root page layout.
+
+#### Create `components/map/MapContainer.tsx`
+
+The map component must be a Client Component — Mapbox GL JS uses Web Workers and browser APIs with no SSR support. Create the file:
+
+```tsx
+'use client'
+
+import Map from 'react-map-gl/mapbox'
+
+export function MapContainer() {
+  return (
+    <Map
+      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+      initialViewState={{ longitude: -120.5, latitude: 47.5, zoom: 7 }}
+      style={{ width: '100%', height: '100%' }}
+      mapStyle="mapbox://styles/mapbox/light-v11"
+    />
+  )
+}
+```
+
+A few details:
+
+- `react-map-gl/mapbox` — the correct import path for mapbox-gl >= 3.5 (v8 restructured imports by renderer)
+- `initialViewState` — centers on Washington state, where our initial dataset lives
+- `style={{ width: '100%', height: '100%' }}` — the map fills its parent; the parent is responsible for declaring the height
+- `mapStyle="mapbox://styles/mapbox/light-v11"` — a clean, neutral basemap well-suited for data visualization overlays
+
+#### Replace `app/page.tsx`
+
+The root page stays a Server Component — all client code is isolated in `MapContainer`. Strip the Next.js boilerplate entirely and render the map in a full-viewport wrapper:
+
+```tsx
+import { MapContainer } from '@/components/map/MapContainer'
+
+export default function Home() {
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100dvh' }}>
+      <MapContainer />
+    </div>
+  )
+}
+```
+
+The `position: relative` on the wrapper is intentional — it will be the anchor point for future absolutely-positioned overlays (the filter panel, summary bar, sidebar toggle button). `100dvh` uses the dynamic viewport height unit, which accounts for mobile browser chrome correctly.
+
+#### Disable the Next.js dev indicator
+
+Next.js renders a small floating badge in the bottom-left corner during development. On a full-viewport map, this badge overlaps the map controls. Disable it in `next.config.ts`:
+
+```ts
+const nextConfig: NextConfig = {
+  output: 'standalone',
+  transpilePackages: ['react-map-gl', 'mapbox-gl'],
+  devIndicators: false,
+}
+```
+
+This is a dev-only setting with no effect in production.
+
+#### Verify
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`. You should see a full-viewport Mapbox map centered on Washington state with no boilerplate and no dev badge. The map is interactive — pan, zoom, and rotate work out of the box.
 
 ---
 
