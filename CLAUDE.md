@@ -283,6 +283,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [ ] Set up CI/CD pipeline (GitHub Actions):
   - Lint → Type check → Test → Codegen → Build → Deploy
 - [ ] Configure basic monitoring (Sentry for errors, Lighthouse CI for web vitals)
+- [ ] Add a health check endpoint (e.g. `GET /api/health` returning `200 OK`) and set **Health Check Path** to `/api/health` in Render web service settings → Health & Alerts
 
 **Deliverables:** Deployed, public-facing production application
 
