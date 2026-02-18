@@ -1,6 +1,7 @@
 # CrashMap
 
 **Version:** 0.3.7
+**Version:** 0.3.7
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -48,6 +49,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ### 2026-02-18 — Mobile Default Zoom
 
 - Set `MapContainer` default view to Seattle (longitude -122.3321, latitude 47.6062, zoom 11) on mobile (<768px); Washington state view unchanged on desktop
+
+### 2026-02-18 — Wire map.resize() to Sidebar and Overlay Transitions
+
+- Converted `MapContainer` to a `forwardRef` component so the Mapbox `MapRef` can be held in `AppShell`
+- Added `mapRef = useRef<MapRef>(null)` in `AppShell`; `useEffect` watching `[sidebarOpen, overlayOpen]` calls `mapRef.current?.resize()` after a 300ms delay to let the Sheet slide animation complete before Mapbox recomputes canvas bounds
+- `MapRef` imported from `react-map-gl/mapbox` (root `react-map-gl` is not resolvable as a module in this project setup)
 
 ### 2026-02-18 — SummaryBar Component
 
