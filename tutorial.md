@@ -1431,4 +1431,113 @@ npm run build       # should complete successfully
 
 ---
 
+### Step N+5: Smoke-Test Deployment to Render
+
+Before building the interactive frontend, it's worth deploying the app now and confirming the production environment works end-to-end. Catching a deployment problem early (Prisma adapter misconfiguration, missing env var, wrong Node version) is much easier than untangling it after weeks of frontend work.
+
+#### Why `output: 'standalone'`?
+
+Next.js's standalone output mode bundles only the files needed to run the server — no `node_modules` tree, no dev dependencies. The result is a much smaller artifact that starts faster on Render. The tradeoff is that the start command changes from `next start` to `node .next/standalone/server.js`, and you need to manually copy static assets into the standalone directory after the build.
+
+Set it in `next.config.ts`:
+
+```ts
+const nextConfig: NextConfig = {
+  output: 'standalone',
+}
+```
+
+#### Create `render.yaml`
+
+Render supports an infrastructure-as-code file at the project root. This documents your deployment config in version control rather than only in the Render dashboard:
+
+```yaml
+services:
+  - type: web
+    name: crashmap
+    runtime: node
+    buildCommand: >-
+      npm ci && npm run build &&
+      cp -r public .next/standalone/public &&
+      cp -r .next/static .next/standalone/.next/static
+    startCommand: node .next/standalone/server.js
+    nodeVersion: 20
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_MAPBOX_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+```
+
+`sync: false` on env vars means they are declared here for documentation purposes but must be set manually in the Render dashboard — they are never committed to the repo.
+
+The build command has three parts:
+
+1. `npm ci` — clean install from `package-lock.json` (also runs `postinstall: prisma generate`)
+2. `npm run build` — Next.js production build, outputs to `.next/standalone/`
+3. Two `cp` commands — copy public assets into the standalone bundle (Next.js does not do this automatically)
+
+#### Create `.env.example`
+
+Always commit a `.env.example` alongside a gitignored `.env`. It documents exactly what env vars the project needs, making onboarding and Render dashboard setup unambiguous:
+
+```bash
+# PostgreSQL connection string — set in Render dashboard, never commit the real value
+DATABASE_URL="postgresql://user:password@host/database"
+
+# Mapbox public access token — get from mapbox.com/account/access-tokens
+NEXT_PUBLIC_MAPBOX_TOKEN="pk.eyJ1IjoiLi4uIn0..."
+
+# Absolute base URL of the deployed app — used by Apollo Client for SSR
+# Local dev: http://localhost:3000
+# Production: https://crashmap.io (or your .onrender.com URL until the domain is wired up)
+NEXT_PUBLIC_APP_URL="https://crashmap.io"
+```
+
+> **Why `NEXT_PUBLIC_APP_URL`?** The RSC Apollo Client needs an absolute URL to call `/api/graphql` — server-side `fetch` has no concept of a relative origin. See Step N+4.
+
+#### Verify the build locally
+
+Before pushing, confirm the production build passes on your machine:
+
+```bash
+npm run build
+```
+
+Expected output: `✓ Compiled successfully`, all pages generated, `.next/standalone/server.js` created.
+
+> **Windows note:** You may see a `⚠ Failed to copy traced files … EINVAL` warning about files with `[externals]_node:buffer_...` in their names. This is a Windows filesystem quirk — square brackets are disallowed in `copyfile` paths on Windows. Render runs Linux where this is not an issue. The build is valid and the warning can be ignored.
+
+#### Set up the Render web service
+
+1. Render Dashboard → **New → Web Service**
+2. Connect your GitHub repo, branch: `main`
+3. Render will detect `render.yaml`. Confirm the build and start commands match.
+4. Set env vars in **Environment** tab: `DATABASE_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_APP_URL` (your `.onrender.com` URL to start)
+5. Under **Deploy**, set auto-deploy to **After CI Checks Pass** — Render will wait for your GitHub Actions workflow to go green before deploying. A broken commit can never reach production.
+
+#### Verify the GraphQL endpoint
+
+Once Render deploys, hit the endpoint with a browser GET request:
+
+```text
+https://YOUR-APP.onrender.com/api/graphql
+```
+
+You should see the Apollo Sandbox Explorer. Run a quick query to confirm the database connection is live:
+
+```graphql
+query {
+  filterOptions {
+    states
+  }
+}
+```
+
+A response with actual state names confirms the full stack is working in production.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
