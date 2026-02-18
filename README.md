@@ -58,6 +58,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Updated `ARCHITECTURE.md` and `CLAUDE.md` to reflect new `CrashDate` column across schema, Prisma model, GraphQL types, materialized views, and checklists
 - Added `tutorial.md` for step-by-step blog post draft
 
+### 2026-02-17 — CI Pipeline
+
+- Created `.github/workflows/ci.yml` with lint, format check, typecheck, and build steps
+- Added `typecheck` script (`tsc --noEmit`) to `package.json`
+
 ### 2026-02-17 — Linting & Formatting
 
 - Installed Prettier, `eslint-config-prettier`, Husky, and lint-staged
