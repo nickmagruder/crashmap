@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.1.1
+**Version:** 0.2.0
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -93,6 +93,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Created B-tree indexes on `MostSevereInjuryType`, `Mode`, `StateOrProvinceName`, `CountyName`, `CityName`
 - Ran `prisma db pull` to pick up new column and indexes; `geom` represented as `Unsupported("geometry")` with GIST index captured as `type: Gist`
 - Ran `prisma generate` to regenerate typed client
+
+### 2026-02-17 — Apollo Server Setup
+
+- Installed `@apollo/server`, `graphql`, and `@as-integrations/next`
+- Created `app/api/graphql/route.ts` with a stub hello-world schema using `startServerAndCreateNextHandler`
+- GraphQL endpoint accessible at `/api/graphql`; Apollo Sandbox Explorer available on GET
 
 ### 2026-02-17 — Prisma Setup
 

@@ -663,4 +663,83 @@ This makes the CI gate mandatory — no merges to `main` without a green build.
 
 ---
 
+## Phase 2: API Layer
+
+### Step 17: Install Apollo Server
+
+Phase 2 focuses on the GraphQL API. We're using [Apollo Server](https://www.apollographql.com/docs/apollo-server/) integrated into a Next.js App Router route handler.
+
+**Why Apollo Server?**
+
+Apollo Server is the most widely-used GraphQL server for JavaScript, with first-class TypeScript support, a built-in sandbox (Apollo Studio Explorer), and a mature ecosystem. For App Router specifically, Apollo Server does not ship a built-in Next.js integration — instead, there's a community-maintained package in the official `apollo-server-integrations` GitHub organization: `@as-integrations/next`.
+
+> **Note:** The Apollo blog post "Next.js — Getting Started" covers the **Pages Router** only. For App Router, `@as-integrations/next` is the correct integration. The `startServerAndCreateNextHandler` function wraps Apollo Server into a standard Next.js route handler that works with both GET and POST.
+
+**Packages:**
+
+- `@apollo/server` — the Apollo Server v4 core
+- `graphql` — the GraphQL.js peer dependency (required by Apollo Server)
+- `@as-integrations/next` — bridges Apollo Server with Next.js App Router route handlers
+
+```bash
+npm install @apollo/server graphql @as-integrations/next
+```
+
+### Step 18: Create the GraphQL Route Handler
+
+Apollo Server needs a single route handler at `app/api/graphql/route.ts`. This file creates an `ApolloServer` instance, wraps it with `startServerAndCreateNextHandler`, and exports the result as both `GET` and `POST` handlers so the GraphQL endpoint supports both HTTP methods.
+
+```typescript
+// app/api/graphql/route.ts
+import { ApolloServer } from '@apollo/server'
+import { startServerAndCreateNextHandler } from '@as-integrations/next'
+import { NextRequest } from 'next/server'
+
+const typeDefs = `#graphql
+  type Query {
+    hello: String
+  }
+`
+
+const resolvers = {
+  Query: {
+    hello: () => 'Hello from CrashMap GraphQL!',
+  },
+}
+
+const server = new ApolloServer({ typeDefs, resolvers })
+
+const handler = startServerAndCreateNextHandler<NextRequest>(server)
+
+export { handler as GET, handler as POST }
+```
+
+The `#graphql` comment in the template literal is a convention that enables GraphQL syntax highlighting in editors that support it (VS Code with the GraphQL extension, for example).
+
+The `<NextRequest>` generic ensures the request type is properly inferred if you later add a `context` function to expose the request object to resolvers.
+
+**Verify the endpoint:**
+
+Start the dev server and navigate to `http://localhost:3000/api/graphql` in your browser. Apollo Server automatically serves the Apollo Sandbox Explorer on GET requests, where you can run test queries.
+
+Run the hello query to confirm everything is wired up:
+
+```graphql
+query {
+  hello
+}
+```
+
+Expected result:
+
+```json
+{
+  "data": {
+    "hello": "Hello from CrashMap GraphQL!"
+  }
+}
+```
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
