@@ -251,7 +251,7 @@ import { PrismaClient } from '../lib/generated/prisma'
 const prisma = new PrismaClient()
 
 const crashes = await prisma.crashData.findMany({
-  where: { mode: 'Bicyclist' }
+  where: { mode: 'Bicyclist' },
 })
 ```
 
@@ -385,16 +385,16 @@ ORDER BY COUNT(*) DESC;
 
 The raw values are more granular than initially documented:
 
-| Raw DB Value | Count | Display Bucket |
-| --- | --- | --- |
-| Suspected Minor Injury | 673 | Minor Injury |
-| Possible Injury | 280 | Minor Injury |
-| Suspected Serious Injury | 255 | Major Injury |
-| No Apparent Injury | 55 | None |
-| Dead at Scene | 27 | Death |
-| Died in Hospital | 14 | Death |
-| Unknown | 7 | None |
-| Dead on Arrival | 4 | Death |
+| Raw DB Value             | Count | Display Bucket |
+| ------------------------ | ----- | -------------- |
+| Suspected Minor Injury   | 673   | Minor Injury   |
+| Possible Injury          | 280   | Minor Injury   |
+| Suspected Serious Injury | 255   | Major Injury   |
+| No Apparent Injury       | 55    | None           |
+| Dead at Scene            | 27    | Death          |
+| Died in Hospital         | 14    | Death          |
+| Unknown                  | 7     | None           |
+| Dead on Arrival          | 4     | Death          |
 
 The UI will display 4 buckets (Death, Major Injury, Minor Injury, None). The GraphQL resolver maps each bucket to its constituent raw DB values using an `IN (...)` clause. This approach is flexible — as more data sources are imported and new raw values appear, only the resolver mapping needs updating.
 
@@ -485,6 +485,105 @@ REFRESH MATERIALIZED VIEW available_years;
 
 This will be part of the data import workflow when new state data is added.
 
+### Step 16: Set Up ESLint, Prettier, and Husky
+
+With the database foundation complete, we set up code quality tooling before writing any application code.
+
+#### What each tool does
+
+- **ESLint** — already included by `create-next-app`, catches bugs and enforces code patterns
+- **Prettier** — opinionated code formatter; removes all style debates by auto-formatting on save and on commit
+- **`eslint-config-prettier`** — disables ESLint rules that conflict with Prettier (they'd fight otherwise)
+- **Husky** — runs scripts on git hooks; we use it to run lint-staged before every commit
+- **lint-staged** — runs linters only on staged files (fast — doesn't process the whole repo on every commit)
+
+#### Install
+
+```bash
+npm install --save-dev prettier eslint-config-prettier husky lint-staged
+```
+
+#### Configure Prettier
+
+**`.prettierrc`:**
+
+```json
+{
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "tabWidth": 2,
+  "printWidth": 100
+}
+```
+
+**`.prettierignore`:**
+
+```text
+node_modules/
+.next/
+lib/generated/
+```
+
+#### Update `eslint.config.mjs`
+
+Add `eslint-config-prettier` as the last config entry so it overrides any conflicting ESLint formatting rules. Also add `lib/generated/**` to the ignore list so ESLint skips the Prisma-generated client:
+
+```js
+import prettier from 'eslint-config-prettier'
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  prettier, // must come last
+  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts', 'lib/generated/**']),
+])
+```
+
+#### Set up Husky
+
+```bash
+npx husky init
+```
+
+This creates `.husky/pre-commit` (defaulting to `npm test`) and adds `"prepare": "husky"` to `package.json`. Update `.husky/pre-commit` to run lint-staged instead:
+
+```bash
+npx lint-staged
+```
+
+#### Add lint-staged config and format scripts to `package.json`
+
+```json
+"scripts": {
+  "lint": "eslint",
+  "format": "prettier --write .",
+  "format:check": "prettier --check .",
+  "prepare": "husky"
+},
+"lint-staged": {
+  "*.{ts,tsx,js,jsx,mjs}": ["eslint --fix", "prettier --write"],
+  "*.{json,css,md}": ["prettier --write"]
+}
+```
+
+#### Format existing files
+
+Run Prettier across the whole repo once to bring all existing files into compliance:
+
+```bash
+npm run format
+```
+
+Then verify both tools pass:
+
+```bash
+npm run lint        # no output = no errors
+npm run format:check  # All matched files use Prettier code style!
+```
+
+From this point on, every `git commit` automatically runs ESLint and Prettier on staged files. Commits with lint errors will be blocked.
+
 ---
 
-*This tutorial is a work in progress. More steps will be added as the project progresses.*
+_This tutorial is a work in progress. More steps will be added as the project progresses._

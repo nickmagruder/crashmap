@@ -122,13 +122,13 @@ Given your stack (PostgreSQL, TypeScript, React, GraphQL, Next.js), **Apollo Ser
 
 **Alternative Options Considered:**
 
-| Technology | Pros | Cons | Best For |
-| --- | --- | --- | --- |
+| Technology                      | Pros                                         | Cons                             | Best For                              |
+| ------------------------------- | -------------------------------------------- | -------------------------------- | ------------------------------------- |
 | **Apollo Server** (recommended) | Mature ecosystem, great DX, built-in tracing | Heavier bundle than alternatives | Production apps needing observability |
-| **Yoga (by The Guild)** | Lightweight, spec-compliant, plugin system | Smaller community than Apollo | Teams wanting minimal footprint |
-| **Pothos + Yoga** | Code-first schema, excellent TS inference | Steeper learning curve | Teams that dislike SDL-first schemas |
-| **tRPC** | End-to-end type safety, zero schema | Not GraphQL (trade-off) | Teams willing to drop GraphQL |
-| **Hasura** | Instant GraphQL from Postgres, subscriptions | Less control over resolver logic | Rapid prototyping, real-time needs |
+| **Yoga (by The Guild)**         | Lightweight, spec-compliant, plugin system   | Smaller community than Apollo    | Teams wanting minimal footprint       |
+| **Pothos + Yoga**               | Code-first schema, excellent TS inference    | Steeper learning curve           | Teams that dislike SDL-first schemas  |
+| **tRPC**                        | End-to-end type safety, zero schema          | Not GraphQL (trade-off)          | Teams willing to drop GraphQL         |
+| **Hasura**                      | Instant GraphQL from Postgres, subscriptions | Less control over resolver logic | Rapid prototyping, real-time needs    |
 
 ---
 
@@ -228,28 +228,28 @@ type Crash {
   region: String
   county: String
   city: String
-  date: String               # Original FullDate text
-  crashDate: String           # Proper DATE column (YYYY-MM-DD)
+  date: String # Original FullDate text
+  crashDate: String # Proper DATE column (YYYY-MM-DD)
   time: String
-  severity: String            # Maps to MostSevereInjuryType
+  severity: String # Maps to MostSevereInjuryType
   ageGroup: String
   involvedPersons: Int
   latitude: Float
   longitude: Float
-  mode: String                # "Bicyclist" or "Pedestrian"
+  mode: String # "Bicyclist" or "Pedestrian"
 }
 
 input CrashFilter {
-  severity: [String]           # Array for multi-select: ["Death", "Serious Injury"]
-  mode: String                 # "Bicyclist" or "Pedestrian"
+  severity: [String] # Array for multi-select: ["Death", "Serious Injury"]
+  mode: String # "Bicyclist" or "Pedestrian"
   state: String
   county: String
   city: String
-  dateFrom: String             # e.g., "2023-01-01"
-  dateTo: String               # e.g., "2025-12-31"
-  year: String                 # Shortcut: "2024" (alternative to dateFrom/dateTo)
-  bbox: BBoxInput              # For map viewport queries
-  includeNoInjury: Boolean     # Default false — opt-in for None/Unknown
+  dateFrom: String # e.g., "2023-01-01"
+  dateTo: String # e.g., "2025-12-31"
+  year: String # Shortcut: "2024" (alternative to dateFrom/dateTo)
+  bbox: BBoxInput # For map viewport queries
+  includeNoInjury: Boolean # Default false — opt-in for None/Unknown
 }
 
 input BBoxInput {
@@ -287,14 +287,14 @@ type Query {
 
 CrashMap's filter panel allows users to narrow the displayed crash data. All filters are combinable (AND logic) and update the map in real time. If the dashboard stretch goal is implemented, filters will update charts simultaneously.
 
-| Filter | Control Type | shadcn/ui Component | Maps To Column | Notes |
-| --- | --- | --- | --- | --- |
-| **Date Range / Year** | Date range picker + year quick-select buttons | `DatePicker` (or `Popover` + `Calendar`) + `Button` | `FullDate` | Default: all dates. Show ~4 buttons for most recent years (e.g., 2025, 2024, 2023, 2022) alongside a date range picker for custom ranges. Year buttons act as one-click shortcuts that set the range to Jan 1–Dec 31 of that year. |
-| **State** | Dropdown (single-select) | `Select` | `StateOrProvinceName` | Default: all states. |
-| **County** | Dropdown (single-select, filtered by selected state) | `Select` | `CountyName` | Cascading: only shows counties within the selected state. |
-| **City** | Dropdown (single-select, filtered by selected county) | `Select` | `CityName` | Cascading: only shows cities within the selected county. |
-| **Mode** | Toggle / segmented control | `ToggleGroup` | `Mode` | Options: Bicyclist / Pedestrian / All. Default: All. |
-| **Injury Severity** | Multi-select checkboxes | `Checkbox` + `Label` | `MostSevereInjuryType` | Options: Death, Major Injury, Minor Injury, None. Default: Death + Major + Minor (None hidden by default but can be toggled on). UI displays 4 buckets; resolver maps each to its constituent raw DB values (see Section 5 data notes). |
+| Filter                | Control Type                                          | shadcn/ui Component                                 | Maps To Column         | Notes                                                                                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------------- | --------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Date Range / Year** | Date range picker + year quick-select buttons         | `DatePicker` (or `Popover` + `Calendar`) + `Button` | `FullDate`             | Default: all dates. Show ~4 buttons for most recent years (e.g., 2025, 2024, 2023, 2022) alongside a date range picker for custom ranges. Year buttons act as one-click shortcuts that set the range to Jan 1–Dec 31 of that year.      |
+| **State**             | Dropdown (single-select)                              | `Select`                                            | `StateOrProvinceName`  | Default: all states.                                                                                                                                                                                                                    |
+| **County**            | Dropdown (single-select, filtered by selected state)  | `Select`                                            | `CountyName`           | Cascading: only shows counties within the selected state.                                                                                                                                                                               |
+| **City**              | Dropdown (single-select, filtered by selected county) | `Select`                                            | `CityName`             | Cascading: only shows cities within the selected county.                                                                                                                                                                                |
+| **Mode**              | Toggle / segmented control                            | `ToggleGroup`                                       | `Mode`                 | Options: Bicyclist / Pedestrian / All. Default: All.                                                                                                                                                                                    |
+| **Injury Severity**   | Multi-select checkboxes                               | `Checkbox` + `Label`                                | `MostSevereInjuryType` | Options: Death, Major Injury, Minor Injury, None. Default: Death + Major + Minor (None hidden by default but can be toggled on). UI displays 4 buckets; resolver maps each to its constituent raw DB values (see Section 5 data notes). |
 
 **Cascading dropdowns:** State → County → City should filter progressively. This requires either client-side filtering of a metadata lookup or a lightweight query. See the metadata view below.
 
@@ -347,12 +347,12 @@ type Query {
 
 Crash points use a **severity-based color and opacity gradient** on the Mapbox circle layer. Bicyclist and pedestrian icons use slightly different hues but follow the same gradient system.
 
-| Severity Bucket | Raw DB Values | Color | Opacity | Size (base) | Default Visibility |
-| --- | --- | --- | --- | --- | --- |
-| **Death** | "Dead at Scene", "Died in Hospital", "Dead on Arrival" | Dark Red (`#B71C1C`) | ~85% | 8px | ✅ Shown |
-| **Major Injury** | "Suspected Serious Injury" | Orange (`#E65100`) | ~70% | 7px | ✅ Shown |
-| **Minor Injury** | "Suspected Minor Injury", "Possible Injury" | Yellow (`#F9A825`) | ~55% | 6px | ✅ Shown |
-| **None** | "No Apparent Injury", "Unknown" | Pale Yellow-Green (`#C5E1A5`) | ~50% | 5px | ❌ Hidden by default |
+| Severity Bucket  | Raw DB Values                                          | Color                         | Opacity | Size (base) | Default Visibility   |
+| ---------------- | ------------------------------------------------------ | ----------------------------- | ------- | ----------- | -------------------- |
+| **Death**        | "Dead at Scene", "Died in Hospital", "Dead on Arrival" | Dark Red (`#B71C1C`)          | ~85%    | 8px         | ✅ Shown             |
+| **Major Injury** | "Suspected Serious Injury"                             | Orange (`#E65100`)            | ~70%    | 7px         | ✅ Shown             |
+| **Minor Injury** | "Suspected Minor Injury", "Possible Injury"            | Yellow (`#F9A825`)            | ~55%    | 6px         | ✅ Shown             |
+| **None**         | "No Apparent Injury", "Unknown"                        | Pale Yellow-Green (`#C5E1A5`) | ~50%    | 5px         | ❌ Hidden by default |
 
 **Mapbox implementation** using data-driven styling:
 
@@ -365,60 +365,96 @@ map.addLayer({
   paint: {
     // Size: scales by severity AND zoom level
     'circle-radius': [
-      'interpolate', ['linear'], ['zoom'],
+      'interpolate',
+      ['linear'],
+      ['zoom'],
       // At zoom 4 (state-level): small base sizes
-      4, ['match', ['get', 'severity'],
-        'Death',          3,
-        'Major Injury',   2.5,
-        'Minor Injury',   2,
-        /* None/Unknown */ 1.5
+      4,
+      [
+        'match',
+        ['get', 'severity'],
+        'Death',
+        3,
+        'Major Injury',
+        2.5,
+        'Minor Injury',
+        2,
+        /* None/Unknown */ 1.5,
       ],
       // At zoom 10 (city-level): medium sizes
-      10, ['match', ['get', 'severity'],
-        'Death',          8,
-        'Major Injury',   7,
-        'Minor Injury',   6,
-        /* None/Unknown */ 5
+      10,
+      [
+        'match',
+        ['get', 'severity'],
+        'Death',
+        8,
+        'Major Injury',
+        7,
+        'Minor Injury',
+        6,
+        /* None/Unknown */ 5,
       ],
       // At zoom 16 (street-level): large sizes
-      16, ['match', ['get', 'severity'],
-        'Death',          14,
-        'Major Injury',   12,
-        'Minor Injury',   10,
-        /* None/Unknown */ 8
-      ]
+      16,
+      [
+        'match',
+        ['get', 'severity'],
+        'Death',
+        14,
+        'Major Injury',
+        12,
+        'Minor Injury',
+        10,
+        /* None/Unknown */ 8,
+      ],
     ],
     'circle-color': [
-      'match', ['get', 'severity'],
-      'Death',          '#B71C1C',
-      'Major Injury',   '#E65100',
-      'Minor Injury',   '#F9A825',
-      /* None/Unknown */ '#C5E1A5'
+      'match',
+      ['get', 'severity'],
+      'Death',
+      '#B71C1C',
+      'Major Injury',
+      '#E65100',
+      'Minor Injury',
+      '#F9A825',
+      /* None/Unknown */ '#C5E1A5',
     ],
     'circle-opacity': [
-      'match', ['get', 'severity'],
-      'Death',          0.85,
-      'Major Injury',   0.70,
-      'Minor Injury',   0.55,
-      /* None/Unknown */ 0.50
+      'match',
+      ['get', 'severity'],
+      'Death',
+      0.85,
+      'Major Injury',
+      0.7,
+      'Minor Injury',
+      0.55,
+      /* None/Unknown */ 0.5,
     ],
     // Slight hue shift for mode differentiation
     'circle-stroke-color': [
-      'match', ['get', 'mode'],
-      'Bicyclist',  '#1565C0',   // Blue stroke for bicyclists
-      'Pedestrian', '#4A148C',   // Purple stroke for pedestrians
-      '#666666'
+      'match',
+      ['get', 'mode'],
+      'Bicyclist',
+      '#1565C0', // Blue stroke for bicyclists
+      'Pedestrian',
+      '#4A148C', // Purple stroke for pedestrians
+      '#666666',
     ],
     'circle-stroke-width': [
-      'interpolate', ['linear'], ['zoom'],
-      4, 0.5,     // Thin stroke when zoomed out
-      10, 1.5,    // Medium stroke at city level
-      16, 2.5     // Thicker stroke at street level
-    ]
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      4,
+      0.5, // Thin stroke when zoomed out
+      10,
+      1.5, // Medium stroke at city level
+      16,
+      2.5, // Thicker stroke at street level
+    ],
   },
   // Filter out None/Unknown by default
-  filter: ['in', 'severity', 'Death', 'Major Injury', 'Minor Injury']
-});
+  filter: ['in', 'severity', 'Death', 'Major Injury', 'Minor Injury'],
+})
 ```
 
 > **Zoom-level scaling:** The `interpolate` expression smoothly scales circle radius between zoom stops, so icons grow continuously as the user zooms in — not in abrupt jumps. At state-level zoom (~4), deaths are 3px and minor injuries are 2px; at street-level zoom (~16), deaths are 14px and minor injuries are 10px. Tune these values based on your data density.
@@ -512,10 +548,10 @@ CrashMap uses a **mobile-first** design where the map is always the primary elem
 
 **Responsive breakpoints:**
 
-| Breakpoint | Layout | Filter Panel |
-| --- | --- | --- |
-| < 768px (mobile) | Full-viewport map, floating overlay controls | Full-screen overlay (MVP); bottom sheet (Section 11 stretch goal) |
-| ≥ 768px (tablet/desktop) | Full-viewport map, toggleable right sidebar (~320px) | Right column, pushes or overlays map |
+| Breakpoint               | Layout                                               | Filter Panel                                                      |
+| ------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| < 768px (mobile)         | Full-viewport map, floating overlay controls         | Full-screen overlay (MVP); bottom sheet (Section 11 stretch goal) |
+| ≥ 768px (tablet/desktop) | Full-viewport map, toggleable right sidebar (~320px) | Right column, pushes or overlays map                              |
 
 ---
 
@@ -548,11 +584,11 @@ CrashMap uses a **mobile-first** design where the map is always the primary elem
 
 At your scale, you don't need Redis or a multi-tier caching setup. Keep it simple:
 
-| Layer | Technology | What to Cache | Notes |
-| --- | --- | --- | --- |
-| **Client** | Apollo Client InMemoryCache | Query results, normalized entities | This is your primary cache — handles repeat queries automatically |
-| **CDN/Edge** | Render's built-in CDN | Static pages (landing, about) | Included with your Professional plan |
-| **Database** | Standard PostgreSQL query cache | Recent query plans | Built-in, no configuration needed |
+| Layer        | Technology                      | What to Cache                      | Notes                                                             |
+| ------------ | ------------------------------- | ---------------------------------- | ----------------------------------------------------------------- |
+| **Client**   | Apollo Client InMemoryCache     | Query results, normalized entities | This is your primary cache — handles repeat queries automatically |
+| **CDN/Edge** | Render's built-in CDN           | Static pages (landing, about)      | Included with your Professional plan                              |
+| **Database** | Standard PostgreSQL query cache | Recent query plans                 | Built-in, no configuration needed                                 |
 
 **When to add more caching:** If you notice specific aggregation queries (e.g., dashboard summary stats) taking >500ms, create a PostgreSQL **materialized view** for those aggregations:
 
@@ -586,8 +622,8 @@ Even with tens of thousands of points, Mapbox GL JS handles rendering well thank
     data: crashGeoJSON,
     cluster: true,
     clusterRadius: 50,
-    clusterMaxZoom: 14
-  });
+    clusterMaxZoom: 14,
+  })
   ```
 
 - **Layer Zoom Rules:** Use `minzoom` and `maxzoom` on layers to show heatmaps at low zoom and individual points at high zoom.
@@ -656,22 +692,22 @@ Since this is your own collected data (not sourced from a third-party API with u
 
 ### Development Challenges
 
-| Challenge | Mitigation |
-| --- | --- |
-| **GraphQL schema design for geospatial data** | Use custom scalar types for coordinates; define clear `GeoJSON` types. Test with PostGIS early. |
-| **N+1 query problems** | Not a concern with a single table. If you later add related tables (vehicles, injuries), adopt DataLoader at that point. |
+| Challenge                                        | Mitigation                                                                                                                                                                                            |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **GraphQL schema design for geospatial data**    | Use custom scalar types for coordinates; define clear `GeoJSON` types. Test with PostGIS early.                                                                                                       |
+| **N+1 query problems**                           | Not a concern with a single table. If you later add related tables (vehicles, injuries), adopt DataLoader at that point.                                                                              |
 | **Rendering tens of thousands of points on map** | Mapbox GL JS handles this natively with WebGL. Enable built-in clustering (`cluster: true`) and use zoom-level layer switching. Vector tiles and server-side clustering are not needed at this scale. |
-| **TypeScript type synchronization** | Use `graphql-codegen` to auto-generate types from your schema. Run codegen in CI. |
-| **Schema evolution without breaking clients** | Follow GraphQL deprecation patterns; never remove fields — deprecate then remove after migration window. |
+| **TypeScript type synchronization**              | Use `graphql-codegen` to auto-generate types from your schema. Run codegen in CI.                                                                                                                     |
+| **Schema evolution without breaking clients**    | Follow GraphQL deprecation patterns; never remove fields — deprecate then remove after migration window.                                                                                              |
 
 ### Deployment Challenges
 
-| Challenge | Mitigation |
-| --- | --- |
-| **PostGIS on managed hosting** | Use Supabase (built-in PostGIS), Neon, or AWS RDS. Verify spatial extension availability before committing. |
-| **Cold starts** | Not an issue — your Professional plan keeps web services running continuously with no spin-down. |
-| **Database migrations in production** | Use Prisma Migrate with a CI/CD pipeline. Always test migrations against a staging copy of production data. |
-| **CORS and API security** | Configure Apollo Server CORS to only allow your domain (`https://crashmap.io` and the Render subdomain). Use CSRF tokens for mutations. |
+| Challenge                             | Mitigation                                                                                                                              |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **PostGIS on managed hosting**        | Use Supabase (built-in PostGIS), Neon, or AWS RDS. Verify spatial extension availability before committing.                             |
+| **Cold starts**                       | Not an issue — your Professional plan keeps web services running continuously with no spin-down.                                        |
+| **Database migrations in production** | Use Prisma Migrate with a CI/CD pipeline. Always test migrations against a staging copy of production data.                             |
+| **CORS and API security**             | Configure Apollo Server CORS to only allow your domain (`https://crashmap.io` and the Render subdomain). Use CSRF tokens for mutations. |
 
 ### Render-Specific Considerations
 
@@ -687,29 +723,29 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 
 **Potential issues to watch for:**
 
-| Issue | Details | Mitigation |
-| --- | --- | --- |
-| **PostGIS availability** | Render's managed PostgreSQL supports PostGIS, but you need to manually enable it: `CREATE EXTENSION postgis;` via a direct connection. Verify this works early in Phase 1. | Test PostGIS immediately after provisioning the database. |
-| **No edge/serverless functions** | Unlike Vercel, Render runs your Next.js app as a standard Node.js server, not serverless. This actually *helps* you — persistent database connections, no Prisma serverless overhead, no cold starts. | Run Next.js in standalone mode: set `output: 'standalone'` in `next.config.js` for optimal Docker builds on Render. |
-| **Build times** | Next.js + Prisma generate + codegen can be slow. | Cache `node_modules` and Prisma client in Render's build settings. Use `npm ci` instead of `npm install`. |
-| **No built-in analytics** | Render doesn't include web analytics like Vercel Analytics. | Add Plausible, Fathom, or a self-hosted analytics solution. Or just rely on Lighthouse CI in your CI/CD pipeline for performance tracking. |
+| Issue                            | Details                                                                                                                                                                                               | Mitigation                                                                                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **PostGIS availability**         | Render's managed PostgreSQL supports PostGIS, but you need to manually enable it: `CREATE EXTENSION postgis;` via a direct connection. Verify this works early in Phase 1.                            | Test PostGIS immediately after provisioning the database.                                                                                  |
+| **No edge/serverless functions** | Unlike Vercel, Render runs your Next.js app as a standard Node.js server, not serverless. This actually _helps_ you — persistent database connections, no Prisma serverless overhead, no cold starts. | Run Next.js in standalone mode: set `output: 'standalone'` in `next.config.js` for optimal Docker builds on Render.                        |
+| **Build times**                  | Next.js + Prisma generate + codegen can be slow.                                                                                                                                                      | Cache `node_modules` and Prisma client in Render's build settings. Use `npm ci` instead of `npm install`.                                  |
+| **No built-in analytics**        | Render doesn't include web analytics like Vercel Analytics.                                                                                                                                           | Add Plausible, Fathom, or a self-hosted analytics solution. Or just rely on Lighthouse CI in your CI/CD pipeline for performance tracking. |
 
 ### Testing Challenges
 
-| Challenge | Mitigation |
-| --- | --- |
-| **Testing GraphQL resolvers** | Use `apollo-server-testing` or `graphql-yoga`'s test utilities with in-memory Prisma (or test containers). |
-| **Geospatial query testing** | Seed test database with known geometries; assert distance/containment with PostGIS functions. |
-| **Performance regression testing** | Use k6 or Artillery for load testing; set query response time budgets (e.g., p95 < 200ms). |
-| **Visual regression testing** | Chromatic or Percy for chart snapshots. For Mapbox maps, snapshot testing is unreliable due to WebGL — use integration tests with `@mapbox/mapbox-gl-js-mock` instead. |
+| Challenge                          | Mitigation                                                                                                                                                             |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Testing GraphQL resolvers**      | Use `apollo-server-testing` or `graphql-yoga`'s test utilities with in-memory Prisma (or test containers).                                                             |
+| **Geospatial query testing**       | Seed test database with known geometries; assert distance/containment with PostGIS functions.                                                                          |
+| **Performance regression testing** | Use k6 or Artillery for load testing; set query response time budgets (e.g., p95 < 200ms).                                                                             |
+| **Visual regression testing**      | Chromatic or Percy for chart snapshots. For Mapbox maps, snapshot testing is unreliable due to WebGL — use integration tests with `@mapbox/mapbox-gl-js-mock` instead. |
 
 ---
 
 ## 8. Step-by-Step Action Plan
 
-### Phase 1: Foundation (Weeks 1–3)
+### Phase 1: Foundation (Day 1)
 
-#### Milestone: Project scaffolding and data model**
+#### Milestone: Project scaffolding and data model\*\*
 
 - [x] Purchase domain: **crashmap.io** ✓
 - [x] Initialize Next.js project with TypeScript (`create-next-app --typescript`)
@@ -720,11 +756,11 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 - [x] Verify `FullDate` column format (ISO 8601: `2025-02-23T00:00:00`) and add `CrashDate` DATE column with index
 - [x] Validate data: check for null `Latitude`/`Longitude` values, confirm `Mode` values are consistent ("Bicyclist"/"Pedestrian"), check `MostSevereInjuryType` distinct values
 - [x] Create the `filter_metadata` and `available_years` materialized views (see Section 4) for cascading dropdown population
-- [ ] Set up ESLint, Prettier, Husky pre-commit hooks
+- [x] Set up ESLint, Prettier, Husky pre-commit hooks
 
 **Deliverables:** Running Next.js app, populated database, Prisma client generated
 
-### Phase 2: API Layer (Weeks 3–5)
+### Phase 2: API Layer (Week 1)
 
 #### Milestone: Functional GraphQL API with core queries
 
@@ -741,7 +777,7 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 
 **Deliverables:** Fully tested GraphQL API accessible via Apollo Sandbox
 
-### Phase 3: Frontend Core (Weeks 5–8)
+### Phase 3: Frontend Core (Weeks 2-3)
 
 #### Milestone: Interactive map with filters
 
@@ -773,7 +809,7 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 
 **Deliverables:** Working app with map and filters
 
-### Phase 4: Security, Polish & Deployment (Weeks 8–10)
+### Phase 4: Security, Polish & Deployment (Weeks TBD)
 
 #### Milestone: Production-ready public application
 
@@ -810,39 +846,39 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 
 ### Core Stack Libraries
 
-| Purpose | Library | Why |
-| --- | --- | --- |
-| GraphQL Server | `@apollo/server` | Mature, well-documented, great tracing |
-| ORM | `prisma` | Type-safe, great migrations |
-| GraphQL Client | `@apollo/client` | Best cache, React hooks |
-| Type Generation | `@graphql-codegen/cli` | Keeps types in sync |
-| UI Components | `shadcn/ui` (Radix UI + Tailwind) | Copy-paste ownership, fully customizable, built-in dark mode theming, same author as `vaul` |
-| CSS Framework | `tailwindcss` | Utility-first, pairs with shadcn/ui, built into Next.js scaffolding |
-| Validation | `zod` | Schema validation + TypeScript inference |
-| Auth (if needed) | `next-auth` | Built for Next.js — add when you build admin features |
+| Purpose          | Library                           | Why                                                                                         |
+| ---------------- | --------------------------------- | ------------------------------------------------------------------------------------------- |
+| GraphQL Server   | `@apollo/server`                  | Mature, well-documented, great tracing                                                      |
+| ORM              | `prisma`                          | Type-safe, great migrations                                                                 |
+| GraphQL Client   | `@apollo/client`                  | Best cache, React hooks                                                                     |
+| Type Generation  | `@graphql-codegen/cli`            | Keeps types in sync                                                                         |
+| UI Components    | `shadcn/ui` (Radix UI + Tailwind) | Copy-paste ownership, fully customizable, built-in dark mode theming, same author as `vaul` |
+| CSS Framework    | `tailwindcss`                     | Utility-first, pairs with shadcn/ui, built into Next.js scaffolding                         |
+| Validation       | `zod`                             | Schema validation + TypeScript inference                                                    |
+| Auth (if needed) | `next-auth`                       | Built for Next.js — add when you build admin features                                       |
 
 ### Visualization Libraries
 
-| Purpose | Library | Why |
-| --- | --- | --- |
-| Maps | `react-map-gl` (Mapbox GL JS wrapper) | Your chosen map platform; React-friendly, WebGL-powered |
-| Map Clustering | `supercluster` | Fast geospatial point clustering, pairs with Mapbox |
-| Map Utilities | `@mapbox/mapbox-gl-geocoder` | Address search / geocoding integration |
-| Deck.gl Layers (optional) | `@deck.gl/mapbox` | Overlay advanced viz (e.g., arc layers, 3D) on Mapbox basemap if needed |
-| Charts (stretch goal) | `recharts` or `@visx/visx` | React-native, composable |
-| Advanced Charts (stretch goal) | `d3` | Maximum flexibility for custom viz |
-| Geospatial Utilities | `turf.js` | Client-side spatial operations |
+| Purpose                        | Library                               | Why                                                                     |
+| ------------------------------ | ------------------------------------- | ----------------------------------------------------------------------- |
+| Maps                           | `react-map-gl` (Mapbox GL JS wrapper) | Your chosen map platform; React-friendly, WebGL-powered                 |
+| Map Clustering                 | `supercluster`                        | Fast geospatial point clustering, pairs with Mapbox                     |
+| Map Utilities                  | `@mapbox/mapbox-gl-geocoder`          | Address search / geocoding integration                                  |
+| Deck.gl Layers (optional)      | `@deck.gl/mapbox`                     | Overlay advanced viz (e.g., arc layers, 3D) on Mapbox basemap if needed |
+| Charts (stretch goal)          | `recharts` or `@visx/visx`            | React-native, composable                                                |
+| Advanced Charts (stretch goal) | `d3`                                  | Maximum flexibility for custom viz                                      |
+| Geospatial Utilities           | `turf.js`                             | Client-side spatial operations                                          |
 
 ### Development & DevOps
 
-| Purpose | Tool |
-| --- | --- |
-| Local DB | Docker + `postgis/postgis` image |
-| API Playground | Apollo Sandbox (built into Apollo Server) |
-| Error Tracking | Sentry |
-| CI/CD | GitHub Actions |
-| Hosting | Render (app + database — all on one platform) |
-| Monitoring | Sentry (errors) + Lighthouse CI (web vitals) |
+| Purpose        | Tool                                          |
+| -------------- | --------------------------------------------- |
+| Local DB       | Docker + `postgis/postgis` image              |
+| API Playground | Apollo Sandbox (built into Apollo Server)     |
+| Error Tracking | Sentry                                        |
+| CI/CD          | GitHub Actions                                |
+| Hosting        | Render (app + database — all on one platform) |
+| Monitoring     | Sentry (errors) + Lighthouse CI (web vitals)  |
 
 ### Documentation & Learning
 
@@ -862,13 +898,13 @@ You're on Render's **Professional plan** (web services) with the **Basic Postgre
 
 ### Key Metrics to Track
 
-| Metric | Target | Tool |
-| --- | --- | --- |
-| **GraphQL query response time (p95)** | < 200ms for filtered queries, < 500ms for full aggregations | Prisma query logging |
-| **Time to Interactive (TTI)** | < 3s on 3G | Lighthouse CI |
-| **Largest Contentful Paint (LCP)** | < 2.5s | Web Vitals |
-| **Map initial render** | < 2s with full dataset loaded | Browser performance marks |
-| **Error rate** | < 0.1% | Sentry |
+| Metric                                | Target                                                      | Tool                      |
+| ------------------------------------- | ----------------------------------------------------------- | ------------------------- |
+| **GraphQL query response time (p95)** | < 200ms for filtered queries, < 500ms for full aggregations | Prisma query logging      |
+| **Time to Interactive (TTI)**         | < 3s on 3G                                                  | Lighthouse CI             |
+| **Largest Contentful Paint (LCP)**    | < 2.5s                                                      | Web Vitals                |
+| **Map initial render**                | < 2s with full dataset loaded                               | Browser performance marks |
+| **Error rate**                        | < 0.1%                                                      | Sentry                    |
 
 ### Evaluation Cadence
 
@@ -917,11 +953,11 @@ The MVP uses a full-screen overlay for the mobile filter panel (~1 day to implem
 
 **Library options:**
 
-| Approach | Bundle Size | Effort | Notes |
-| --- | --- | --- | --- |
-| **`vaul`** or **`react-modal-sheet`** (recommended) | ~5–10KB (built on framer-motion) | 1–2 days | Purpose-built bottom sheet components. Handle snap points, drag gestures, scroll locking, and accessibility out of the box. `vaul` is by the shadcn/ui author. Best path to ship fast. |
-| **framer-motion** | ~30–40KB gzipped | 3–4 days | Built-in `useDragControls` and `dragConstraints` get you 80% of the way. Declarative, React-idiomatic API. Larger bundle but your app already loads Mapbox (~200KB+), so the relative impact is small. |
-| **react-spring + @use-gesture/react** | ~15KB gzipped | 4–5 days | Lighter bundle, more imperative. Spring physics can feel more polished for gesture-driven interactions, but you wire up snap-point logic and drag handling manually. Better fine-grained control, more code to write. |
+| Approach                                            | Bundle Size                      | Effort   | Notes                                                                                                                                                                                                                 |
+| --------------------------------------------------- | -------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`vaul`** or **`react-modal-sheet`** (recommended) | ~5–10KB (built on framer-motion) | 1–2 days | Purpose-built bottom sheet components. Handle snap points, drag gestures, scroll locking, and accessibility out of the box. `vaul` is by the shadcn/ui author. Best path to ship fast.                                |
+| **framer-motion**                                   | ~30–40KB gzipped                 | 3–4 days | Built-in `useDragControls` and `dragConstraints` get you 80% of the way. Declarative, React-idiomatic API. Larger bundle but your app already loads Mapbox (~200KB+), so the relative impact is small.                |
+| **react-spring + @use-gesture/react**               | ~15KB gzipped                    | 4–5 days | Lighter bundle, more imperative. Spring physics can feel more polished for gesture-driven interactions, but you wire up snap-point logic and drag handling manually. Better fine-grained control, more code to write. |
 
 **Recommendation:** Use **`vaul`** or **`react-modal-sheet`** — they're literally built for this use case and eliminate the gesture plumbing. If you need custom behavior beyond what they offer, drop down to framer-motion. Only reach for react-spring if bundle size is a hard constraint or you want maximum control over the physics feel.
 
@@ -947,8 +983,8 @@ const themes = {
     background: '#121212',
     text: '#E0E0E0',
     cardBg: '#1E1E1E',
-  }
-};
+  },
+}
 ```
 
 ---

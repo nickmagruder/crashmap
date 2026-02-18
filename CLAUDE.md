@@ -84,14 +84,14 @@ CREATE TABLE public.crashdata
 
 All filters are combinable (AND logic) and update the map in real time.
 
-| Filter | shadcn/ui Component | DB Column |
-| --- | --- | --- |
-| Date Range / Year | `Popover` + `Calendar` + `Button` (4 year quick-select buttons) | `CrashDate` |
-| State | `Select` | `StateOrProvinceName` |
-| County (cascading from State) | `Select` | `CountyName` |
-| City (cascading from County) | `Select` | `CityName` |
-| Mode | `ToggleGroup` | `Mode` |
-| Injury Severity (multi-select) | `Checkbox` + `Label` | `MostSevereInjuryType` |
+| Filter                         | shadcn/ui Component                                             | DB Column              |
+| ------------------------------ | --------------------------------------------------------------- | ---------------------- |
+| Date Range / Year              | `Popover` + `Calendar` + `Button` (4 year quick-select buttons) | `CrashDate`            |
+| State                          | `Select`                                                        | `StateOrProvinceName`  |
+| County (cascading from State)  | `Select`                                                        | `CountyName`           |
+| City (cascading from County)   | `Select`                                                        | `CityName`             |
+| Mode                           | `ToggleGroup`                                                   | `Mode`                 |
+| Injury Severity (multi-select) | `Checkbox` + `Label`                                            | `MostSevereInjuryType` |
 
 - None injuries are **hidden by default** but can be toggled on
 - Cascading dropdowns powered by a `filter_metadata` materialized view
@@ -101,12 +101,12 @@ All filters are combinable (AND logic) and update the map in real time.
 
 Severity-based visual hierarchy using color, opacity, AND size:
 
-| Severity Bucket | Color | Opacity | Base Size |
-| --- | --- | --- | --- |
-| Death | `#B71C1C` (dark red) | 85% | 8px |
-| Major Injury | `#E65100` (orange) | 70% | 7px |
-| Minor Injury | `#F9A825` (yellow) | 55% | 6px |
-| None | `#C5E1A5` (pale yellow-green) | 50% | 5px |
+| Severity Bucket | Color                         | Opacity | Base Size |
+| --------------- | ----------------------------- | ------- | --------- |
+| Death           | `#B71C1C` (dark red)          | 85%     | 8px       |
+| Major Injury    | `#E65100` (orange)            | 70%     | 7px       |
+| Minor Injury    | `#F9A825` (yellow)            | 55%     | 6px       |
+| None            | `#C5E1A5` (pale yellow-green) | 50%     | 5px       |
 
 - All sizes scale with zoom level via Mapbox `interpolate` expressions (small at state zoom, large at street zoom)
 - Stroke color differentiates mode: blue (`#1565C0`) for bicyclists, purple (`#4A148C`) for pedestrians
