@@ -213,9 +213,9 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - Filters: by date/year, state, county, city, mode (Bicyclist/Pedestrian), severity (multi-select), bounding box
   - No mutations needed for public-facing app (add later if you build an admin interface)
 - [x] Implement resolvers with Prisma (single-table queries — straightforward)
-- [ ] Set up `graphql-codegen` for automatic TypeScript type generation
-- [ ] Implement simple offset-based pagination
-- [ ] Add query depth limiting for public API protection
+- [x] Set up `graphql-codegen` for automatic TypeScript type generation
+- [x] Implement simple offset-based pagination
+- [x] Add query depth limiting for public API protection
 - [ ] Write integration tests for all resolvers
 - [ ] Set up GitHub Actions CI pipeline (lint, format check, typecheck, build, `.next/cache` caching) with branch protection on `main`
 

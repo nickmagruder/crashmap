@@ -996,4 +996,119 @@ The `Crash` mapper imports `CrashData` from `lib/generated/prisma/client`. Since
 
 ---
 
+## Step N+1: Query Depth Limiting
+
+GraphQL's composable selection sets are powerful for clients, but they also mean a malicious (or accidentally complex) query could ask for deeply nested fields and trigger expensive resolver chains. Depth limiting rejects such queries at the validation layer — before any resolver runs.
+
+### Why inline instead of a library
+
+The standard library is `graphql-depth-limit`, but it was last published in 2018 and has no active maintenance. For a flat schema like ours, the logic is just ~15 lines:
+
+```typescript
+// app/api/graphql/route.ts
+import { GraphQLError, ValidationContext } from 'graphql'
+import type { ASTNode, ValidationRule } from 'graphql'
+
+const MAX_DEPTH = 5
+
+function queryDepth(node: ASTNode, depth = 0): number {
+  if ('selectionSet' in node && node.selectionSet) {
+    const sels = (node.selectionSet as { selections: readonly ASTNode[] }).selections
+    if (sels.length === 0) return depth
+    return Math.max(...sels.map((s) => queryDepth(s, depth + 1)))
+  }
+  return depth
+}
+
+const depthLimitRule: ValidationRule = (context: ValidationContext) => ({
+  Document(doc) {
+    for (const def of doc.definitions) {
+      const depth = queryDepth(def as ASTNode)
+      if (depth > MAX_DEPTH) {
+        context.reportError(new GraphQLError(`Query depth limit exceeded (max: ${MAX_DEPTH}).`))
+      }
+    }
+  },
+})
+```
+
+`queryDepth` recursively walks the AST, counting field nesting depth. `Math.max` over all branches finds the deepest path. The guard for `sels.length === 0` prevents `Math.max()` returning `-Infinity` on empty selection sets.
+
+`ValidationRule` is `(context: ValidationContext) => ASTVisitor` — Apollo Server calls our rule during the validation phase on every incoming document, before execution begins.
+
+### Choosing the depth limit
+
+Our schema's maximum legitimate depth:
+
+| Query                             | Path                     | Depth |
+| --------------------------------- | ------------------------ | ----- |
+| `crashes { items { severity } }`  | query → `items` → field  | 3     |
+| `crashStats { byMode { count } }` | query → `byMode` → field | 3     |
+| `filterOptions { counties }`      | query → field            | 2     |
+
+A limit of 5 allows all real queries with two levels of headroom for introspection and future schema additions.
+
+### Wiring it up
+
+Pass `validationRules` to the `ApolloServer` constructor:
+
+```typescript
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  validationRules: [depthLimitRule],
+})
+```
+
+Apollo Server runs all validation rules (including its own built-in rules) before executing any query. If `depthLimitRule` reports an error, Apollo returns a 400 with the error message and never calls a resolver.
+
+---
+
+## Step N+2: Offset-Based Pagination and Server-Side Limit Cap
+
+The `crashes` query already supports offset-based pagination — it was baked into the schema from the start:
+
+```graphql
+type Query {
+  crashes(filter: CrashFilter, limit: Int = 1000, offset: Int = 0): CrashResult!
+}
+
+type CrashResult {
+  items: [Crash!]!
+  totalCount: Int!
+}
+```
+
+The resolver runs `findMany` and `count` in parallel so callers get both the current page of items and the total count needed to compute page numbers:
+
+```typescript
+const [items, totalCount] = await Promise.all([
+  prisma.crashData.findMany({ where, skip: offset ?? 0, take: cappedLimit }),
+  prisma.crashData.count({ where }),
+])
+return { items, totalCount }
+```
+
+### Server-side limit cap
+
+One gap: the `limit` argument has a default but no enforced maximum. A caller could send `limit: 999999` and pull the entire table in a single request. For a small dataset this isn't catastrophic, but it's a good habit to enforce a ceiling on the server.
+
+We add a simple cap in the resolver before passing `limit` to Prisma:
+
+```typescript
+const cappedLimit = Math.min(limit ?? 1000, 5000)
+```
+
+`Math.min(limit ?? 1000, 5000)` handles three cases:
+
+- Caller omits `limit` → defaults to 1000 (the schema default)
+- Caller passes a reasonable value → used as-is (up to 5000)
+- Caller passes an excessive value → silently capped at 5000
+
+No error is thrown — the cap is transparent. This is appropriate for a public read-only API where the caller just wants data; a hard error on an oversized `limit` would be unnecessarily strict.
+
+For the CrashMap use case, the map loads the full filtered dataset client-side so Mapbox can render and filter it. With 1,315 rows today and a ceiling of 5,000, a single request at full scale fits comfortably within the cap.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
