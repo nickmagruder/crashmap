@@ -2139,4 +2139,51 @@ npm run dev
 
 A floating pill labeled `"— crashes"` should appear centered at the bottom of the viewport. Resize to both mobile and desktop widths to confirm it stays centered and doesn't overlap the toggle button or other controls.
 
+### Step N+13: Set Mobile Default Zoom to Seattle
+
+Out of the box, `MapContainer` opens to a view of all of Washington state (zoom 7) — good for desktop where you want to see the full dataset at a glance, but too zoomed out for a phone where the initial view should feel immediately useful.
+
+The fix is straightforward: detect the viewport width at render time and pick one of two `initialViewState` objects.
+
+#### Why read `window.innerWidth` directly?
+
+`MapContainer` is already a `'use client'` component. Client components are never server-rendered in isolation — by the time this function runs in the browser, `window` is always defined. More importantly, `initialViewState` is only consumed **once on mount** by Mapbox; it is not reactive. There is no re-render to cause hydration drift, and no `useEffect` or `useState` is needed.
+
+#### Update `components/map/MapContainer.tsx`
+
+Define the two view states as module-level constants (keeping them out of the render function avoids re-creating plain objects on every render) and select between them:
+
+```tsx
+'use client'
+
+import Map from 'react-map-gl/mapbox'
+
+const DESKTOP_VIEW = { longitude: -120.5, latitude: 47.5, zoom: 7 }
+const MOBILE_VIEW = { longitude: -122.3321, latitude: 47.6062, zoom: 11 }
+
+export function MapContainer() {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const initialViewState = isMobile ? MOBILE_VIEW : DESKTOP_VIEW
+
+  return (
+    <Map
+      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+      initialViewState={initialViewState}
+      style={{ width: '100%', height: '100%' }}
+      mapStyle="mapbox://styles/mapbox/light-v11"
+    />
+  )
+}
+```
+
+The `typeof window !== 'undefined'` guard is defensive boilerplate — it is not technically needed in a client component but communicates intent clearly and prevents any future accidental SSR.
+
+The 768px breakpoint matches the `md` Tailwind breakpoint used throughout the project (`md:hidden`, `hidden md:block`) for consistent mobile/desktop splitting.
+
+#### Test the mobile default zoom
+
+Open the app at a mobile viewport width (<768px, e.g. iPhone in Chrome DevTools). The map should open centered on Seattle at street level rather than the full Washington state view. At desktop width, the view is unchanged.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

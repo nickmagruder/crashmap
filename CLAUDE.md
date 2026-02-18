@@ -264,8 +264,9 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
 - [x] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
 - [x] Build `SummaryBar` component: persistent bar with placeholder crash count and empty filter badge area, visible on all screen sizes
-- [ ] Wire `map.resize()` to sidebar and overlay open/close transitions
-- [ ] Smoke test responsive layout at mobile (<768px) and desktop (≥768px) breakpoints
+- [x] Wire `map.resize()` to sidebar and overlay open/close transitions
+- [x] Smoke test responsive layout at mobile (<768px) and desktop (≥768px) breakpoints
+- [x] Set default zoom for mobile to the city of Seattle
 - [ ] Import Domain into Render settings
 
 #### Milestone: Interactive map with filters
