@@ -227,20 +227,28 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 ### Phase 3: Frontend Core (Week 1)
 
-#### Milestone: Interactive map with filters
+#### Milestone: Basic UI Configuration, Skeleton Layout and Deployment
 
 - [x] Set up Apollo Client with InMemoryCache and type policies
-- [ ] **Smoke-test deployment to Render** (verify production build before frontend work begins):
-  - Create `render.yaml` at project root specifying build command (`npm ci && npm run build`), start command (`npm start`), Node 20, and env var declarations
-  - Create `.env.example` documenting all required env vars (`DATABASE_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`) so Render dashboard setup is clear
-  - Remove plaintext `DATABASE_URL` from tracked `.env` file (rotate credentials on Render if needed); set only in Render dashboard as an environment variable
-  - Create Render web service via dashboard: link to GitHub repo `main` branch, set `DATABASE_URL` env var, enable auto-deploy on push
-  - Set `output: 'standalone'` in `next.config.ts` for optimal builds on Render
-  - Verify `npm run build && npm start` passes locally against production database (confirms Prisma 7 adapter-pg and Apollo Server work outside dev mode)
-  - Push to `main`, confirm CI passes, confirm Render auto-deploy succeeds
-  - Hit `/api/graphql` on the Render-assigned `.onrender.com` URL to verify the GraphQL endpoint responds (no frontend needed yet)
+- [x] **Smoke-test deployment to Render** ✓
+  - `render.yaml` created with standalone build/start commands, Node 20, env var declarations
+  - `.env.example` created; `DATABASE_URL` set only in Render dashboard (never committed)
+  - `output: 'standalone'` set in `next.config.ts`; start command: `node .next/standalone/server.js`
+  - Auto-deploy configured to **After CI Checks Pass**
+  - Build and deploy confirmed successful; `/api/graphql` endpoint live at `https://crashmap.onrender.com/api/graphql`
 - [ ] Install shadcn/ui components needed for the UI:
   - `npx shadcn-ui@latest add button select checkbox toggle-group sheet dialog badge popover calendar`
+- [ ] Install map dependencies: `react-map-gl`, `mapbox-gl`
+- [ ] Replace `app/page.tsx` with a full-viewport root layout container (`100dvh`, relative positioning)
+- [ ] Build `MapContainer` component: `react-map-gl` map filling 100% of its container, Mapbox token from env var, no data layers yet
+- [ ] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
+- [ ] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
+- [ ] Build `SummaryBar` component: persistent bar with placeholder crash count and empty filter badge area, visible on all screen sizes
+- [ ] Wire `map.resize()` to sidebar and overlay open/close transitions
+- [ ] Smoke test responsive layout at mobile (<768px) and desktop (≥768px) breakpoints
+
+#### Milestone: Interactive map with filters
+
 - [ ] Build interactive map component with Mapbox GL JS (`react-map-gl`):
   - GeoJSON source built from `Latitude`/`Longitude` fields
   - Circle layer with severity-based color/opacity gradient (see Section 4 for palette)
@@ -257,12 +265,6 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - Severity multi-select: Death, Serious, Minor (None/Unknown opt-in)
 - [ ] Load filter options on app init via `filterOptions` GraphQL query
 - [ ] Connect filters to GraphQL query variables
-- [ ] Implement mobile-first responsive layout (see Section 4 — UI Layout):
-  - Full-viewport map as the base layer on all screen sizes
-  - Mobile: floating overlay controls + full-screen filter overlay (toggle open/close)
-  - Desktop: toggleable right sidebar (~320px) for filters
-  - Persistent summary bar showing crash count and active filter chips
-  - Call `map.resize()` on sidebar open/close transitions
 
 **Deliverables:** Working app with map and filters
 

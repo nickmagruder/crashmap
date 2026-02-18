@@ -152,6 +152,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Created `lib/graphql/__tests__/helpers.test.ts` — 37 unit tests for severity mapping and filter-to-where-clause logic
 - Created `lib/graphql/__tests__/queries.test.ts` — 19 integration tests using Apollo Server `executeOperation` with mocked Prisma (crashes, crash, crashStats, filterOptions queries + Crash field resolver edge cases)
 
+### 2026-02-18 — Render Smoke-Test Deploy Confirmed
+
+- Created Render web service linked to GitHub `main` branch; auto-deploy set to **After CI Checks Pass**
+- `/api/graphql` GraphQL endpoint verified live on Render; full stack confirmed working in production
+
 ### 2026-02-17 — Render Deployment Setup
 
 - Added `render.yaml` declaring web service build/start commands, Node 20, and env var declarations (`DATABASE_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_APP_URL`)
