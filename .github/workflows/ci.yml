@@ -3,8 +3,41 @@ name: CI
 'on':
   push:
     branches: ['**']
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
 
 jobs:
+  check-issue-assigned:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check linked issue has assignee
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || '';
+            const issueRefs = [...body.matchAll(/(?:closes?|fixes?|resolves?)\s+#(\d+)/gi)];
+
+            if (issueRefs.length === 0) {
+              core.setFailed('PR must reference an issue (e.g., "Closes #123").');
+              return;
+            }
+
+            for (const [, num] of issueRefs) {
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(num),
+              });
+
+              if (!issue.assignees || issue.assignees.length === 0) {
+                core.setFailed(`Issue #${num} must have at least one assignee before this PR can be merged.`);
+                return;
+              }
+            }
+
+            core.info('All referenced issues have assignees.');
+
   check:
     runs-on: ubuntu-latest
 
