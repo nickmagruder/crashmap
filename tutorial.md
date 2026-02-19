@@ -2672,6 +2672,8 @@ This re-stages all tracked files under the new rule. After running `git add --re
 
 The key diagnostic clue: CI (running on Linux) only failed on the one file with a genuine issue. The 38-file local failure was purely a Windows environment artifact.
 
+//TODO: add section for "Style crash circles by severity and zoom" from previous PR
+
 ---
 
 _This tutorial is a work in progress. More steps will be added as the project progresses._

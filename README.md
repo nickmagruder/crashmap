@@ -45,6 +45,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Style crash circles by severity and zoom
+
+- Replace fixed circle styling with severity-aware appearance and zoom-scaled sizes.
+- Circle color and opacity now use 'match' on the feature's severity (Death, Major Injury, Minor Injury, None) to provide a clear visual hierarchy
+- Circle-radius interpolates with zoom and severity to keep markers legible at different scales.
+- A fallback value is present for unknown severities and stroke width is set to 0.
+
 ### 2026-02-19 — Line Ending Normalization
 
 - Added `.gitattributes` enforcing LF line endings on all platforms, fixing Prettier `format:check` failures on Windows caused by `git core.autocrlf=true` converting LF → CRLF on checkout
