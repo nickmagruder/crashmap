@@ -2596,7 +2596,6 @@ In `components/map/MapContainer.tsx`, convert `<Map />` to a parent element:
 
 ```tsx
 import { CrashLayer } from './CrashLayer'
-
 ;<Map ref={ref} /* ...other props... */>
   <CrashLayer />
 </Map>
