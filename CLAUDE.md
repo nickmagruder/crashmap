@@ -273,21 +273,21 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 #### Milestone: Interactive map with filters
 
-- [ ] Build interactive map component with Mapbox GL JS (`react-map-gl`):
-  - GeoJSON source built from `Latitude`/`Longitude` fields
-  - Circle layer with severity-based color/opacity gradient (see Section 4 for palette)
-  - Stroke color differentiation for bicyclist vs. pedestrian mode
-  - None/Unknown injuries hidden by default via Mapbox layer filter
-  - Heatmap layer for density visualization at low zoom levels
-  - Built-in clustering with `cluster: true` on the GeoJSON source
-  - Popup/tooltip on click showing crash details (date, severity, mode, location, age group)
-- [ ] Implement filter panel (see Section 4 for full spec):
-  - Date Range: year quick-select buttons (most recent 4 years) + custom date range picker
-  - State → County → City cascading dropdowns (powered by `filter_metadata` view)
-  - Mode toggle: Bicyclist / Pedestrian / All
-  - Severity multi-select: Death, Serious, Minor (None/Unknown opt-in)
+- [x] Add GeoJSON data layer — fetch crashes via GraphQL and render as a basic circle layer on the map using `Latitude`/`Longitude` fields
+- [ ] Add severity-based circle styling — color, opacity, and size gradient per injury bucket (Death → Major → Minor → None) using Mapbox `interpolate` expressions; sizes scale with zoom
+- [ ] Add mode stroke differentiation — stroke color distinguishes bicyclists (blue `#1565C0`) vs. pedestrians (purple `#4A148C`); stroke width scales with zoom
+- [ ] Hide None/Unknown injuries by default — Mapbox layer filter excludes the None bucket on initial load
+- [ ] Add crash detail popup — click a circle to show a tooltip with date, severity, mode, location, and age group
+- [ ] Add clustering — enable `cluster: true` on the GeoJSON source; cluster circles collapse at low zoom with count labels
+- [ ] Add heatmap layer — density heatmap visible at low zoom levels, hidden as zoom increases
+- [ ] Add filter state context — React Context with state + dispatch for all filters (mode, severity, date range, geo); no UI yet, just the shared state layer all filter components will consume
+- [ ] Add mode toggle filter — `ToggleGroup` in sidebar/overlay for Bicyclist / Pedestrian / All; wired to filter context
+- [ ] Add severity multi-select filter — `Checkbox` + `Label` for Death, Major, Minor; None/Unknown opt-in toggle; wired to filter context
+- [ ] Add date range quick-select — four year buttons (most recent 4 years) that set the date filter in context
+- [ ] Add date range custom picker — `Popover` + `Calendar` for arbitrary start/end date selection; shares the same date filter state as quick-select buttons
 - [ ] Load filter options on app init via `filterOptions` GraphQL query
-- [ ] Connect filters to GraphQL query variables
+- [ ] Add geographic cascading dropdowns — State → County → City `Select` components populated from `filterOptions` query data; each level resets when parent changes; wired to filter context
+- [ ] Connect filters to GraphQL query variables — pass filter context state into `crashes` / `crashStats` query variables so map and summary bar update on filter change
 
 **Deliverables:** Working app with map and filters
 
