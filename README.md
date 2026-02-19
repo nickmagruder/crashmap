@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.4.0
+**Version:** 0.4.1
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,6 +44,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
+
+### 2026-02-19 — Crash Detail Popup
+
+- Clicking a crash circle opens a Mapbox `Popup` with date, time, injury type (raw `MostSevereInjuryType` value), mode, city/county, involved persons, and collision report number
+- Report number links to the WSP crash report portal (`wrecr.wsp.wa.gov/wrecr/order`); opens in a new tab
+- Added `injuryType` field to GraphQL schema (`typeDefs.ts`, `resolvers.ts`, generated types) returning the raw `MostSevereInjuryType` value; severity bucket is still used for the color dot
+- Added `interactiveLayerIds` to `Map` component to enable feature-level click events; clicking empty space closes the popup
+- Used `useMap` hook in `CrashLayer` to attach `mouseenter`/`mouseleave` cursor-pointer events on the circle layer
+- Added `time`, `involvedPersons`, `city`, `county`, `injuryType` to `GET_CRASHES` query and GeoJSON feature properties
 
 ### 2026-02-19 — Style crash circles by severity and zoom
 

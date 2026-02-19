@@ -44,6 +44,7 @@ export type Crash = {
   county?: Maybe<Scalars['String']['output']>
   crashDate?: Maybe<Scalars['String']['output']>
   date?: Maybe<Scalars['String']['output']>
+  injuryType?: Maybe<Scalars['String']['output']>
   involvedPersons?: Maybe<Scalars['Int']['output']>
   jurisdiction?: Maybe<Scalars['String']['output']>
   latitude?: Maybe<Scalars['Float']['output']>
@@ -289,6 +290,7 @@ export type CrashResolvers<
   county?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   crashDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   date?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
+  injuryType?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   involvedPersons?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>
   jurisdiction?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   latitude?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>

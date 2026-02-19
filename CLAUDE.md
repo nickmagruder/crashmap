@@ -276,11 +276,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 - [x] Add GeoJSON data layer — fetch crashes via GraphQL and render as a basic circle layer on the map using `Latitude`/`Longitude` fields
 - [x] Add severity-based circle styling — color, opacity, and size gradient per injury bucket (Death → Major → Minor → None) using Mapbox `interpolate` expressions; sizes scale with zoom
-- [ ] Add mode stroke differentiation — stroke color distinguishes bicyclists (blue `#1565C0`) vs. pedestrians (purple `#4A148C`); stroke width scales with zoom
-- [ ] Hide None/Unknown injuries by default — Mapbox layer filter excludes the None bucket on initial load
-- [ ] Add crash detail popup — click a circle to show a tooltip with date, severity, mode, location, and age group
-- [ ] Add clustering — enable `cluster: true` on the GeoJSON source; cluster circles collapse at low zoom with count labels
-- [ ] Add heatmap layer — density heatmap visible at low zoom levels, hidden as zoom increases
+- [x] Add crash detail popup — click a circle to show a tooltip with date, time, injury type, mode, location, involved persons, and collision report number (linked to WSP crash report portal)
 - [ ] Add filter state context — React Context with state + dispatch for all filters (mode, severity, date range, geo); no UI yet, just the shared state layer all filter components will consume
 - [ ] Add mode toggle filter — `ToggleGroup` in sidebar/overlay for Bicyclist / Pedestrian / All; wired to filter context
 - [ ] Add severity multi-select filter — `Checkbox` + `Label` for Death, Major, Minor; None/Unknown opt-in toggle; wired to filter context
@@ -289,6 +285,9 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [ ] Load filter options on app init via `filterOptions` GraphQL query
 - [ ] Add geographic cascading dropdowns — State → County → City `Select` components populated from `filterOptions` query data; each level resets when parent changes; wired to filter context
 - [ ] Connect filters to GraphQL query variables — pass filter context state into `crashes` / `crashStats` query variables so map and summary bar update on filter change
+- [ ] Add Key to filters panel/sheet
+- [ ] Optional: Add clustering — enable `cluster: true` on the GeoJSON source; cluster circles collapse at low zoom with count labels
+- [ ] Optional: Add heatmap layer — density heatmap visible at low zoom levels, hidden as zoom increases
 
 **Deliverables:** Working app with map and filters
 
@@ -296,7 +295,6 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 #### Milestone: Production-ready public application
 
-- [ ] Import Domain into Render settings
 - [ ] Add rate limiting middleware for public API abuse prevention
 - [ ] Configure CSP headers and CORS in Next.js
 - [ ] Add loading states, error boundaries, skeleton screens
@@ -317,6 +315,8 @@ Severity-based visual hierarchy using color, opacity, AND size:
 ### Phase 5: Iteration (Ongoing)
 
 - [ ] Gather user feedback and iterate on visualizations
+- [ ] Hide None/Unknown injuries by default — Mapbox layer filter excludes the None bucket on initial load
+- [ ] Add mode stroke differentiation — stroke color distinguishes bicyclists (blue `#1565C0`) vs. pedestrians (purple `#4A148C`); stroke width scales with zoom
 - [ ] **Stretch goal: Dashboard charts** (see Section 11) — add Recharts/D3 visualizations for severity, mode, time trends, and geographic breakdowns
 - [ ] **Stretch goal: Mobile bottom sheet** (see Section 11) — upgrade from full-screen overlay using `vaul` or `react-modal-sheet` for peek/half/full snap states
 - [ ] Add comparative analysis features (year-over-year, area comparison)

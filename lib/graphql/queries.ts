@@ -8,8 +8,13 @@ export const GET_CRASHES = gql`
         latitude
         longitude
         severity
+        injuryType
         mode
         crashDate
+        time
+        involvedPersons
+        city
+        county
       }
       totalCount
     }

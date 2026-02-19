@@ -1,7 +1,8 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useQuery } from '@apollo/client/react'
-import { Source, Layer } from 'react-map-gl/mapbox'
+import { Source, Layer, useMap } from 'react-map-gl/mapbox'
 import type { LayerProps } from 'react-map-gl/mapbox'
 import type { FeatureCollection, Point } from 'geojson'
 import { GET_CRASHES } from '@/lib/graphql/queries'
@@ -11,8 +12,13 @@ type CrashItem = {
   latitude: number | null
   longitude: number | null
   severity: string | null
+  injuryType: string | null
   mode: string | null
   crashDate: string | null
+  time: string | null
+  involvedPersons: number | null
+  city: string | null
+  county: string | null
 }
 
 type GetCrashesQuery = {
@@ -107,9 +113,26 @@ const circleLayer: LayerProps = {
 }
 
 export function CrashLayer() {
+  const { current: map } = useMap()
   const { data, error } = useQuery<GetCrashesQuery>(GET_CRASHES, {
     variables: { limit: 5000 },
   })
+
+  useEffect(() => {
+    if (!map) return
+    const enter = () => {
+      map.getCanvas().style.cursor = 'pointer'
+    }
+    const leave = () => {
+      map.getCanvas().style.cursor = ''
+    }
+    map.on('mouseenter', 'crashes-circles', enter)
+    map.on('mouseleave', 'crashes-circles', leave)
+    return () => {
+      map.off('mouseenter', 'crashes-circles', enter)
+      map.off('mouseleave', 'crashes-circles', leave)
+    }
+  }, [map])
 
   if (error) {
     console.error('CrashLayer query error:', error)
@@ -134,8 +157,13 @@ export function CrashLayer() {
         properties: {
           colliRptNum: crash.colliRptNum,
           severity: crash.severity,
+          injuryType: crash.injuryType,
           mode: crash.mode,
           crashDate: crash.crashDate,
+          time: crash.time,
+          involvedPersons: crash.involvedPersons,
+          city: crash.city,
+          county: crash.county,
         },
       })),
   }

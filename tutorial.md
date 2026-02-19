@@ -2672,7 +2672,239 @@ This re-stages all tracked files under the new rule. After running `git add --re
 
 The key diagnostic clue: CI (running on Linux) only failed on the one file with a genuine issue. The 38-file local failure was purely a Windows environment artifact.
 
-//TODO: add section for "Style crash circles by severity and zoom" from previous PR
+---
+
+## Step N: Style Crash Circles by Severity and Zoom
+
+Raw circles on the map are a good start, but all crashes looking identical makes the data hard to read at a glance. The goal is a visual hierarchy where the most serious crashes — fatalities — are the most prominent, and severity diminishes visually as you move down the scale.
+
+The design spec:
+
+| Severity     | Color                  | Opacity | Base Size |
+| ------------ | ---------------------- | ------- | --------- |
+| Death        | `#B71C1C` (dark red)   | 85%     | 8px       |
+| Major Injury | `#F57C00` (orange)     | 70%     | 7px       |
+| Minor Injury | `#FDD835` (yellow)     | 55%     | 6px       |
+| None         | `#C5E1A5` (pale green) | 50%     | 5px       |
+
+All sizes also scale with zoom so circles stay legible at the state overview level and don't overwhelm the map at street level.
+
+### Mapbox Expression Language
+
+Mapbox GL JS uses a declarative **expression language** to drive data-driven styling. Instead of writing JavaScript that loops over features, you write JSON expressions that Mapbox evaluates per-feature on the GPU. This is what makes it fast enough to style thousands of circles in real time.
+
+Two expressions you'll use constantly:
+
+- **`match`** — a switch statement on a feature property value
+- **`interpolate`** — smoothly scale a value (like radius) as another value (like zoom level) changes
+
+### Color and Opacity with `match`
+
+The `circle-color` and `circle-opacity` paint properties use `match` to select a value based on the `severity` property stored in each GeoJSON feature:
+
+```ts
+'circle-color': [
+  'match',
+  ['get', 'severity'],     // read the 'severity' property from the feature
+  'Death',        '#B71C1C',
+  'Major Injury', '#F57C00',
+  'Minor Injury', '#FDD835',
+  'None',         '#C5E1A5',
+  '#999999',               // fallback for any unrecognized value
+],
+
+'circle-opacity': [
+  'match',
+  ['get', 'severity'],
+  'Death',        0.85,
+  'Major Injury', 0.70,
+  'Minor Injury', 0.55,
+  'None',         0.50,
+  0.65,
+],
+```
+
+`['get', 'severity']` reads the feature's `severity` property. The pairs after it are `value, result` pairs, with the last argument as the fallback. This is the same structure as a JavaScript `switch` statement.
+
+### Zoom-Scaled Radius with `interpolate` + `match`
+
+The radius needs two levels of variation: it scales with zoom level (so circles grow as you zoom in), and it varies by severity at each zoom level (so Death is always larger than Minor Injury). This requires **nesting** a `match` expression inside an `interpolate`:
+
+```ts
+'circle-radius': [
+  'interpolate', ['linear'], ['zoom'],
+  5,  ['match', ['get', 'severity'], 'Death', 3,  'Major Injury', 2.5, 'Minor Injury', 2,  'None', 1.5, 2 ],
+  10, ['match', ['get', 'severity'], 'Death', 8,  'Major Injury', 7,   'Minor Injury', 6,  'None', 5,   6 ],
+  15, ['match', ['get', 'severity'], 'Death', 14, 'Major Injury', 12,  'Minor Injury', 10, 'None', 8,   10],
+],
+```
+
+Reading this: at zoom 5, a Death circle has radius 3px; at zoom 10, it has radius 8px; at zoom 15, it has radius 14px. Between those zoom levels, Mapbox linearly interpolates the radius automatically. Minor Injury circles follow the same curve but at smaller sizes.
+
+### Putting It Together in `CrashLayer`
+
+The layer style is defined as a `LayerProps` object (typed from `react-map-gl/mapbox` — not `CircleLayer`, which doesn't exist there) and spread onto the `<Layer>` component:
+
+```ts
+import type { LayerProps } from 'react-map-gl/mapbox'
+
+const circleLayer: LayerProps = {
+  id: 'crashes-circles',
+  type: 'circle',
+  paint: {
+    'circle-color': [ /* match expression */ ],
+    'circle-opacity': [ /* match expression */ ],
+    'circle-radius': [ /* interpolate + match */ ],
+    'circle-stroke-width': 0,
+  },
+}
+
+// In the component:
+<Source id="crashes" type="geojson" data={geojson}>
+  <Layer {...circleLayer} />
+</Source>
+```
+
+The `severity` value in each feature's `properties` is the bucketed display value set during GeoJSON construction — the same `rawToBucket()` mapping applied by the GraphQL resolver, stored in the feature so Mapbox can use it without another round-trip.
+
+### Result
+
+At the state zoom level, only the largest clusters of dark-red Death circles are visible. Zooming into a city reveals the full spectrum — red fatalities, orange serious injuries, yellow minor ones. The visual hierarchy lets users immediately identify hotspots without reading any labels.
+
+---
+
+## Step N: Crash Detail Popup
+
+With circles on the map, the next step is making them interactive. Clicking a circle should open a popup showing details about that crash: date, time, injury type, mode, location, and a link to the official collision report.
+
+### How react-map-gl Layer Clicks Work
+
+Mapbox GL JS handles click events at the map level, not the element level. To get feature data when a circle is clicked, you need to tell react-map-gl which layers are "interactive" (i.e., participate in click hit-testing):
+
+```tsx
+<Map
+  interactiveLayerIds={['crashes-circles']}
+  onClick={handleMapClick}
+>
+```
+
+With `interactiveLayerIds` set, the `onClick` handler receives an event whose `features` array contains any GeoJSON features from those layers that were under the click point. Without it, `e.features` is always empty.
+
+### Adding a Raw Injury Type Field to GraphQL
+
+The existing `severity` field returns a display bucket ("Death", "Major Injury", etc.). For the popup, we also want the raw `MostSevereInjuryType` value from the database ("Dead at Scene", "Suspected Serious Injury", etc.).
+
+Add a new field to the schema:
+
+```ts
+// lib/graphql/typeDefs.ts
+severity: String    # Mapped display bucket
+injuryType: String  # Raw MostSevereInjuryType value from the database
+```
+
+Add the resolver — it's a simple passthrough:
+
+```ts
+// lib/graphql/resolvers.ts
+severity: (parent) => rawToBucket(parent.mostSevereInjuryType),
+injuryType: (parent) => parent.mostSevereInjuryType,
+```
+
+Because the generated types file is committed (and not regenerated automatically in this workflow), also add the new field manually to `lib/graphql/__generated__/types.ts` in both the `Crash` output type and the `CrashResolvers` type.
+
+The popup uses `injuryType` as the label and `severity` for the color dot — giving users the precise raw value while still providing the visual color hierarchy.
+
+### Cursor Management with `useMap`
+
+The cursor should change to a pointer when hovering a crash circle. Since cursor state lives on the Mapbox canvas element, not a DOM element, you attach raw Mapbox event listeners via the `useMap` hook inside `CrashLayer`:
+
+```ts
+import { useMap } from 'react-map-gl/mapbox'
+
+const { current: map } = useMap()
+
+useEffect(() => {
+  if (!map) return
+  const enter = () => {
+    map.getCanvas().style.cursor = 'pointer'
+  }
+  const leave = () => {
+    map.getCanvas().style.cursor = ''
+  }
+  map.on('mouseenter', 'crashes-circles', enter)
+  map.on('mouseleave', 'crashes-circles', leave)
+  return () => {
+    map.off('mouseenter', 'crashes-circles', enter)
+    map.off('mouseleave', 'crashes-circles', leave)
+  }
+}, [map])
+```
+
+`useMap().current` gives you the `MapRef` of the enclosing `<Map>` component. The cleanup function is important — it removes the listeners when the component unmounts or when `map` changes.
+
+### The Click Handler
+
+In `MapContainer`, hold the selected crash in state:
+
+```ts
+const [selectedCrash, setSelectedCrash] = useState<SelectedCrash | null>(null)
+
+const handleMapClick = useCallback((e) => {
+  const feature = e.features?.[0]
+  if (!feature || feature.geometry.type !== 'Point') {
+    setSelectedCrash(null) // clicking empty space closes the popup
+    return
+  }
+  const coords = feature.geometry.coordinates as [number, number]
+  const p = feature.properties as Record<string, string | number | null>
+  setSelectedCrash({
+    longitude: coords[0],
+    latitude: coords[1],
+    // ... all properties stored in the GeoJSON feature
+  })
+}, [])
+```
+
+GeoJSON feature `properties` are serialized to plain values when stored — you need to cast them back to the correct types. Note that `involvedPersons` is a number in the Prisma model but comes back as `string | number | null` from GeoJSON properties depending on the runtime.
+
+### Rendering the Popup
+
+`Popup` from `react-map-gl/mapbox` is rendered as a child of `<Map>` — it knows to position itself in map coordinates:
+
+```tsx
+{
+  selectedCrash && (
+    <Popup
+      longitude={selectedCrash.longitude}
+      latitude={selectedCrash.latitude}
+      onClose={() => setSelectedCrash(null)}
+      closeButton
+      closeOnClick={false}
+      anchor="bottom"
+      offset={10}
+      maxWidth="220px"
+    >
+      <div style={{ padding: '6px 4px', fontSize: '13px', lineHeight: '1.6' }}>
+        {/* date, time, injury type with color dot, mode, location, etc. */}
+      </div>
+    </Popup>
+  )
+}
+```
+
+`anchor="bottom"` positions the popup above the clicked point with the tail pointing down. `closeOnClick={false}` prevents accidental closure when the user clicks inside the popup (e.g., to copy the report number or follow the link). Clicking anywhere else on the map triggers `onClick` with an empty `features` array, which closes the popup via the handler.
+
+### Pitfall: `MapLayerMouseEvent` Is Not Exported from `react-map-gl/mapbox`
+
+You might reach for `MapLayerMouseEvent` to type the `onClick` handler — it's the correct type (it has the `features` property). But it's not exported from `react-map-gl/mapbox`, and importing it from `mapbox-gl` directly marks it as deprecated.
+
+The working solution is to derive the type from the component's own prop signature:
+
+```ts
+(e: Parameters<NonNullable<React.ComponentProps<typeof Map>['onClick']>>[0]) => {
+```
+
+This is verbose but accurate and doesn't require any external type imports.
 
 ---
 
