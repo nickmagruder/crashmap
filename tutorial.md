@@ -2466,4 +2466,189 @@ npm test        # all tests still pass
 
 ---
 
+---
+
+## Phase 3 (continued): Interactive Map with Data
+
+### Step: Add the GeoJSON Data Layer
+
+At this point the map renders a beautiful basemap but no crash data. The next step fetches crashes from our GraphQL API and renders them as circle points on the map.
+
+#### Architecture decision: load all data client-side
+
+Rather than re-querying the API whenever a filter changes, we load up to 5,000 crashes once as a GeoJSON FeatureCollection and let Mapbox filter them with layer expressions. This keeps the map snappy and avoids round-trips for every interaction.
+
+#### Step 1: Create the query document
+
+Create `lib/graphql/queries.ts`. Only request the fields needed for map rendering:
+
+```ts
+import { gql } from '@apollo/client'
+
+export const GET_CRASHES = gql`
+  query GetCrashes($filter: CrashFilter, $limit: Int) {
+    crashes(filter: $filter, limit: $limit) {
+      items {
+        colliRptNum
+        latitude
+        longitude
+        severity
+        mode
+        crashDate
+      }
+      totalCount
+    }
+  }
+`
+```
+
+We store `severity`, `mode`, and `crashDate` as GeoJSON feature properties even though we don't use them for styling yet — they'll be available for Mapbox layer expressions in the next steps.
+
+#### Step 2: Create the CrashLayer component
+
+Create `components/map/CrashLayer.tsx`:
+
+```tsx
+'use client'
+
+import { useQuery } from '@apollo/client/react'
+import { Source, Layer } from 'react-map-gl/mapbox'
+import type { LayerProps } from 'react-map-gl/mapbox'
+import type { FeatureCollection, Point } from 'geojson'
+import { GET_CRASHES } from '@/lib/graphql/queries'
+
+type CrashItem = {
+  colliRptNum: string
+  latitude: number | null
+  longitude: number | null
+  severity: string | null
+  mode: string | null
+  crashDate: string | null
+}
+
+type GetCrashesQuery = {
+  crashes: {
+    items: CrashItem[]
+    totalCount: number
+  }
+}
+
+const circleLayer: LayerProps = {
+  id: 'crashes-circles',
+  type: 'circle',
+  paint: {
+    'circle-radius': 5,
+    'circle-color': '#B71C1C',
+    'circle-opacity': 0.7,
+  },
+}
+
+export function CrashLayer() {
+  const { data, error } = useQuery<GetCrashesQuery>(GET_CRASHES, {
+    variables: { limit: 5000 },
+  })
+
+  if (error) {
+    console.error('CrashLayer query error:', error)
+    return null
+  }
+
+  if (!data) return null
+
+  const geojson: FeatureCollection<Point> = {
+    type: 'FeatureCollection',
+    features: data.crashes.items
+      .filter((crash) => crash.latitude != null && crash.longitude != null)
+      .map((crash) => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [crash.longitude!, crash.latitude!],
+        },
+        properties: {
+          colliRptNum: crash.colliRptNum,
+          severity: crash.severity,
+          mode: crash.mode,
+          crashDate: crash.crashDate,
+        },
+      })),
+  }
+
+  return (
+    <Source id="crashes" type="geojson" data={geojson}>
+      <Layer {...circleLayer} />
+    </Source>
+  )
+}
+```
+
+Key points:
+
+- **`useQuery` import**: In Apollo Client v4, React hooks moved to `@apollo/client/react` (not `@apollo/client`).
+- **`LayerProps` type**: `react-map-gl/mapbox` does not export `CircleLayer`. The correct type for what `<Layer>` accepts is `LayerProps` from `react-map-gl/mapbox`.
+- **GeoJSON coordinates are `[longitude, latitude]`** (x, y — longitude-first per the GeoJSON spec).
+- **Non-null assertions after filter**: TypeScript doesn't narrow after `.filter()`, so use `crash.longitude!` / `crash.latitude!` since the filter already guarantees non-null.
+- **Loading state**: Return `null` while `data` is undefined — the map stays visible with no spinner needed.
+
+#### Step 3: Render CrashLayer inside the Map
+
+In `components/map/MapContainer.tsx`, convert `<Map />` to a parent element:
+
+```tsx
+import { CrashLayer } from './CrashLayer'
+;<Map ref={ref} /* ...other props... */>
+  <CrashLayer />
+</Map>
+```
+
+Children of react-map-gl's `<Map>` are rendered into the map's canvas context — this is the correct pattern for `Source` and `Layer` components.
+
+#### Pitfall: Apollo Client v4 import changes
+
+Apollo Client v4 moved several exports to dedicated subpaths (breaking change from v3):
+
+| Export                          | v3               | v4                           |
+| ------------------------------- | ---------------- | ---------------------------- |
+| `useQuery`, `useMutation`, etc. | `@apollo/client` | `@apollo/client/react`       |
+| `HttpLink`                      | `@apollo/client` | `@apollo/client/link/http`   |
+| `gql`                           | `@apollo/client` | `@apollo/client` (unchanged) |
+
+Update all files importing `HttpLink` (`lib/apollo-client.ts`, `app/apollo-provider.tsx`) and all React hook imports.
+
+#### Pitfall: PrismaPg requires a PoolConfig, not a raw string
+
+The `@prisma/adapter-pg` constructor signature is `pg.Pool | pg.PoolConfig` — it never accepted a raw string. Passing one causes:
+
+```text
+Cannot use 'in' operator to search for 'password' in postgresql://...
+```
+
+This happens because `pg` internally does `'password' in config` to detect a config object, and `in` throws on a primitive string.
+
+```ts
+// Wrong:
+new PrismaPg(process.env.DATABASE_URL!)
+
+// Correct:
+new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+```
+
+#### Pitfall: Render external connections require SSL
+
+After fixing the adapter, the next error was `User was denied access on the database (not available)`. The `(not available)` is Prisma's signal that it couldn't establish a connection at all. The cause: Render's PostgreSQL requires SSL for all external connections (local dev). Internal connections (Render app to Render DB) work without it, which is why the deployed app was unaffected.
+
+Fix: append `?sslmode=require` to `DATABASE_URL` in your local `.env`:
+
+```text
+DATABASE_URL="postgresql://user:password@host/database?sslmode=require"
+```
+
+Restart `npm run dev` after changing `.env` — Next.js does not hot-reload environment variable changes.
+
+#### Verify Loading
+
+Open the map after `npm run dev`. Thousands of dark-red dots should appear across Washington state. Check the Network tab: one `POST /api/graphql` for `GetCrashes` on page load.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

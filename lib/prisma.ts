@@ -5,7 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
 function createPrismaClient() {
-  const adapter = new PrismaPg(process.env.DATABASE_URL!)
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
   return new PrismaClient({ adapter })
 }
 
