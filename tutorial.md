@@ -312,7 +312,9 @@ With the database updated, pull the new schema into Prisma:
 npx prisma db pull
 ```
 
-Prisma doesn't have a native PostGIS geometry type, so the `geom` column is represented as `Unsupported("geometry")`. Prisma did pick up the GIST index (`type: Gist`), so after the pull, the schema will look like this:
+Prisma doesn't have a native PostGIS geometry type, so the `geom` column is represented as `Unsupported("geometry")`. That's expected — you can still read it using `prisma.$queryRaw` for raw spatial queries. Importantly, Prisma did pick up the GIST index (`type: Gist`), so the full index set is reflected in the schema.
+
+The new field and indexes in `prisma/schema.prisma`:
 
 ```prisma
 geom Unsupported("geometry")? @default(dbgenerated("st_setsrid(st_makepoint(\"Longitude\", \"Latitude\"), 4326)"))
@@ -321,23 +323,6 @@ geom Unsupported("geometry")? @default(dbgenerated("st_setsrid(st_makepoint(\"Lo
 @@index([cityName], map: "idx_crashdata_city")
 @@index([countyName], map: "idx_crashdata_county")
 @@index([geom], map: "idx_crashdata_geom", type: Gist)
-@@index([mode], map: "idx_crashdata_mode")
-@@index([mostSevereInjuryType], map: "idx_crashdata_severity")
-@@index([stateOrProvinceName], map: "idx_crashdata_state")
-```
-
-> **Important — remove `geom` from `schema.prisma` before continuing.**
->
-> Prisma 7's new WASM-based `prisma-client` generator has a bug: when an `Unsupported` type field is present in a model, it throws a `PrismaClientValidationError` with an empty message body on _any_ `findMany()` or `findUnique()` call — even if the query never touches that field. This error surfaces at the Prisma query-construction stage, before any database query is sent (you'll see ~10ms response times, confirming nothing reached PostgreSQL).
->
-> The fix is to remove the `geom` field and its index from `schema.prisma`. The column and GiST index remain intact in the database — PostgreSQL still maintains the generated geometry and the spatial index. If you need spatial queries in the future, use `prisma.$queryRaw` to access `geom` directly.
-
-After removing those two lines, `schema.prisma` should have only these indexes:
-
-```prisma
-@@index([crashDate], map: "idx_crashdata_date")
-@@index([cityName], map: "idx_crashdata_city")
-@@index([countyName], map: "idx_crashdata_county")
 @@index([mode], map: "idx_crashdata_mode")
 @@index([mostSevereInjuryType], map: "idx_crashdata_severity")
 @@index([stateOrProvinceName], map: "idx_crashdata_state")

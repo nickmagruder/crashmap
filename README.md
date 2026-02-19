@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.4.1
+**Version:** 0.4.0
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,12 +44,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
-
-### 2026-02-19 — Prisma Schema Fix: Remove geom from schema.prisma
-
-- Removed `geom Unsupported("geometry")` field and its `@@index([geom], type: Gist)` from `prisma/schema.prisma`
-- Root cause: Prisma 7's new WASM-based `prisma-client` generator throws a `PrismaClientValidationError` (empty message body) on any `findMany()` call when an `Unsupported` type field is present in the model — diagnosed from the 10ms response time confirming the error occurred before any database query
-- The `geom` column and GiST index remain intact in the database; raw spatial queries via `prisma.$queryRaw` are unaffected
 
 ### 2026-02-19 — Line Ending Normalization
 
