@@ -45,6 +45,10 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Line Ending Normalization
+
+- Added `.gitattributes` enforcing LF line endings on all platforms, fixing Prettier `format:check` failures on Windows caused by `git core.autocrlf=true` converting LF → CRLF on checkout
+
 ### 2026-02-19 — GeoJSON Data Layer
 
 - Created `lib/graphql/queries.ts` with `GET_CRASHES` Apollo query document

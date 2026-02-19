@@ -2649,6 +2649,29 @@ Restart `npm run dev` after changing `.env` — Next.js does not hot-reload envi
 
 Open the map after `npm run dev`. Thousands of dark-red dots should appear across Washington state. Check the Network tab: one `POST /api/graphql` for `GetCrashes` on page load.
 
+#### Pitfall: Windows CRLF Line Endings Break Prettier CI
+
+If you develop on Windows with `git config core.autocrlf=true` (the Windows default), git converts LF → CRLF on checkout. Prettier's default `endOfLine` is `lf`, so running `npm run format:check` locally will report every file as misformatted — even though they're clean in the repository and CI passes.
+
+This became visible when a `tutorial.md` edit was flagged in CI with a real formatting issue. After fixing that one file, the local `format:check` showed 38 files failing — all false positives from CRLF.
+
+The fix is a `.gitattributes` file at the root of the repository:
+
+```gitattributes
+# Force LF line endings for all text files on all platforms
+* text=auto eol=lf
+```
+
+With `eol=lf` set, git normalizes to LF in the index and applies the rule consistently across all platforms, overriding `core.autocrlf`. After adding the file:
+
+```bash
+git add --renormalize .
+```
+
+This re-stages all tracked files under the new rule. After running `git add --renormalize .`, git correctly treats the CRLF working-tree files as equivalent to the LF versions in HEAD, so `git status` shows only `.gitattributes` as a new file — not a diff of every source file.
+
+The key diagnostic clue: CI (running on Linux) only failed on the one file with a genuine issue. The 38-file local failure was purely a Windows environment artifact.
+
 ---
 
 _This tutorial is a work in progress. More steps will be added as the project progresses._

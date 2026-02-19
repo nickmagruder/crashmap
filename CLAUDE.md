@@ -211,6 +211,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Validate data: check for null `Latitude`/`Longitude` values, confirm `Mode` values are consistent ("Bicyclist"/"Pedestrian"), check `MostSevereInjuryType` distinct values
 - [x] Create the `filter_metadata` and `available_years` materialized views (see Section 4) for cascading dropdown population
 - [x] Set up ESLint, Prettier, Husky pre-commit hooks
+- [x] Add `.gitattributes` enforcing `eol=lf` — fixes Prettier `format:check` failures on Windows (`core.autocrlf=true` converts LF→CRLF on checkout; `eol=lf` overrides it)
 
 **Deliverables:** Running Next.js app, populated database, Prisma client generated
 
