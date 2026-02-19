@@ -25,11 +25,13 @@ model CrashData {
   longitude            Float?                   @map("Longitude")
   mode                 String?                  @map("Mode")
   crashDate            DateTime?                @map("CrashDate") @db.Date
+  geom                 Unsupported("geometry")? @default(dbgenerated("st_setsrid(st_makepoint(\"Longitude\", \"Latitude\"), 4326)"))
 
   @@index([crashDate], map: "idx_crashdata_date")
   @@index([cityName], map: "idx_crashdata_city")
   @@index([countyName], map: "idx_crashdata_county")
-@@index([mode], map: "idx_crashdata_mode")
+  @@index([geom], map: "idx_crashdata_geom", type: Gist)
+  @@index([mode], map: "idx_crashdata_mode")
   @@index([mostSevereInjuryType], map: "idx_crashdata_severity")
   @@index([stateOrProvinceName], map: "idx_crashdata_state")
   @@map("crashdata")
