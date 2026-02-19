@@ -176,7 +176,9 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - `lib/graphql/__tests__/helpers.test.ts` — Unit tests for `rawToBucket`, `bucketsToRawValues`, `buildWhere`
 - `lib/graphql/__tests__/queries.test.ts` — Integration tests for all GraphQL queries via `executeOperation` with mocked Prisma
 - `vitest.config.ts` — Vitest configuration with `@` path alias
-- `components/layout/AppShell.tsx` — `'use client'` layout orchestrator; owns sidebar/overlay open state, renders SummaryBar
+- `components/theme-provider.tsx` — thin `NextThemesProvider` wrapper (`attribute="class"`, `defaultTheme="system"`, `enableSystem`)
+- `components/ui/theme-toggle.tsx` — Sun/Moon icon button; CSS-driven icon swap via `dark:hidden`/`hidden dark:block`
+- `components/layout/AppShell.tsx` — `'use client'` layout orchestrator; owns sidebar/overlay open state, renders SummaryBar and ThemeToggle
 - `components/map/MapContainer.tsx` — `'use client'` Mapbox map filling parent container
 - `components/sidebar/Sidebar.tsx` — Sheet-based right panel (desktop, ≥768px)
 - `components/overlay/FilterOverlay.tsx` — Full-screen filter overlay (mobile, <768px)
@@ -259,7 +261,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
   - Import `Map` from `react-map-gl/mapbox` (required for mapbox-gl >= 3.5)
   - `mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
   - `initialViewState`: longitude -120.5, latitude 47.5, zoom 7 (Washington state)
-  - `mapStyle="mapbox://styles/mapbox/light-v11"` — clean light basemap for data visualization
+  - `mapStyle` — dynamic: `light-v11` or `dark-v11` based on `useTheme()` from `next-themes`
   - `style={{ width: '100%', height: '100%' }}` — fills parent; parent owns `100dvh`
 - [x] Build desktop `Sidebar` component: fixed right panel (~320px) using shadcn/ui `Sheet`, toggled by a header button, hidden on mobile
 - [x] Build mobile `FilterOverlay` component: full-screen overlay with open/close toggle button, visible only on mobile (<768px)
@@ -267,7 +269,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Wire `map.resize()` to sidebar and overlay open/close transitions
 - [x] Smoke test responsive layout at mobile (<768px) and desktop (≥768px) breakpoints
 - [x] Set default zoom for mobile to the city of Seattle
-- [ ] Import Domain into Render settings
+- [x] Light/Dark mode — `next-themes` provider, Sun/Moon toggle button, dynamic Mapbox style swap (`light-v11` ↔ `dark-v11`)
 
 #### Milestone: Interactive map with filters
 
@@ -293,6 +295,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 #### Milestone: Production-ready public application
 
+- [ ] Import Domain into Render settings
 - [ ] Add rate limiting middleware for public API abuse prevention
 - [ ] Configure CSP headers and CORS in Next.js
 - [ ] Add loading states, error boundaries, skeleton screens
@@ -315,7 +318,6 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [ ] Gather user feedback and iterate on visualizations
 - [ ] **Stretch goal: Dashboard charts** (see Section 11) — add Recharts/D3 visualizations for severity, mode, time trends, and geographic breakdowns
 - [ ] **Stretch goal: Mobile bottom sheet** (see Section 11) — upgrade from full-screen overlay using `vaul` or `react-modal-sheet` for peek/half/full snap states
-- [ ] **Stretch goal: Light/Dark mode** (see Section 11) — swap Mapbox basemap, chart themes, and UI via CSS custom properties
 - [ ] Add comparative analysis features (year-over-year, area comparison)
 - [ ] Add an admin interface for uploading new crash data (protected with NextAuth.js)
 - [ ] Monitor query performance — add materialized views only if aggregation queries become slow

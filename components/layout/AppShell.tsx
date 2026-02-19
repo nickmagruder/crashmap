@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/sidebar/Sidebar'
 import { FilterOverlay } from '@/components/overlay/FilterOverlay'
 import { SummaryBar } from '@/components/summary/SummaryBar'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -25,28 +26,31 @@ export function AppShell() {
     <>
       <MapContainer ref={mapRef} />
 
-      {/* Sidebar toggle button — desktop only */}
-      <div className="absolute top-4 right-4 z-10 hidden md:block">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open filters"
-        >
-          <SlidersHorizontal className="size-4" />
-        </Button>
-      </div>
-
-      {/* Filter overlay toggle button — mobile only */}
-      <div className="absolute top-4 right-4 z-10 md:hidden">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setOverlayOpen(true)}
-          aria-label="Open filters"
-        >
-          <SlidersHorizontal className="size-4" />
-        </Button>
+      {/* Top-right controls */}
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <ThemeToggle />
+        {/* Sidebar toggle — desktop only */}
+        <div className="hidden md:block">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open filters"
+          >
+            <SlidersHorizontal className="size-4" />
+          </Button>
+        </div>
+        {/* Filter overlay toggle — mobile only */}
+        <div className="md:hidden">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setOverlayOpen(true)}
+            aria-label="Open filters"
+          >
+            <SlidersHorizontal className="size-4" />
+          </Button>
+        </div>
       </div>
 
       <SummaryBar />

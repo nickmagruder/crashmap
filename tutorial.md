@@ -2278,4 +2278,192 @@ npm run dev
 
 Open the sidebar on desktop. As the Sheet slides in, the map should fill the remaining space correctly with no visual glitch. Close the sidebar — same behavior. On mobile, open and close the filter overlay; the map canvas should remain correctly sized throughout.
 
+### Step N+14: Light/Dark Mode with next-themes
+
+With the map, sidebar, and mobile overlay all functional, the final Phase 3 UI milestone is **light/dark mode**. The shadcn/ui setup already includes a complete `.dark` CSS variable set in `globals.css` — we just need a library to toggle the `dark` class on `<html>` and persist the choice across page loads.
+
+#### Why `next-themes`?
+
+[next-themes](https://github.com/pacocoursey/next-themes) is the standard library for theme management in Next.js. It:
+
+- Adds or removes the `dark` class on `<html>` based on the active theme
+- Reads the OS system preference (`prefers-color-scheme`) for the default on first visit
+- Persists the user's explicit choice in `localStorage` so it survives page refreshes
+- Prevents the flash of wrong theme on load (via an inline script injected before React hydrates)
+- Ships a `useTheme()` hook that any Client Component can call to read or set the active theme
+
+#### Install next-themes
+
+```bash
+npm install next-themes
+```
+
+#### Create `components/theme-provider.tsx`
+
+A thin wrapper that lets us pass `ThemeProvider` props cleanly from the server layout:
+
+```tsx
+'use client'
+
+import * as React from 'react'
+import { ThemeProvider as NextThemesProvider } from 'next-themes'
+
+export function ThemeProvider({
+  children,
+  ...props
+}: React.ComponentProps<typeof NextThemesProvider>) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+}
+```
+
+This is the standard shadcn/ui pattern for integrating `next-themes` — the wrapper lives in `components/` rather than importing `NextThemesProvider` directly in the layout.
+
+#### Update `app/layout.tsx`
+
+Two changes: add `suppressHydrationWarning` to `<html>`, and wrap the app in `ThemeProvider`:
+
+```tsx
+import { ThemeProvider } from '@/components/theme-provider'
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ApolloProvider>{children}</ApolloProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+`suppressHydrationWarning` is required because `next-themes` adds a `class` attribute to `<html>` before React hydrates, which would otherwise trigger a hydration mismatch warning.
+
+`attribute="class"` tells `next-themes` to apply themes by toggling CSS classes (specifically, the `dark` class that `globals.css` already expects).
+
+`defaultTheme="system"` and `enableSystem` mean first-time visitors get whatever their OS prefers. `disableTransitionOnChange` prevents all CSS transitions from running during the theme switch, which avoids a jarring animated color change across the whole UI.
+
+#### Create `components/ui/theme-toggle.tsx`
+
+A minimal icon button using `useTheme()`. The icon swap is handled via CSS classes (`dark:hidden` / `hidden dark:block`) rather than JavaScript, so there's no flash on load:
+
+```tsx
+'use client'
+
+import { Moon, Sun } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { Button } from '@/components/ui/button'
+
+export function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      aria-label="Toggle theme"
+    >
+      <Sun className="size-4 dark:hidden" />
+      <Moon className="size-4 hidden dark:block" />
+    </Button>
+  )
+}
+```
+
+`resolvedTheme` is the actual applied theme — `'light'` or `'dark'` — never `undefined` after the client hydrates. Using it in `onClick` means the button always toggles to the opposite of whatever is currently applied, even when `defaultTheme="system"`.
+
+The Sun icon has `dark:hidden` (visible in light mode, hidden in dark). The Moon icon has `hidden dark:block` (hidden in light mode, visible in dark). Both classes are driven by the `dark` class on `<html>`, so the icons swap instantly with the theme — no React re-render needed for the icon itself.
+
+#### Wire `ThemeToggle` into `AppShell`
+
+The toggle button sits in the same top-right controls area as the filter button. Rather than two separate positioned divs (one for desktop, one for mobile), consolidate both filter buttons into a single `flex gap-2` container alongside the theme toggle:
+
+```tsx
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+
+// inside AppShell return:
+;<div className="absolute top-4 right-4 z-10 flex gap-2">
+  <ThemeToggle />
+  {/* Sidebar toggle — desktop only */}
+  <div className="hidden md:block">
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={() => setSidebarOpen(true)}
+      aria-label="Open filters"
+    >
+      <SlidersHorizontal className="size-4" />
+    </Button>
+  </div>
+  {/* Filter overlay toggle — mobile only */}
+  <div className="md:hidden">
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={() => setOverlayOpen(true)}
+      aria-label="Open filters"
+    >
+      <SlidersHorizontal className="size-4" />
+    </Button>
+  </div>
+</div>
+```
+
+The `ThemeToggle` is always visible — no breakpoint class. The filter buttons remain conditionally shown per breakpoint, just now inside a shared flex container.
+
+#### Swap the Mapbox basemap dynamically
+
+The map uses `mapStyle` to pick a Mapbox style URL. For dark mode we swap `light-v11` for `dark-v11`. `useTheme()` works in any Client Component, and `MapContainer` is already `'use client'`:
+
+```tsx
+import { useTheme } from 'next-themes'
+
+export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const initialViewState = isMobile ? MOBILE_VIEW : DESKTOP_VIEW
+
+  const { resolvedTheme } = useTheme()
+  const mapStyle =
+    resolvedTheme === 'dark'
+      ? 'mapbox://styles/mapbox/dark-v11'
+      : 'mapbox://styles/mapbox/light-v11'
+
+  return (
+    <Map
+      ref={ref}
+      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+      initialViewState={initialViewState}
+      style={{ width: '100%', height: '100%' }}
+      mapStyle={mapStyle}
+    />
+  )
+})
+```
+
+`mapStyle` is a controlled prop on react-map-gl's `<Map>` — passing a new value triggers a smooth Mapbox style transition. When `resolvedTheme` is `undefined` (pre-hydration instant), the ternary defaults to `light-v11`, so there's no broken map on first render.
+
+#### Verify dark mode
+
+```bash
+npm run dev
+```
+
+1. The Moon icon appears in the top-right next to the filter button
+2. Clicking the toggle switches the map to dark (`dark-v11`), updates all shadcn UI colors (buttons, sidebar, overlay, summary bar), and shows the Sun icon
+3. Reloading the page preserves the chosen theme
+4. On first visit with OS dark mode preference, the app opens in dark mode automatically
+
+```bash
+npm run build   # no type errors
+npm test        # all tests still pass
+```
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

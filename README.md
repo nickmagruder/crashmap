@@ -1,7 +1,6 @@
 # CrashMap
 
-**Version:** 0.3.7
-**Version:** 0.3.7
+**Version:** 0.3.8
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -77,6 +76,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Created `components/map/MapContainer.tsx` — `'use client'` component with `react-map-gl/mapbox`, centered on Washington state, `light-v11` basemap
 - Replaced `app/page.tsx` boilerplate with a full-viewport layout (`100dvh`, `position: relative` for future overlays)
 - Added `devIndicators: false` to `next.config.ts` to suppress the Next.js dev-mode badge overlapping the map
+
+### 2026-02-19 — Light/Dark Mode
+
+- Installed `next-themes` for system-preference detection and localStorage persistence
+- Created `components/theme-provider.tsx` — thin `NextThemesProvider` wrapper (`attribute="class"`, `defaultTheme="system"`, `enableSystem`)
+- Created `components/ui/theme-toggle.tsx` — Sun/Moon icon button using `useTheme()`; CSS-driven icon swap avoids hydration flash
+- Updated `app/layout.tsx` — added `ThemeProvider` wrapper and `suppressHydrationWarning` on `<html>`
+- Updated `components/map/MapContainer.tsx` — swaps Mapbox basemap between `light-v11` and `dark-v11` based on `resolvedTheme`
+- Updated `components/layout/AppShell.tsx` — consolidated top-right controls into a single flex container with ThemeToggle alongside filter button
 
 ### 2026-02-18 — Mapbox Token Configured
 
