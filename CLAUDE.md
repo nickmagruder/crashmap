@@ -275,7 +275,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 #### Milestone: Interactive map with filters
 
 - [x] Add GeoJSON data layer — fetch crashes via GraphQL and render as a basic circle layer on the map using `Latitude`/`Longitude` fields
-- [ ] Add severity-based circle styling — color, opacity, and size gradient per injury bucket (Death → Major → Minor → None) using Mapbox `interpolate` expressions; sizes scale with zoom
+- [x] Add severity-based circle styling — color, opacity, and size gradient per injury bucket (Death → Major → Minor → None) using Mapbox `interpolate` expressions; sizes scale with zoom
 - [ ] Add mode stroke differentiation — stroke color distinguishes bicyclists (blue `#1565C0`) vs. pedestrians (purple `#4A148C`); stroke width scales with zoom
 - [ ] Hide None/Unknown injuries by default — Mapbox layer filter excludes the None bucket on initial load
 - [ ] Add crash detail popup — click a circle to show a tooltip with date, severity, mode, location, and age group
