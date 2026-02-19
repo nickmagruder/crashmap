@@ -59,7 +59,7 @@ CREATE TABLE public.crashdata
   - **None**: "No Apparent Injury", "Unknown"
   - Additional values may appear as more data sources are imported — always map dynamically
 - Prisma model uses `@map` decorators to map camelCase TS properties to the existing PascalCase column names
-- A generated PostGIS `geom` column exists for spatial queries (see ARCHITECTURE.md Section 3)
+- A generated PostGIS `geom` column exists in the database for spatial queries, but it is **not** in `schema.prisma` — Prisma 7's WASM compiler throws a `PrismaClientValidationError` on any `findMany()` when an `Unsupported` type field is present; use `prisma.$queryRaw` for raw spatial queries
 
 ### Prisma 7 Client Notes
 
@@ -206,7 +206,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Initialize Tailwind CSS and shadcn/ui (`npx shadcn-ui@latest init`)
 - [x] Set up PostgreSQL with PostGIS extension on your existing Render database (`CREATE EXTENSION postgis;`)
 - [x] Run `prisma db pull` to introspect your existing `crashdata` table, then refine the generated Prisma model (see Section 3 for the recommended model)
-- [x] Add the generated `geom` geometry column and create recommended indexes (see Section 3)
+- [x] Add the generated `geom` geometry column and create recommended indexes (see Section 3) — column exists in DB; removed from `schema.prisma` (Prisma 7 WASM compiler bug with `Unsupported` type)
 - [x] Verify `FullDate` column format (ISO 8601: `2025-02-23T00:00:00`) and add `CrashDate` DATE column with index
 - [x] Validate data: check for null `Latitude`/`Longitude` values, confirm `Mode` values are consistent ("Bicyclist"/"Pedestrian"), check `MostSevereInjuryType` distinct values
 - [x] Create the `filter_metadata` and `available_years` materialized views (see Section 4) for cascading dropdown population
