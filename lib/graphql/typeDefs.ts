@@ -12,6 +12,7 @@ export const typeDefs = `#graphql
     crashDate: String   # Proper DATE column (YYYY-MM-DD)
     time: String
     severity: String    # Mapped display bucket: Death | Major Injury | Minor Injury | None
+    injuryType: String  # Raw MostSevereInjuryType value from the database
     ageGroup: String
     involvedPersons: Int
     latitude: Float

@@ -164,6 +164,7 @@ export const resolvers: Resolvers = {
     date: (parent) => parent.fullDate,
     time: (parent) => parent.fullTime,
     severity: (parent) => rawToBucket(parent.mostSevereInjuryType),
+    injuryType: (parent) => parent.mostSevereInjuryType,
     // crashDate is a Date object from Prisma — format as YYYY-MM-DD string.
     crashDate: (parent) => parent.crashDate?.toISOString().slice(0, 10) ?? null,
   },
