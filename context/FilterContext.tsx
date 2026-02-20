@@ -21,6 +21,7 @@ export interface FilterState {
   county: string | null
   city: string | null
   totalCount: number | null // populated by CrashLayer after query
+  isLoading: boolean // true while a filter-triggered refetch is in flight
 }
 
 export type FilterAction =
@@ -34,6 +35,7 @@ export type FilterAction =
   | { type: 'SET_COUNTY'; payload: string | null }
   | { type: 'SET_CITY'; payload: string | null }
   | { type: 'SET_TOTAL_COUNT'; payload: number | null }
+  | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'RESET' }
 
 // Matches the CrashFilter GraphQL input shape (used as Apollo query variables).
@@ -62,6 +64,7 @@ const initialState: FilterState = {
   county: null,
   city: null,
   totalCount: null,
+  isLoading: false,
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
@@ -97,6 +100,8 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
       return { ...filterState, city: action.payload }
     case 'SET_TOTAL_COUNT':
       return { ...filterState, totalCount: action.payload }
+    case 'SET_LOADING':
+      return { ...filterState, isLoading: action.payload }
     case 'RESET':
       return initialState
     default:

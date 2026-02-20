@@ -3597,4 +3597,163 @@ Both surfaces read from the same `FilterContext`, so selecting a state in the mo
 
 ---
 
+## Phase 4 (continued): Connecting Filters to the GraphQL Query
+
+### How the Wiring Already Works
+
+At this point you might wonder: do we need to do anything special to make filter changes trigger a new network request? The answer is no — Apollo Client handles it automatically.
+
+`CrashLayer` reads from `FilterContext` and passes the converted filter to `useQuery`:
+
+```tsx
+const { filterState, dispatch } = useFilterContext()
+const { data, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
+  variables: { filter: toCrashFilter(filterState), limit: 5000 },
+})
+```
+
+Apollo Client performs a **deep equality comparison** on `variables` before each render. When `filterState` changes (a user picks a new year, county, severity, etc.), `toCrashFilter(filterState)` produces a different object, Apollo detects the change, and a new network request fires automatically. The old data stays visible on the map while the new request is in flight — no blank-flash.
+
+The `totalCount` returned by the query feeds back into context via `SET_TOTAL_COUNT`, which `AppShell` reads to populate `SummaryBar`. All of this was already wired when `FilterContext` was first introduced. The only thing genuinely missing was **loading feedback** — the user had no way to know a refetch was happening.
+
+### Adding a Loading Indicator
+
+When filter variables change, Apollo's default behavior (`notifyOnNetworkStatusChange: false`) is to silently re-execute the query and update `data` when it completes. The component doesn't re-render during the wait. This means the SummaryBar shows the old count right up until the new result arrives — fine for fast responses, but confusing on slow connections.
+
+We fix this by opting into network status notifications:
+
+```tsx
+// CrashLayer.tsx
+const { data, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
+  variables: { filter: toCrashFilter(filterState), limit: 5000 },
+  notifyOnNetworkStatusChange: true, // re-render during refetch
+})
+```
+
+With this flag, `loading` is `true` not just on the initial fetch but also while re-fetching after a variable change. Crucially, `data` is **not cleared** — it continues to hold the previous result, so the map keeps showing the old crash points while the new request is in flight.
+
+We surface this state through context by adding `isLoading` alongside `totalCount`:
+
+```ts
+// FilterContext.tsx — additions
+
+export interface FilterState {
+  // ...existing fields...
+  isLoading: boolean   // true while a filter-triggered refetch is in flight
+}
+
+export type FilterAction =
+  // ...existing actions...
+  | { type: 'SET_LOADING'; payload: boolean }
+
+// In the reducer:
+case 'SET_LOADING':
+  return { ...filterState, isLoading: action.payload }
+
+// In initialState:
+isLoading: false,
+```
+
+Back in `CrashLayer`, two `useEffect` hooks manage the state:
+
+```tsx
+// Signal loading state to context
+useEffect(() => {
+  dispatch({ type: 'SET_LOADING', payload: loading })
+}, [loading, dispatch])
+
+// Only update the count when loading is done (keeps old count visible during refetch)
+useEffect(() => {
+  if (!loading) {
+    dispatch({ type: 'SET_TOTAL_COUNT', payload: data?.crashes.totalCount ?? null })
+  }
+}, [data, loading, dispatch])
+```
+
+The second `useEffect` is a small but important detail: if we dispatched `SET_TOTAL_COUNT` unconditionally, the count would stay correct (Apollo keeps old `data` during refetch). But making it conditional on `!loading` is explicit and makes the intent clear.
+
+Finally, `SummaryBar` accepts an `isLoading` prop and pulses the count text:
+
+```tsx
+// SummaryBar.tsx
+interface SummaryBarProps {
+  crashCount?: number | null
+  activeFilters?: string[]
+  isLoading?: boolean
+}
+
+export function SummaryBar({
+  crashCount = null,
+  activeFilters = [],
+  isLoading = false,
+}: SummaryBarProps) {
+  const countLabel = crashCount === null ? '—' : crashCount.toLocaleString()
+  return (
+    <div className="...">
+      <span
+        className={`text-sm font-medium tabular-nums whitespace-nowrap${isLoading ? ' animate-pulse' : ''}`}
+      >
+        {countLabel} crashes
+      </span>
+      {/* ...badges... */}
+    </div>
+  )
+}
+```
+
+`animate-pulse` is a Tailwind utility that fades the element's opacity in and out. It's subtle enough not to be distracting but immediately communicates "something is loading". `AppShell` passes `filterState.isLoading` to `SummaryBar`.
+
+---
+
+## Debugging: Browser Extension Hydration Mismatches
+
+### The Problem
+
+After the loading state was added, the browser console showed this warning:
+
+> A tree hydrated but some attributes of the server rendered HTML didn't match the client properties.
+
+The diff pointed at every Lucide icon SVG element:
+
+```text
+- data-darkreader-inline-stroke=""
+- style={{--darkreader-inline-stroke:"currentColor"}}
+```
+
+The `-` lines are attributes present in the browser DOM that React's virtual DOM doesn't know about. These are injected by the **Dark Reader** browser extension, which modifies SVG `stroke` attributes on every `<svg>` element it finds — including Lucide icons.
+
+The sequence of events:
+
+1. Server renders the HTML (no Dark Reader attributes)
+2. Browser receives the HTML and renders it
+3. Dark Reader extension immediately mutates SVG elements, adding `data-darkreader-inline-stroke` and an inline CSS variable
+4. React hydrates — its virtual DOM doesn't match the extension-modified DOM → warning
+
+This is not a bug in the app's code. It would only appear for users with Dark Reader installed.
+
+### The Fix
+
+`suppressHydrationWarning` tells React to skip attribute comparison on a specific element:
+
+```tsx
+// ThemeToggle.tsx
+<Sun className="size-4 dark:hidden" suppressHydrationWarning />
+<Moon className="size-4 hidden dark:block" suppressHydrationWarning />
+
+// AppShell.tsx
+<SlidersHorizontal className="size-4" suppressHydrationWarning />
+```
+
+Lucide React icon components forward all unknown props to the underlying `<svg>` element, so `suppressHydrationWarning` lands exactly where it needs to.
+
+A few things to know about `suppressHydrationWarning`:
+
+- It only applies **one level deep** — it suppresses mismatches on the element it's set on, not its children. Fortunately, Dark Reader targets the `<svg>` element itself (not its child `<path>` elements), so one level is sufficient.
+- It does not affect rendering at all — it's a React-only hint that is stripped from the final DOM.
+- It is the [React-recommended](https://react.dev/reference/react-dom/client/hydrateRoot#suppressing-unavoidable-hydration-mismatch-errors) escape hatch for third-party code that modifies the DOM before hydration.
+
+Apply it to any Lucide icon (or other SVG-rendering component) that shows up in the hydration warning trace.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

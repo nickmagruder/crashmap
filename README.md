@@ -45,6 +45,17 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Filter Loading State
+
+- Added `isLoading: boolean` and `SET_LOADING` action to `FilterContext` (alongside the existing `totalCount` query-state field)
+- Added `notifyOnNetworkStatusChange: true` to the `GET_CRASHES` `useQuery` call in `CrashLayer`; dispatches `SET_LOADING` on each `loading` change so the SummaryBar reflects in-flight refetches
+- `SET_TOTAL_COUNT` now only dispatches when `loading` is false, keeping the previous count visible during a filter-change refetch instead of flashing `—`
+- `SummaryBar` accepts an `isLoading` prop; applies `animate-pulse` to the crash-count text while a refetch is in flight
+
+### 2026-02-19 — Dark Reader Hydration Mismatch Fix
+
+- Added `suppressHydrationWarning` to `<Sun>` and `<Moon>` in `ThemeToggle` and to both `<SlidersHorizontal>` instances in `AppShell` — the Dark Reader browser extension injects `data-darkreader-inline-stroke` attributes into SVG elements after SSR but before React hydration, causing a harmless but noisy mismatch warning; Lucide icons forward all props to the underlying `<svg>`, so the suppression lands on the correct element
+
 ### 2026-02-19 — Geographic Cascading Dropdowns (State → County → City)
 
 - Added `GET_FILTER_OPTIONS`, `GET_COUNTIES`, and `GET_CITIES` query documents to `lib/graphql/queries.ts`, each with exported TypeScript result types
