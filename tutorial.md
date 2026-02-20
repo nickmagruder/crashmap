@@ -3924,4 +3924,136 @@ labels.push(filterState.mode ? filterState.mode + 's' : 'All modes')
 
 This means the SummaryBar always shows exactly one mode badge — either `All modes`, `Bicyclists`, or `Pedestrians` — making the current filter state unambiguous at a glance.
 
+---
+
+## Phase 5: Security & Polish
+
+### Step 1: Rate Limiting the GraphQL API
+
+CrashMap's `/api/graphql` endpoint is public and unauthenticated. Without rate limiting, a single bad actor could hammer the endpoint and exhaust the database connection pool or inflate Render compute usage. The fix is a simple per-IP request cap applied before Apollo Server ever sees the request.
+
+#### Why not `middleware.ts`?
+
+Next.js has a `middleware.ts` file that intercepts requests before they reach route handlers — the natural home for cross-cutting concerns like rate limiting. However, Next.js compiles `middleware.ts` against the **Edge Runtime** API surface, even when deploying to a standalone Node.js server like Render. The Edge Runtime does not guarantee that module-level variables (like a `Map`) persist across requests. Using a module-level `Map` in middleware risks silent data loss — the store could be re-initialized on any request.
+
+The route handler (`app/api/graphql/route.ts`) runs in the **Node.js runtime** on Render's long-lived server process. Module-level variables in a route handler module are loaded once and persist for the lifetime of the server process — the same guarantee that makes the Prisma singleton pattern reliable. This is where the rate limit store should live.
+
+#### The algorithm: sliding window log
+
+The sliding window log algorithm is the right choice for this scale:
+
+- Track a list of timestamps (one per request) per IP address
+- On each new request, discard timestamps older than the window (60 seconds), then check if the remaining count is at or above the limit
+- If yes → reject with 429; if no → record the new timestamp and allow through
+
+Unlike a fixed-window counter (which can allow 2× the limit across a window boundary), the sliding window is accurate. And unlike a token bucket, it needs no background "refill" process — the pruning happens inline.
+
+#### Implementation
+
+Create `lib/rate-limit.ts`:
+
+```ts
+import { NextRequest } from 'next/server'
+
+const WINDOW_MS = 60_000
+const MAX_REQUESTS = 60
+
+const store = new Map<string, number[]>()
+
+// Periodic sweep: evict IPs with no activity in the last window
+setInterval(
+  () => {
+    const cutoff = Date.now() - WINDOW_MS
+    for (const [ip, timestamps] of store) {
+      const fresh = timestamps.filter((t) => t >= cutoff)
+      if (fresh.length === 0) store.delete(ip)
+      else store.set(ip, fresh)
+    }
+  },
+  5 * 60 * 1000
+)
+
+export function getClientIp(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  if (forwarded) return forwarded.split(',')[0].trim()
+  return '127.0.0.1'
+}
+
+export function checkRateLimit(ip: string): Response | null {
+  const now = Date.now()
+  const cutoff = now - WINDOW_MS
+  const timestamps = (store.get(ip) ?? []).filter((t) => t >= cutoff)
+
+  if (timestamps.length >= MAX_REQUESTS) {
+    const retryAfter = Math.ceil((timestamps[0] + WINDOW_MS - now) / 1000)
+    return new Response(
+      JSON.stringify({
+        errors: [
+          {
+            message: 'Too many requests. Please slow down.',
+            extensions: { code: 'RATE_LIMITED' },
+          },
+        ],
+      }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(retryAfter),
+        },
+      }
+    )
+  }
+
+  timestamps.push(now)
+  store.set(ip, timestamps)
+  return null
+}
+```
+
+A few details worth explaining:
+
+**`getClientIp`** reads `x-forwarded-for` rather than a hypothetical `request.ip`. On Render, all traffic passes through a reverse proxy that appends the real client IP to `x-forwarded-for` as the leftmost value in a comma-separated list. In local development, no proxy is present, so `x-forwarded-for` is absent and the function returns the loopback address `127.0.0.1` — all local requests share one "IP," which is fine.
+
+**Memory management** has two layers. Inline pruning (the `.filter()` call) handles active IPs: every request from an IP cleans that IP's own stale timestamps before the check. The `setInterval` sweep handles abandoned IPs: after an attacker stops sending requests, their entry would linger in the `Map` forever without the sweep. The sweep runs every 5 minutes and removes any IP whose entire timestamp array has expired. At 60 timestamps per IP and 8 bytes per number, even 10,000 concurrent abusive IPs would occupy only ~5 MB — well within Render's limits.
+
+**The 429 response body** uses the GraphQL `errors` array format so Apollo Client can parse it without crashing. The `RATE_LIMITED` extension code follows the Apollo error spec and gives client-side code a stable string to check if they want to show a specific message.
+
+#### Wire it into the route handler
+
+In `app/api/graphql/route.ts`, import the helpers and add a check before each handler delegation:
+
+```ts
+import { getClientIp, checkRateLimit } from '@/lib/rate-limit'
+
+export async function GET(request: NextRequest) {
+  const limited = checkRateLimit(getClientIp(request))
+  if (limited) return limited
+  return handler(request)
+}
+
+export async function POST(request: NextRequest) {
+  const limited = checkRateLimit(getClientIp(request))
+  if (limited) return limited
+  return handler(request)
+}
+```
+
+The Apollo Server setup (`depthLimitRule`, `server`, `handler`) is completely untouched. Existing Vitest tests call `server.executeOperation()` directly and bypass the HTTP layer, so they continue to pass with no changes.
+
+#### Testing
+
+Fire 61 rapid POST requests against the endpoint:
+
+```bash
+for i in $(seq 1 65); do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://crashmap.onrender.com/api/graphql \
+    -H 'Content-Type: application/json' \
+    -d '{"query":"{ filterOptions { modes } }"}')
+  echo "Request $i: $STATUS"
+done
+```
+
+The first 60 return `200`. Request 61 onward returns `429` with a `Retry-After` header. After waiting 60 seconds, requests return `200` again.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
