@@ -285,7 +285,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 #### Milestone: Implement Filtering UI
 
 - [x] Add mode toggle filter — `ToggleGroup` in sidebar/overlay for Bicyclist / Pedestrian / All; wired to filter context
-- [ ] Add severity multi-select filter — `Checkbox` + `Label` for Death, Major, Minor; None/Unknown opt-in toggle; wired to filter context
+- [x] Add severity multi-select filter — `Checkbox` + `Label` for Death, Major, Minor; None/Unknown opt-in toggle; wired to filter context
 - [ ] Add date range quick-select — four year buttons (most recent 4 years) that set the date filter in context
 - [ ] Add date range custom picker — `Popover` + `Calendar` for arbitrary start/end date selection; shares the same date filter state as quick-select buttons
 - [ ] Load filter options on app init via `filterOptions` GraphQL query

@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.5.0
+**Version:** 0.4.3
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,6 +44,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
+
+### 2026-02-19 — Severity Multi-Select Filter
+
+- Created `components/filters/SeverityFilter.tsx` — three checkboxes for Death, Major Injury, Minor Injury (all checked by default) plus a separate opt-in "No Injury / Unknown" checkbox below a divider; each row includes a colored dot matching the corresponding Mapbox circle color
+- `toggleBucket()` builds a new `SeverityBucket[]` array and dispatches `SET_SEVERITY`; the None opt-in dispatches `TOGGLE_NO_INJURY` (handled separately in the reducer)
+- Added `SeverityFilter` to `Sidebar` and `FilterOverlay`; `toCrashFilter()` merges both `severity` and `includeNoInjury` into `effectiveSeverity` before passing to the GraphQL query
 
 ### 2026-02-19 — Mode Toggle Filter
 

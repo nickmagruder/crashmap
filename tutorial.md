@@ -3230,6 +3230,148 @@ Selecting a mode in the UI triggers this chain:
 5. PostgreSQL returns only bicyclist crashes; the map re-renders with the filtered GeoJSON
 6. `getActiveFilterLabels(filterState)` returns `["Bicyclists"]`; `SummaryBar` renders it as a badge
 
+### Step 2: Severity Filter
+
+The severity filter lets users choose which injury outcomes to show on the map. Three buckets are checked by default (Death, Major Injury, Minor Injury). A fourth — No Injury / Unknown — is hidden by default and requires an explicit opt-in, since those crashes are far less likely to be of interest to users.
+
+#### Severity State in FilterContext
+
+The context models this with two separate fields:
+
+```ts
+export interface FilterState {
+  severity: SeverityBucket[] // which buckets are active
+  includeNoInjury: boolean // opt-in for the None bucket
+}
+```
+
+The split matters because "none" has different default semantics than the other three. Keeping it as a separate boolean lets the reducer express it cleanly:
+
+```ts
+case 'SET_SEVERITY':
+  return { ...filterState, severity: action.payload }
+case 'TOGGLE_NO_INJURY':
+  return { ...filterState, includeNoInjury: !filterState.includeNoInjury }
+```
+
+And `toCrashFilter()` merges them only when building the GraphQL input:
+
+```ts
+const effectiveSeverity = [
+  ...filterState.severity,
+  ...(filterState.includeNoInjury ? ['None'] : []),
+]
+```
+
+#### Color Indicators
+
+Each checkbox row includes a small colored dot that matches the circle color on the map, giving users an immediate visual connection between the filter and what they'll see:
+
+```ts
+const SEVERITY_COLORS: Record<SeverityBucket | 'None', string> = {
+  Death: '#B71C1C',
+  'Major Injury': '#E65100',
+  'Minor Injury': '#F9A825',
+  None: '#C5E1A5',
+}
+```
+
+These are the same values defined in `CrashLayer.tsx` for the Mapbox `match` expression — if the map colors ever change, both places need updating.
+
+#### Building SeverityFilter
+
+Create `components/filters/SeverityFilter.tsx`:
+
+```tsx
+'use client'
+
+import { Checkbox } from '@/components/ui/checkbox'
+import { useFilterContext, type SeverityBucket } from '@/context/FilterContext'
+
+const SEVERITY_COLORS: Record<SeverityBucket | 'None', string> = {
+  Death: '#B71C1C',
+  'Major Injury': '#E65100',
+  'Minor Injury': '#F9A825',
+  None: '#C5E1A5',
+}
+
+const BUCKETS: SeverityBucket[] = ['Death', 'Major Injury', 'Minor Injury']
+
+export function SeverityFilter() {
+  const { filterState, dispatch } = useFilterContext()
+
+  function toggleBucket(bucket: SeverityBucket, checked: boolean) {
+    const next = checked
+      ? [...filterState.severity, bucket]
+      : filterState.severity.filter((b) => b !== bucket)
+    dispatch({ type: 'SET_SEVERITY', payload: next })
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Severity</p>
+
+      <div className="space-y-2">
+        {BUCKETS.map((bucket) => (
+          <div key={bucket} className="flex items-center gap-2">
+            <Checkbox
+              id={`severity-${bucket}`}
+              checked={filterState.severity.includes(bucket)}
+              onCheckedChange={(checked) => toggleBucket(bucket, checked === true)}
+            />
+            <span
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: SEVERITY_COLORS[bucket] }}
+              aria-hidden="true"
+            />
+            <label htmlFor={`severity-${bucket}`} className="cursor-pointer text-sm leading-none">
+              {bucket}
+            </label>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t pt-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="severity-none"
+            checked={filterState.includeNoInjury}
+            onCheckedChange={() => dispatch({ type: 'TOGGLE_NO_INJURY' })}
+          />
+          <span
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: SEVERITY_COLORS['None'] }}
+            aria-hidden="true"
+          />
+          <label htmlFor="severity-none" className="cursor-pointer text-sm leading-none">
+            No Injury / Unknown
+          </label>
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+A few design decisions worth noting:
+
+**`checked === true` guard.** The Radix `Checkbox` `onCheckedChange` callback receives `boolean | 'indeterminate'`. The `=== true` comparison handles this cleanly without a cast or conditional branch.
+
+**Toggling the array.** Because `SET_SEVERITY` replaces the whole array, the toggle logic builds the new array inline: spread-plus-bucket when checking, filter-out when unchecking. This keeps the reducer simple (no toggle-by-value case) at the cost of a tiny allocation per interaction.
+
+**Divider before None.** The `border-t pt-2` wrapper around the None checkbox creates a visual separator between the three standard buckets and the opt-in category, reinforcing that it has different default behavior.
+
+#### Wiring SeverityFilter to Both Surfaces
+
+Drop `<SeverityFilter />` below `<ModeToggle />` in both surfaces. The `space-y-6` wrapper on both containers provides consistent spacing between sections:
+
+```tsx
+<div className="space-y-6 px-4 pb-4">
+  <ModeToggle />
+  <SeverityFilter />
+</div>
+```
+
 ---
 
 _This tutorial is a work in progress. More steps will be added as the project progresses._
