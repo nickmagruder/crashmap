@@ -24,6 +24,17 @@ export interface FilterState {
   isLoading: boolean // true while a filter-triggered refetch is in flight
 }
 
+// The URL-serializable subset of FilterState (no derived fields).
+export type UrlFilterState = {
+  mode: ModeFilter
+  severity: SeverityBucket[]
+  includeNoInjury: boolean
+  dateFilter: DateFilter
+  state: string | null
+  county: string | null
+  city: string | null
+}
+
 export type FilterAction =
   | { type: 'SET_MODE'; payload: ModeFilter }
   | { type: 'SET_SEVERITY'; payload: SeverityBucket[] }
@@ -37,6 +48,7 @@ export type FilterAction =
   | { type: 'SET_TOTAL_COUNT'; payload: number | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'RESET' }
+  | { type: 'INIT_FROM_URL'; payload: UrlFilterState }
 
 // Matches the CrashFilter GraphQL input shape (used as Apollo query variables).
 export type CrashFilterInput = {
@@ -104,6 +116,17 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
       return { ...filterState, isLoading: action.payload }
     case 'RESET':
       return initialState
+    case 'INIT_FROM_URL':
+      return {
+        ...filterState,
+        mode: action.payload.mode,
+        severity: action.payload.severity,
+        includeNoInjury: action.payload.includeNoInjury,
+        dateFilter: action.payload.dateFilter,
+        state: action.payload.state,
+        county: action.payload.county,
+        city: action.payload.city,
+      }
     default:
       return filterState
   }
