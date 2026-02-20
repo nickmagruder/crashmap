@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.4.2
+**Version:** 0.5.0
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,6 +44,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
+
+### 2026-02-19 — Mode Toggle Filter
+
+- Created `components/filters/ModeToggle.tsx` — shared `ToggleGroup` component with three items: **All** / **Bicyclist** / **Pedestrian**; maps `null` (all modes) ↔ the `"all"` string for Radix ToggleGroup's value prop; ignores empty-string deselection events so exactly one item is always active
+- Added `ModeToggle` to `Sidebar` (desktop) and `FilterOverlay` (mobile), replacing the placeholder text in both; filter state is shared via `useFilterContext()` so both surfaces stay in sync
+- Dispatches `SET_MODE` to `FilterContext`; `toCrashFilter()` already maps `mode` to the GraphQL `CrashFilter` input, so the map updates automatically on selection change
 
 ### 2026-02-19 — Filter State Context
 

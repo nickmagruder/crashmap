@@ -273,13 +273,18 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Set default zoom for mobile to the city of Seattle
 - [x] Light/Dark mode — `next-themes` provider, Sun/Moon toggle button, dynamic Mapbox style swap (`light-v11` ↔ `dark-v11`)
 
-#### Milestone: Interactive map with filters
+### Phase 4: Interactive filters
+
+#### Milestone: Prepare Data and Context for Filters
 
 - [x] Add GeoJSON data layer — fetch crashes via GraphQL and render as a basic circle layer on the map using `Latitude`/`Longitude` fields
 - [x] Add severity-based circle styling — color, opacity, and size gradient per injury bucket (Death → Major → Minor → None) using Mapbox `interpolate` expressions; sizes scale with zoom
 - [x] Add crash detail popup — click a circle to show a tooltip with date, time, injury type, mode, location, involved persons, and collision report number (linked to WSP crash report portal)
 - [x] Add filter state context — React Context with state + dispatch for all filters (mode, severity, date range, geo); `CrashLayer` query and `SummaryBar` count now driven by filter state
-- [ ] Add mode toggle filter — `ToggleGroup` in sidebar/overlay for Bicyclist / Pedestrian / All; wired to filter context
+
+#### Milestone: Implement Filtering UI
+
+- [x] Add mode toggle filter — `ToggleGroup` in sidebar/overlay for Bicyclist / Pedestrian / All; wired to filter context
 - [ ] Add severity multi-select filter — `Checkbox` + `Label` for Death, Major, Minor; None/Unknown opt-in toggle; wired to filter context
 - [ ] Add date range quick-select — four year buttons (most recent 4 years) that set the date filter in context
 - [ ] Add date range custom picker — `Popover` + `Calendar` for arbitrary start/end date selection; shares the same date filter state as quick-select buttons
@@ -287,12 +292,15 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [ ] Add geographic cascading dropdowns — State → County → City `Select` components populated from `filterOptions` query data; each level resets when parent changes; wired to filter context
 - [ ] Connect filters to GraphQL query variables — pass filter context state into `crashes` / `crashStats` query variables so map and summary bar update on filter change
 - [ ] Add Key to filters panel/sheet
+
+#### Milestone: Optional UI
+
 - [ ] Optional: Add clustering — enable `cluster: true` on the GeoJSON source; cluster circles collapse at low zoom with count labels
 - [ ] Optional: Add heatmap layer — density heatmap visible at low zoom levels, hidden as zoom increases
 
 **Deliverables:** Working app with map and filters
 
-### Phase 4: Security, Polish & Deployment (Weeks TBD)
+### Phase 5: Security, Polish & Deployment (Weeks TBD)
 
 #### Milestone: Production-ready public application
 

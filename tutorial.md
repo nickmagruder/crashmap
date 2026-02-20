@@ -3092,4 +3092,144 @@ This pattern is useful any time you need theme-responsive colors inside componen
 
 ---
 
+## Phase 4: Interactive Filters
+
+With the map rendering live crash data and the filter state context in place, the next phase is building the actual filter controls. Each filter gets its own shared component in `components/filters/` so it can be dropped into both the desktop sidebar and the mobile overlay without duplicating logic.
+
+The filter controls we'll build, in order:
+
+1. **Mode toggle** — Bicyclist / Pedestrian / All
+2. **Severity checkboxes** — Death, Major Injury, Minor Injury; opt-in None/Unknown
+3. **Year quick-select** — four buttons for the most recent years
+4. **Date range picker** — custom start/end date via Calendar popover
+5. **Geographic cascading dropdowns** — State → County → City
+
+Each step in this phase follows the same pattern:
+
+- Create a `components/filters/XFilter.tsx` component that reads from and dispatches to `useFilterContext()`
+- Import and render it in both `Sidebar.tsx` and `FilterOverlay.tsx`
+- The GraphQL query in `CrashLayer` already consumes `toCrashFilter(filterState)`, so the map updates automatically
+
+### Step 1: Mode Toggle
+
+The first filter lets users narrow the map to **Bicyclists only**, **Pedestrians only**, or **All** (the default). It uses the shadcn/ui `ToggleGroup` — a group of mutually exclusive buttons built on Radix UI's `ToggleGroup.Root`.
+
+#### The FilterContext Side
+
+The filter context (created in Phase 3) already has everything we need:
+
+```ts
+// context/FilterContext.tsx
+export type ModeFilter = 'Bicyclist' | 'Pedestrian' | null  // null = All
+
+export interface FilterState {
+  mode: ModeFilter
+  // ...
+}
+
+// Reducer case:
+case 'SET_MODE':
+  return { ...filterState, mode: action.payload }
+```
+
+And `toCrashFilter()` already maps the mode to the GraphQL `CrashFilter` input:
+
+```ts
+...(filterState.mode ? { mode: filterState.mode } : {})
+```
+
+So the filter component only needs to read from and write to context — no other wiring required.
+
+#### Creating the Component
+
+Create `components/filters/ModeToggle.tsx`:
+
+```tsx
+'use client'
+
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useFilterContext, type ModeFilter } from '@/context/FilterContext'
+
+export function ModeToggle() {
+  const { filterState, dispatch } = useFilterContext()
+
+  const value = filterState.mode ?? 'all'
+
+  function handleChange(newValue: string) {
+    // Ignore deselection clicks (Radix fires "" when the active item is clicked again).
+    if (!newValue) return
+    dispatch({
+      type: 'SET_MODE',
+      payload: newValue === 'all' ? null : (newValue as ModeFilter),
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Mode</p>
+      <ToggleGroup type="single" variant="outline" value={value} onValueChange={handleChange}>
+        <ToggleGroupItem value="all" aria-label="All modes">
+          All
+        </ToggleGroupItem>
+        <ToggleGroupItem value="Bicyclist" aria-label="Bicyclists only">
+          Bicyclist
+        </ToggleGroupItem>
+        <ToggleGroupItem value="Pedestrian" aria-label="Pedestrians only">
+          Pedestrian
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  )
+}
+```
+
+A few things worth noting:
+
+**The "all" string mapping.** The filter context uses `null` to represent "show all modes", but Radix `ToggleGroup` needs a string value. We map `null` → `"all"` when reading, and `"all"` → `null` when dispatching. This keeps the context type clean (no magic strings in state) while satisfying the component's string requirement.
+
+**Ignoring deselection.** Radix `ToggleGroup` with `type="single"` fires `onValueChange("")` when the user clicks the currently-selected item — it's trying to deselect it. For a "one must always be selected" toggle group, we want to ignore that: the guard `if (!newValue) return` keeps the existing selection intact.
+
+**`variant="outline"`** renders the toggle items as outlined buttons rather than flat text. The `spacing={0}` default (from the shadcn/ui component) joins them into a connected pill group.
+
+#### Adding to Sidebar and FilterOverlay
+
+Both surfaces import and render `<ModeToggle />` in a `space-y-6` container, which will naturally stack additional filter sections below it as they're added.
+
+`components/sidebar/Sidebar.tsx`:
+
+```tsx
+import { ModeToggle } from '@/components/filters/ModeToggle'
+
+// ...
+;<div className="space-y-6 px-4 pb-4">
+  <ModeToggle />
+</div>
+```
+
+`components/overlay/FilterOverlay.tsx`:
+
+```tsx
+import { ModeToggle } from '@/components/filters/ModeToggle'
+
+// ...
+;<div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
+  <ModeToggle />
+</div>
+```
+
+Because both components call `useFilterContext()` through `ModeToggle`, they share the same underlying state. Selecting "Bicyclist" in the mobile overlay and then switching to desktop view shows "Bicyclist" already selected in the sidebar — they're the same context.
+
+#### End-to-End Flow
+
+Selecting a mode in the UI triggers this chain:
+
+1. `ModeToggle` dispatches `SET_MODE` → `FilterContext` reducer updates `filterState.mode`
+2. `toCrashFilter(filterState)` includes `{ mode: "Bicyclist" }` in the returned object
+3. `CrashLayer` passes this to the `GET_CRASHES` query variables
+4. Apollo re-executes the query; the resolver's `buildWhere()` adds `where: { mode: { equals: "Bicyclist" } }`
+5. PostgreSQL returns only bicyclist crashes; the map re-renders with the filtered GeoJSON
+6. `getActiveFilterLabels(filterState)` returns `["Bicyclists"]`; `SummaryBar` renders it as a badge
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

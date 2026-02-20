@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ModeToggle } from '@/components/filters/ModeToggle'
 
 interface FilterOverlayProps {
   isOpen: boolean
@@ -25,8 +26,8 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        <p className="text-sm text-muted-foreground">Filter controls coming soon.</p>
+      <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
+        <ModeToggle />
       </div>
     </div>
   )

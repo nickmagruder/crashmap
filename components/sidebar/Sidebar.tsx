@@ -1,4 +1,5 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { ModeToggle } from '@/components/filters/ModeToggle'
 
 interface SidebarProps {
   isOpen: boolean
@@ -12,8 +13,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <SheetHeader>
           <SheetTitle>Filters</SheetTitle>
         </SheetHeader>
-        <div className="px-4 pb-4">
-          <p className="text-sm text-muted-foreground">Filter controls coming soon.</p>
+        <div className="space-y-6 px-4 pb-4">
+          <ModeToggle />
         </div>
       </SheetContent>
     </Sheet>
