@@ -29,89 +29,57 @@ type GetCrashesQuery = {
   }
 }
 
-const circleLayer: LayerProps = {
-  id: 'crashes-circles',
+// Layers are rendered bottom-to-top: None → Minor → Major → Death
+// so higher-severity dots always appear on top of lower-severity ones.
+const noneLayer: LayerProps = {
+  id: 'crashes-none',
   type: 'circle',
+  filter: ['==', ['get', 'severity'], 'None'],
   paint: {
-    // Color by severity bucket
-    'circle-color': [
-      'match',
-      ['get', 'severity'],
-      'Death',
-      '#B71C1C',
-      'Major Injury',
-      '#F57C00',
-      'Minor Injury',
-      '#FDD835',
-      'None',
-      '#C5E1A5',
-      '#999999',
-    ],
-    // Opacity by severity bucket
-    'circle-opacity': [
-      'match',
-      ['get', 'severity'],
-      'Death',
-      0.85,
-      'Major Injury',
-      0.7,
-      'Minor Injury',
-      0.55,
-      'None',
-      0.5,
-      0.65,
-    ],
-    // Radius scales with zoom; base sizes (at zoom 10) match the severity hierarchy
-    'circle-radius': [
-      'interpolate',
-      ['linear'],
-      ['zoom'],
-      5,
-      [
-        'match',
-        ['get', 'severity'],
-        'Death',
-        3,
-        'Major Injury',
-        2.5,
-        'Minor Injury',
-        2,
-        'None',
-        1.5,
-        2,
-      ],
-      10,
-      [
-        'match',
-        ['get', 'severity'],
-        'Death',
-        8,
-        'Major Injury',
-        7,
-        'Minor Injury',
-        6,
-        'None',
-        5,
-        6,
-      ],
-      15,
-      [
-        'match',
-        ['get', 'severity'],
-        'Death',
-        14,
-        'Major Injury',
-        12,
-        'Minor Injury',
-        10,
-        'None',
-        8,
-        10,
-      ],
-    ],
+    'circle-color': '#C5E1A5',
+    'circle-opacity': 0.5,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1, 10, 5, 15, 9],
     'circle-stroke-width': 0,
   },
 }
+
+const minorLayer: LayerProps = {
+  id: 'crashes-minor',
+  type: 'circle',
+  filter: ['==', ['get', 'severity'], 'Minor Injury'],
+  paint: {
+    'circle-color': '#FDD835',
+    'circle-opacity': 0.55,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1.5, 10, 6, 15, 12],
+    'circle-stroke-width': 0,
+  },
+}
+
+const majorLayer: LayerProps = {
+  id: 'crashes-major',
+  type: 'circle',
+  filter: ['==', ['get', 'severity'], 'Major Injury'],
+  paint: {
+    'circle-color': '#F57C00',
+    'circle-opacity': 0.7,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2, 10, 7, 15, 15],
+    'circle-stroke-width': 0,
+  },
+}
+
+const deathLayer: LayerProps = {
+  id: 'crashes-death',
+  type: 'circle',
+  filter: ['==', ['get', 'severity'], 'Death'],
+  paint: {
+    'circle-color': '#B71C1C',
+    'circle-opacity': 0.85,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2.5, 10, 8, 15, 18],
+    'circle-stroke-width': 0,
+  },
+}
+
+const ALL_LAYER_IDS = ['crashes-none', 'crashes-minor', 'crashes-major', 'crashes-death']
 
 export function CrashLayer() {
   const { current: map } = useMap()
@@ -151,11 +119,15 @@ export function CrashLayer() {
     const leave = () => {
       map.getCanvas().style.cursor = ''
     }
-    map.on('mouseenter', 'crashes-circles', enter)
-    map.on('mouseleave', 'crashes-circles', leave)
+    for (const id of ALL_LAYER_IDS) {
+      map.on('mouseenter', id, enter)
+      map.on('mouseleave', id, leave)
+    }
     return () => {
-      map.off('mouseenter', 'crashes-circles', enter)
-      map.off('mouseleave', 'crashes-circles', leave)
+      for (const id of ALL_LAYER_IDS) {
+        map.off('mouseenter', id, enter)
+        map.off('mouseleave', id, leave)
+      }
     }
   }, [map])
 
@@ -239,7 +211,10 @@ export function CrashLayer() {
 
   return (
     <Source id="crashes" type="geojson" data={geojson}>
-      <Layer {...circleLayer} />
+      <Layer {...noneLayer} />
+      <Layer {...minorLayer} />
+      <Layer {...majorLayer} />
+      <Layer {...deathLayer} />
     </Source>
   )
 }
