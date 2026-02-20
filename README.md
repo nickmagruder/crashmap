@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.5.0
+**Version:** 0.5.4
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,6 +44,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
+
+### 2026-02-20 — About Panel, Pinnable Panels, and Emoji Favicon
+
+- Added `components/info/InfoPanelContent.tsx` — content for the About panel: a dedication, data description (with link to the WSDOT Crash Data Portal), a map key showing severity color legend, a data disclaimer, and a "Get Involved" list of bicycle/pedestrian safety and advocacy resources
+- Added `components/info/InfoOverlay.tsx` — mobile full-screen About overlay (mirrors `FilterOverlay`, hidden on desktop via `md:hidden`)
+- Added `components/info/InfoSidePanel.tsx` — desktop About panel with two rendering modes: Sheet (slides from left, with Pin button) and pinned div (flex column, with PinOff + Close buttons)
+- Modified `components/sidebar/Sidebar.tsx` — added pinnable mode: Sheet renders with a Pin button; pinned renders as a flex column with PinOff + Close header; `showCloseButton={false}` so the custom header owns both actions consistently
+- Refactored `components/layout/AppShell.tsx` — outer flex container so pinned panels push the map rather than overlaying it; `sidebarOpen`/`sidebarPinned`/`infoPanelOpen`/`infoPanelPinned` state; both panels default to open + pinned on desktop; `map.resize()` fires on all panel state changes; Info button added to top-left
+- Changed favicon to 💥 emoji via inline SVG data URI in `app/layout.tsx` metadata
 
 ### 2026-02-20 — CSV Data Export
 
