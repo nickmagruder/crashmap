@@ -45,6 +45,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Default Filter State (Washington, 2025, All Modes)
+
+- `initialState` in `FilterContext` now defaults to `state: 'Washington'`, `dateFilter: { type: 'year', year: 2025 }`, and `mode: null` (All modes) — the map loads focused on Washington 2025 data
+- `getActiveFilterLabels` now always emits a mode badge (`'All modes'` when null, `'Bicyclists'`/`'Pedestrians'` otherwise) so the SummaryBar always reflects the active mode selection; the existing `RESET` action returns to these same defaults
+
 ### 2026-02-19 — Auto-Zoom on Geographic Filter Change
 
 - When a State, County, or City filter is selected, the map now automatically animates to fit the bounds of matching crashes (`map.fitBounds()` with 80px padding, 800ms animation, max zoom 14)

@@ -3880,4 +3880,48 @@ If the dataset grows to hundreds of thousands of rows (and the query limit is ra
 | Geo filter cleared to null            | Effect 1 sets `zoomPendingRef = false` — Effect 2 exits immediately                          |
 | User pans away, then changes severity | Effect 1 doesn't fire (no geo change) — Effect 2 exits (flag is false)                       |
 
+---
+
+## Phase 4 (continued): Default Filter State
+
+### Starting With Focused Data
+
+When a user first opens CrashMap, presenting no crashes at all (empty map, filters cleared) is a poor experience. The application has a specific dataset — Washington state bicyclist and pedestrian crash data — so defaulting to that context makes more sense than requiring the user to select filters before anything appears.
+
+The simplest way to set startup filters is to update `initialState` in `FilterContext.tsx`:
+
+```ts
+const initialState: FilterState = {
+  mode: null, // All modes
+  severity: DEFAULT_SEVERITY, // Death, Major, Minor
+  includeNoInjury: false,
+  dateFilter: { type: 'year', year: 2025 }, // Most recent full year
+  state: 'Washington', // Dataset scope
+  county: null,
+  city: null,
+  totalCount: null,
+  isLoading: false,
+}
+```
+
+Because `RESET` dispatches `return initialState`, resetting filters also returns to this focused view rather than a blank state. This is the right behavior — "reset" means "back to the default app view," not "clear everything."
+
+The auto-zoom effect in `CrashLayer` also fires on initial load because `prevGeoRef` initializes to `{ state: null, ... }` while the initial filter state has `state: 'Washington'` — so Effect 1 sees a change, sets the pending flag, and Effect 2 zooms to Washington bounds once the first query resolves.
+
+### Always Showing the Active Mode in SummaryBar
+
+The SummaryBar displays filter badges so users know what they're looking at. Originally, no badge appeared when mode was `null` (All modes) since "All" was treated as the non-active default. But once Washington and 2025 became the default, the philosophy shifted: show the complete active filter state, not just non-default selections.
+
+The fix is a one-line change in `getActiveFilterLabels`:
+
+```ts
+// Before: badge only when a specific mode is selected
+if (filterState.mode) labels.push(filterState.mode + 's')
+
+// After: badge always, using 'All modes' as the label for null
+labels.push(filterState.mode ? filterState.mode + 's' : 'All modes')
+```
+
+This means the SummaryBar always shows exactly one mode badge — either `All modes`, `Bicyclists`, or `Pedestrians` — making the current filter state unambiguous at a glance.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
