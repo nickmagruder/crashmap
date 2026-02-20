@@ -45,6 +45,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-20 — Crash Layer Z-Ordering and Zoom Scaling
+
+- Split `CrashLayer` from a single `crashes-circles` layer into four separate Mapbox layers (`crashes-none`, `crashes-minor`, `crashes-major`, `crashes-death`) — layers render in order, so Death dots now always appear on top of Major Injury, which appear on top of Minor Injury, etc.
+- Each layer uses a Mapbox `filter` expression and static paint properties instead of nested `match` expressions
+- Exaggerated zoom-based dot sizing: smaller at state-scale (zoom 5: 1–2.5px) and larger at street-scale (zoom 15: 9–18px); mid-zoom (zoom 10) reference sizes unchanged
+- Updated `interactiveLayerIds` in `MapContainer` and cursor hover effects in `CrashLayer` to reference all four layer IDs
+
 ### 2026-02-20 — Google Street View Link
 
 - Added "Open Street View" link to the crash detail popup in `MapContainer.tsx` — appears at the bottom of the popup below a divider line and opens Google Street View centered on the crash coordinates in a new tab using the `map_action=pano&viewpoint={lat},{lng}` URL scheme

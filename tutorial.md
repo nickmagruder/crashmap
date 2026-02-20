@@ -2693,83 +2693,71 @@ All sizes also scale with zoom so circles stay legible at the state overview lev
 
 Mapbox GL JS uses a declarative **expression language** to drive data-driven styling. Instead of writing JavaScript that loops over features, you write JSON expressions that Mapbox evaluates per-feature on the GPU. This is what makes it fast enough to style thousands of circles in real time.
 
-Two expressions you'll use constantly:
+Two expressions you'll use here:
 
-- **`match`** — a switch statement on a feature property value
+- **`filter`** — a boolean expression that restricts which features a layer renders
 - **`interpolate`** — smoothly scale a value (like radius) as another value (like zoom level) changes
 
-### Color and Opacity with `match`
+### Four Layers for Correct Z-Ordering
 
-The `circle-color` and `circle-opacity` paint properties use `match` to select a value based on the `severity` property stored in each GeoJSON feature:
+A naive approach would use a single layer with `match` expressions to set color/opacity/size per severity. That works visually, but there's a problem: **Mapbox renders all features in a layer in data order** — so a None dot that happens to come after a Death dot in the GeoJSON array will paint on top of it.
 
-```ts
-'circle-color': [
-  'match',
-  ['get', 'severity'],     // read the 'severity' property from the feature
-  'Death',        '#B71C1C',
-  'Major Injury', '#F57C00',
-  'Minor Injury', '#FDD835',
-  'None',         '#C5E1A5',
-  '#999999',               // fallback for any unrecognized value
-],
+The fix is to use **four separate layers**, one per severity bucket, rendered bottom-to-top:
 
-'circle-opacity': [
-  'match',
-  ['get', 'severity'],
-  'Death',        0.85,
-  'Major Injury', 0.70,
-  'Minor Injury', 0.55,
-  'None',         0.50,
-  0.65,
-],
+```text
+crashes-none → crashes-minor → crashes-major → crashes-death
 ```
 
-`['get', 'severity']` reads the feature's `severity` property. The pairs after it are `value, result` pairs, with the last argument as the fallback. This is the same structure as a JavaScript `switch` statement.
-
-### Zoom-Scaled Radius with `interpolate` + `match`
-
-The radius needs two levels of variation: it scales with zoom level (so circles grow as you zoom in), and it varies by severity at each zoom level (so Death is always larger than Minor Injury). This requires **nesting** a `match` expression inside an `interpolate`:
-
-```ts
-'circle-radius': [
-  'interpolate', ['linear'], ['zoom'],
-  5,  ['match', ['get', 'severity'], 'Death', 3,  'Major Injury', 2.5, 'Minor Injury', 2,  'None', 1.5, 2 ],
-  10, ['match', ['get', 'severity'], 'Death', 8,  'Major Injury', 7,   'Minor Injury', 6,  'None', 5,   6 ],
-  15, ['match', ['get', 'severity'], 'Death', 14, 'Major Injury', 12,  'Minor Injury', 10, 'None', 8,   10],
-],
-```
-
-Reading this: at zoom 5, a Death circle has radius 3px; at zoom 10, it has radius 8px; at zoom 15, it has radius 14px. Between those zoom levels, Mapbox linearly interpolates the radius automatically. Minor Injury circles follow the same curve but at smaller sizes.
-
-### Putting It Together in `CrashLayer`
-
-The layer style is defined as a `LayerProps` object (typed from `react-map-gl/mapbox` — not `CircleLayer`, which doesn't exist there) and spread onto the `<Layer>` component:
+Mapbox renders layers in the order they appear in the style. Since `crashes-death` is added last, Death dots always appear on top of everything else. Each layer uses a Mapbox `filter` expression to select only its severity bucket:
 
 ```ts
 import type { LayerProps } from 'react-map-gl/mapbox'
 
-const circleLayer: LayerProps = {
-  id: 'crashes-circles',
+const deathLayer: LayerProps = {
+  id: 'crashes-death',
   type: 'circle',
+  filter: ['==', ['get', 'severity'], 'Death'],
   paint: {
-    'circle-color': [ /* match expression */ ],
-    'circle-opacity': [ /* match expression */ ],
-    'circle-radius': [ /* interpolate + match */ ],
+    'circle-color': '#B71C1C',
+    'circle-opacity': 0.85,
+    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2.5, 10, 8, 15, 18],
     'circle-stroke-width': 0,
   },
 }
+```
 
-// In the component:
+With severity isolated to one layer, `circle-color` and `circle-opacity` become static values — no `match` expression needed.
+
+### Zoom-Scaled Radius with `interpolate`
+
+The radius scales with zoom using `interpolate`. The stops are intentionally exaggerated to maximize legibility at the extremes — very small dots when viewing the whole state (no visual clutter), large dots when on the street (easy to click):
+
+| Zoom        | None | Minor | Major | Death |
+| ----------- | ---- | ----- | ----- | ----- |
+| 5 (state)   | 1px  | 1.5px | 2px   | 2.5px |
+| 10 (city)   | 5px  | 6px   | 7px   | 8px   |
+| 15 (street) | 9px  | 12px  | 15px  | 18px  |
+
+Between stops, Mapbox linearly interpolates the radius automatically.
+
+### Putting It Together in `CrashLayer`
+
+All four layers share the same `<Source>` — they all filter from the same GeoJSON dataset:
+
+```tsx
 <Source id="crashes" type="geojson" data={geojson}>
-  <Layer {...circleLayer} />
+  <Layer {...noneLayer} />
+  <Layer {...minorLayer} />
+  <Layer {...majorLayer} />
+  <Layer {...deathLayer} />
 </Source>
 ```
 
-The `severity` value in each feature's `properties` is the bucketed display value set during GeoJSON construction — the same `rawToBucket()` mapping applied by the GraphQL resolver, stored in the feature so Mapbox can use it without another round-trip.
+The `severity` value in each feature's `properties` is the bucketed display value — the same `rawToBucket()` mapping applied by the GraphQL resolver, stored in the feature so Mapbox can use it without another round-trip.
 
 ### Result
 
-At the state zoom level, only the largest clusters of dark-red Death circles are visible. Zooming into a city reveals the full spectrum — red fatalities, orange serious injuries, yellow minor ones. The visual hierarchy lets users immediately identify hotspots without reading any labels.
+At the state zoom level, only the largest clusters of dark-red Death circles are visible. Zooming into a city reveals the full spectrum — red fatalities, orange serious injuries, yellow minor ones. The visual hierarchy lets users immediately identify hotspots without reading any labels. And because Death is its own topmost layer, a fatal crash at the same location as a minor injury will always be visible.
 
 ---
 
@@ -2783,7 +2771,7 @@ Mapbox GL JS handles click events at the map level, not the element level. To ge
 
 ```tsx
 <Map
-  interactiveLayerIds={['crashes-circles']}
+  interactiveLayerIds={['crashes-none', 'crashes-minor', 'crashes-major', 'crashes-death']}
   onClick={handleMapClick}
 >
 ```
@@ -2831,11 +2819,16 @@ useEffect(() => {
   const leave = () => {
     map.getCanvas().style.cursor = ''
   }
-  map.on('mouseenter', 'crashes-circles', enter)
-  map.on('mouseleave', 'crashes-circles', leave)
+  const layerIds = ['crashes-none', 'crashes-minor', 'crashes-major', 'crashes-death']
+  for (const id of layerIds) {
+    map.on('mouseenter', id, enter)
+    map.on('mouseleave', id, leave)
+  }
   return () => {
-    map.off('mouseenter', 'crashes-circles', enter)
-    map.off('mouseleave', 'crashes-circles', leave)
+    for (const id of layerIds) {
+      map.off('mouseenter', id, enter)
+      map.off('mouseleave', id, leave)
+    }
   }
 }, [map])
 ```

@@ -92,7 +92,7 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
       initialViewState={initialViewState}
       style={{ width: '100%', height: '100%' }}
       mapStyle={mapStyle}
-      interactiveLayerIds={['crashes-circles']}
+      interactiveLayerIds={['crashes-none', 'crashes-minor', 'crashes-major', 'crashes-death']}
       onClick={handleMapClick}
     >
       <CrashLayer />
