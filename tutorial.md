@@ -3374,4 +3374,79 @@ Drop `<SeverityFilter />` below `<ModeToggle />` in both surfaces. The `space-y-
 
 ---
 
+### Step N: Date Filter — Year Quick-Select and Custom Range Picker
+
+The date filter lets users narrow crashes to a specific year with one click, or pick an arbitrary start/end date with a calendar. Both modes write to the same `dateFilter` slot in `FilterContext`, so selecting one always clears the other.
+
+#### Year Quick-Select Buttons
+
+`FilterContext` already has everything we need: `SET_DATE_YEAR`, `CLEAR_DATE`, and the `DateFilter` discriminated union type. The component just needs to compute the four most recent years and toggle state on click.
+
+A key design choice: compute years at runtime from `new Date().getFullYear()` rather than hardcoding them. This means the buttons stay current year-over-year without any code change.
+
+```tsx
+const CURRENT_YEAR = new Date().getFullYear()
+const QUICK_YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3, CURRENT_YEAR - 4]
+```
+
+Clicking the active year acts as a toggle — it deselects by dispatching `CLEAR_DATE`. Clicking any other year dispatches `SET_DATE_YEAR`. The active button uses the `default` variant; inactive buttons use `outline`.
+
+```tsx
+function handleYearClick(year: number) {
+  if (selectedYear === year) {
+    dispatch({ type: 'CLEAR_DATE' })
+  } else {
+    dispatch({ type: 'SET_DATE_YEAR', payload: year })
+  }
+}
+```
+
+#### Custom Range Picker — Popover + Calendar
+
+For arbitrary date ranges we use the shadcn `Popover` with a `Calendar` inside. The Calendar from `react-day-picker` has a built-in `mode="range"` that handles the two-click selection pattern natively — you don't need to manage which end is being picked.
+
+The tricky part is knowing when to commit. The `onSelect` callback fires after every click, with an incomplete `DateRange` (only `from` set) after the first click and a complete one (both `from` and `to`) after the second. We only dispatch to context when both are present, then close the popover:
+
+```tsx
+function handleRangeSelect(range: DateRange | undefined) {
+  setPendingRange(range)
+  if (range?.from && range?.to) {
+    dispatch({
+      type: 'SET_DATE_RANGE',
+      payload: {
+        startDate: format(range.from, 'yyyy-MM-dd'),
+        endDate: format(range.to, 'yyyy-MM-dd'),
+      },
+    })
+    setOpen(false)
+  }
+}
+```
+
+`pendingRange` is local state that tracks the in-progress selection. It lets the calendar render the intermediate state (one end highlighted) while keeping context clean until both ends are chosen. When the popover closes without completing a range, `pendingRange` resets to `undefined`.
+
+#### Hydrating the Calendar from Stored Context
+
+When the user reopens the popover after a range is committed, the calendar should reflect the current selection. The stored dates in context are ISO strings (`"2024-01-15"`), but the Calendar needs `Date` objects. We use `parseISO` from `date-fns` rather than `new Date(string)` to avoid timezone-midnight issues — `new Date("2024-01-15")` creates a UTC midnight date that can display as Jan 14 in negative-offset timezones:
+
+```tsx
+const calendarSelected: DateRange | undefined =
+  pendingRange ??
+  (selectedRange
+    ? { from: parseISO(selectedRange.startDate), to: parseISO(selectedRange.endDate) }
+    : undefined)
+```
+
+`pendingRange` takes priority over the committed range so that in-progress clicks update the calendar immediately.
+
+#### "Clear dates" Footer
+
+A "Clear dates" button inside the popover appears only when a range is committed. It dispatches `CLEAR_DATE`, resets `pendingRange`, and closes the popover — a single action that restores the filter to its default state.
+
+#### Wiring DateFilter to Both Surfaces
+
+Add `<DateFilter />` between `<ModeToggle />` and `<SeverityFilter />` in both `Sidebar` and `FilterOverlay`. The section heading is "Date" (not "Year") since it now covers two distinct input modes.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
