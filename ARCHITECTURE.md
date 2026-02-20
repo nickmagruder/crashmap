@@ -461,6 +461,49 @@ map.addLayer({
 >
 > **Severity sizing rationale:** Larger circles for more severe crashes ensures that fatalities remain visually prominent even in dense clusters, while minor injuries recede. Combined with the color/opacity gradient, this creates a clear visual hierarchy: deaths are large, dark red, and opaque; minor injuries are small, yellow, and semi-transparent.
 
+### Map Auto-Zoom on Geographic Filter Change
+
+When a user selects a State, County, or City filter, the map automatically animates to frame all crashes matching that geographic selection. Non-geographic filter changes (severity, mode, date) do not trigger auto-zoom — the user may have manually panned and their viewport should be respected.
+
+**Implementation:** Entirely client-side in `CrashLayer.tsx` using existing crash coordinate data. No new GraphQL query needed.
+
+**Trigger logic — two-ref pattern:**
+
+- `prevGeoRef` tracks previous values of `filterState.state/county/city`
+- `zoomPendingRef` is a boolean flag set when a geo filter change is detected
+
+Effect 1 watches `filterState.state/county/city`. If any value changed, it updates `prevGeoRef` and sets `zoomPendingRef = true` (or `false` if all three were cleared).
+
+Effect 2 watches `data` and `loading`. When a query completes (`loading = false`), if `zoomPendingRef` is true, it calculates bounds from the new crash data and calls `map.fitBounds()`.
+
+This two-effect split is necessary because the geo filter change and the data arrival happen at different React render cycles. Setting the flag in Effect 1 ensures Effect 2 can distinguish a geo-triggered refetch from a non-geo-triggered one.
+
+**Mapbox calls:**
+
+```ts
+// Multiple crashes: animate to bounds with padding
+map.fitBounds(
+  [
+    [minLng, minLat],
+    [maxLng, maxLat],
+  ],
+  { padding: 80, duration: 800, maxZoom: 14 }
+)
+
+// Single crash: fly to point at fixed zoom
+map.flyTo({ center: [lng, lat], zoom: 13, duration: 800 })
+```
+
+**Edge cases:**
+
+| Situation                                         | Behavior                                         |
+| ------------------------------------------------- | ------------------------------------------------ |
+| 0 crashes match filter                            | No zoom (guard exits early)                      |
+| 1 crash matches                                   | `flyTo` at zoom 13                               |
+| Many crashes across a wide area                   | `fitBounds` with 80px padding, capped at zoom 14 |
+| Geo filter cleared to null                        | Pending flag set false; no zoom                  |
+| Severity/mode/date change while geo filter active | No re-zoom                                       |
+
 ### UI Layout — Mobile-First, Full-Viewport Map
 
 CrashMap uses a **mobile-first** design where the map is always the primary element, filling the entire viewport. Filters and controls are secondary and toggle in/out to maximize map real estate.

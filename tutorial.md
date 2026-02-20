@@ -3756,4 +3756,128 @@ Apply it to any Lucide icon (or other SVG-rendering component) that shows up in 
 
 ---
 
+---
+
+## Phase 4 (continued): Auto-Zoom on Geographic Filter Change
+
+### Why Auto-Zoom?
+
+Once geographic filters are wired to the query, users can select a state, county, or city and the crash data on the map updates — but the viewport doesn't move. The user has to manually pan and zoom to find their results, which defeats the purpose of a geographic filter. The map should follow the data.
+
+### Design Decisions
+
+Before writing any code, it's worth being precise about **when** auto-zoom should fire:
+
+- ✅ State, county, or city filter changes → zoom to fit crashes
+- ❌ Severity, mode, or date changes → do **not** zoom; the user may have panned and their viewport should be respected
+- ❌ Geographic filter cleared back to null → do **not** zoom; no target to zoom to
+
+This means we can't simply react to `data` changing. Every filter change causes a refetch and a `data` update, but we only want to zoom for geographic ones.
+
+### The Two-Ref Pattern
+
+The complication is that **geographic filter changes and data arrival happen at different React render cycles**:
+
+1. User selects "Washington" → `filterState.state` changes → Apollo starts re-fetching (data still stale)
+2. Apollo finishes → `data` updates with Washington crashes → `loading` flips to `false`
+
+If we put both concerns in a single `useEffect`, we'd either zoom on stale data (bad) or miss the change entirely. The solution is to split them into two effects with a shared flag:
+
+```tsx
+// Two refs: one tracks previous geo values, one is a zoom-pending flag
+const prevGeoRef = useRef<{ state: string | null; county: string | null; city: string | null }>({
+  state: null,
+  county: null,
+  city: null,
+})
+const zoomPendingRef = useRef(false)
+
+// Effect 1: fired when state/county/city changes — just sets the flag
+useEffect(() => {
+  const { state, county, city } = filterState
+  const prev = prevGeoRef.current
+  const changed = state !== prev.state || county !== prev.county || city !== prev.city
+  if (!changed) return
+  prevGeoRef.current = { state, county, city }
+  zoomPendingRef.current = !!(state || county || city)
+}, [filterState.state, filterState.county, filterState.city]) // eslint-disable-line react-hooks/exhaustive-deps
+
+// Effect 2: fired when data arrives — executes zoom if flag is set
+useEffect(() => {
+  if (loading || !zoomPendingRef.current || !map || !data?.crashes?.items?.length) return
+
+  const points = data.crashes.items.filter((c) => c.latitude != null && c.longitude != null)
+  if (points.length === 0) return
+
+  zoomPendingRef.current = false
+
+  if (points.length === 1) {
+    map.flyTo({ center: [points[0].longitude!, points[0].latitude!], zoom: 13, duration: 800 })
+    return
+  }
+
+  let minLng = Infinity,
+    maxLng = -Infinity
+  let minLat = Infinity,
+    maxLat = -Infinity
+  for (const crash of points) {
+    minLng = Math.min(minLng, crash.longitude!)
+    maxLng = Math.max(maxLng, crash.longitude!)
+    minLat = Math.min(minLat, crash.latitude!)
+    maxLat = Math.max(maxLat, crash.latitude!)
+  }
+
+  map.fitBounds(
+    [
+      [minLng, minLat],
+      [maxLng, maxLat],
+    ],
+    { padding: 80, duration: 800, maxZoom: 14 }
+  )
+}, [data, loading, map])
+```
+
+Effect 1's dependency array lists the three geo filter fields individually (not the whole `filterState` object) so it only runs when geographic values change. The `eslint-disable` comment is needed because the rule sees `filterState` accessed inside the callback and expects the whole object in deps, but accessing the three subproperties inside the deps array is the correct pattern here.
+
+Effect 2 uses `useRef` for `zoomPendingRef` rather than `useState` — we don't want setting the flag to trigger a re-render, we just want to store state across render cycles.
+
+### Where This Lives
+
+Both effects go inside `CrashLayer.tsx`, which already has access to `useMap()` (for `map`) and `useFilterContext()` (for `filterState`). No prop drilling, no new context fields, no API changes.
+
+```tsx
+// CrashLayer.tsx — existing imports
+import { useEffect, useRef } from 'react' // add useRef
+import { useMap } from 'react-map-gl/mapbox' // already imported
+
+export function CrashLayer() {
+  const { current: map } = useMap() // already existed
+  const { filterState, dispatch } = useFilterContext()
+
+  // add refs here, then the two new effects after the existing ones
+}
+```
+
+### Calculating Bounds Client-Side vs. Server-Side
+
+An alternative approach would be to add a `crashBounds(filter)` GraphQL query that returns `{ minLat, minLng, maxLat, maxLng }` computed by the database. The database's min/max aggregation would scale to millions of rows trivially.
+
+We chose client-side bounds instead because:
+
+- The crash data (up to 5000 rows) is **already loaded** by the existing `GET_CRASHES` query
+- Client-side min/max over 5000 points is instantaneous
+- No new API surface, no schema changes, no extra network round-trip
+
+If the dataset grows to hundreds of thousands of rows (and the query limit is raised accordingly), revisit this — the DB approach would then be more efficient.
+
+### Edge Cases
+
+| Situation                             | Behavior                                                                                     |
+| ------------------------------------- | -------------------------------------------------------------------------------------------- |
+| 0 crashes match the geo filter        | No zoom — the guard clause exits early before touching the map                               |
+| 1 crash matches                       | `flyTo` at zoom 13 — `fitBounds` on a single point would zoom to `maxZoom` (too close)       |
+| Many crashes spread across a state    | `fitBounds` with 80px padding, capped at zoom 14 to avoid zooming in too far on sparse areas |
+| Geo filter cleared to null            | Effect 1 sets `zoomPendingRef = false` — Effect 2 exits immediately                          |
+| User pans away, then changes severity | Effect 1 doesn't fire (no geo change) — Effect 2 exits (flag is false)                       |
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

@@ -45,6 +45,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Auto-Zoom on Geographic Filter Change
+
+- When a State, County, or City filter is selected, the map now automatically animates to fit the bounds of matching crashes (`map.fitBounds()` with 80px padding, 800ms animation, max zoom 14)
+- Single-crash results use `map.flyTo()` at zoom 13 instead
+- Non-geographic filter changes (severity, mode, date) do not trigger auto-zoom — the user's manually panned viewport is preserved
+- Implemented via a two-ref pattern in `CrashLayer.tsx`: `prevGeoRef` tracks prior geo filter values; `zoomPendingRef` flags a pending zoom; separate effects decouple filter-change detection from data-arrival execution
+
 ### 2026-02-19 — Filter Loading State
 
 - Added `isLoading: boolean` and `SET_LOADING` action to `FilterContext` (alongside the existing `totalCount` query-state field)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@apollo/client/react'
 import { Source, Layer, useMap } from 'react-map-gl/mapbox'
 import type { LayerProps } from 'react-map-gl/mapbox'
@@ -116,6 +116,16 @@ const circleLayer: LayerProps = {
 export function CrashLayer() {
   const { current: map } = useMap()
   const { filterState, dispatch } = useFilterContext()
+
+  // Two-ref pattern for geo-filter-triggered auto-zoom.
+  // Effect 1 sets a pending flag when state/county/city changes.
+  // Effect 2 executes the zoom once fresh data arrives.
+  const prevGeoRef = useRef<{ state: string | null; county: string | null; city: string | null }>({
+    state: null,
+    county: null,
+    city: null,
+  })
+  const zoomPendingRef = useRef(false)
   const { data, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
     variables: { filter: toCrashFilter(filterState), limit: 5000 },
     notifyOnNetworkStatusChange: true,
@@ -148,6 +158,50 @@ export function CrashLayer() {
       map.off('mouseleave', 'crashes-circles', leave)
     }
   }, [map])
+
+  // Effect 1: detect geographic filter changes and set pending zoom flag.
+  useEffect(() => {
+    const { state, county, city } = filterState
+    const prev = prevGeoRef.current
+    const changed = state !== prev.state || county !== prev.county || city !== prev.city
+    if (!changed) return
+    prevGeoRef.current = { state, county, city }
+    zoomPendingRef.current = !!(state || county || city)
+  }, [filterState.state, filterState.county, filterState.city]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effect 2: when fresh data arrives, execute a pending zoom to fit crash bounds.
+  useEffect(() => {
+    if (loading || !zoomPendingRef.current || !map || !data?.crashes?.items?.length) return
+
+    const points = data.crashes.items.filter((c) => c.latitude != null && c.longitude != null)
+    if (points.length === 0) return
+
+    zoomPendingRef.current = false
+
+    if (points.length === 1) {
+      map.flyTo({ center: [points[0].longitude!, points[0].latitude!], zoom: 13, duration: 800 })
+      return
+    }
+
+    let minLng = Infinity,
+      maxLng = -Infinity
+    let minLat = Infinity,
+      maxLat = -Infinity
+    for (const crash of points) {
+      minLng = Math.min(minLng, crash.longitude!)
+      maxLng = Math.max(maxLng, crash.longitude!)
+      minLat = Math.min(minLat, crash.latitude!)
+      maxLat = Math.max(maxLat, crash.latitude!)
+    }
+
+    map.fitBounds(
+      [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ],
+      { padding: 80, duration: 800, maxZoom: 14 }
+    )
+  }, [data, loading, map])
 
   if (error) {
     console.error('CrashLayer query error:', error)
