@@ -4,6 +4,7 @@ import { forwardRef, useState, useCallback } from 'react'
 import Map, { Popup } from 'react-map-gl/mapbox'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { useTheme } from 'next-themes'
+import { Check, Copy } from 'lucide-react'
 import { CrashLayer } from './CrashLayer'
 
 const DESKTOP_VIEW = { longitude: -122.336, latitude: 47.6062, zoom: 10.5 }
@@ -50,6 +51,13 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
       : 'mapbox://styles/mapbox/light-v11'
 
   const [selectedCrash, setSelectedCrash] = useState<SelectedCrash | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyReportNum = useCallback((num: string) => {
+    navigator.clipboard.writeText(num)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [])
 
   const handleMapClick = useCallback(
     (e: Parameters<NonNullable<React.ComponentProps<typeof Map>['onClick']>>[0]) => {
@@ -138,18 +146,41 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
               </div>
             )}
             {selectedCrash.colliRptNum && (
-              <div className="mt-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
-                Report #:{' '}
-                <a
-                  href="https://wrecr.wsp.wa.gov/wrecr/order"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: 'var(--muted-foreground)', textDecoration: 'underline' }}
+              <div
+                className="mt-1 flex items-center gap-1 text-[11px]"
+                style={{ color: 'var(--muted-foreground)' }}
+              >
+                <span>
+                  Report #:{' '}
+                  <a
+                    href="https://wrecr.wsp.wa.gov/wrecr/order"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--muted-foreground)', textDecoration: 'underline' }}
+                  >
+                    {selectedCrash.colliRptNum}
+                  </a>
+                </span>
+                <button
+                  onClick={() => handleCopyReportNum(selectedCrash.colliRptNum!)}
+                  title="Copy report number"
+                  style={{ color: 'var(--muted-foreground)', lineHeight: 1 }}
                 >
-                  {selectedCrash.colliRptNum}
-                </a>
+                  {copied ? <Check size={11} /> : <Copy size={11} />}
+                </button>
               </div>
             )}
+            <div className="mt-2 border-t pt-1.5" style={{ borderColor: 'var(--border)' }}>
+              <a
+                href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedCrash.latitude},${selectedCrash.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px]"
+                style={{ color: 'var(--primary)', textDecoration: 'underline' }}
+              >
+                Open Street View
+              </a>
+            </div>
           </div>
         </Popup>
       )}

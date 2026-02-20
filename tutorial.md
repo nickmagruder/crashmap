@@ -4755,4 +4755,91 @@ import { FilterUrlSync } from '@/components/FilterUrlSync'
 
 There's a nice emergent interaction here: when `INIT_FROM_URL` sets a non-default state/county/city, `CrashLayer`'s existing auto-zoom logic fires automatically. The `prevGeoRef` comparison detects that state changed (from `'Washington'` to `'Ohio'`, say), sets `zoomPendingRef = true`, and when data arrives the map zooms to fit Ohio's crashes. A shared URL with `?state=Ohio&county=Franklin` will both filter the data AND zoom the map to Franklin County — no special handling required.
 
+---
+
+## Step N: Google Street View Link and Copy Report Number
+
+Two small but high-value additions to the crash popup: a Street View link so users can see the location, and a copy-to-clipboard button for the report number so they can paste it into the WSP crash report lookup portal.
+
+### The URL Scheme
+
+Google Maps accepts a deep-link URL that opens Street View directly at a latitude/longitude:
+
+```text
+https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lng}
+```
+
+- `map_action=pano` — opens the panoramic Street View viewer rather than the regular map
+- `viewpoint={lat},{lng}` — centers the view at the given coordinates
+
+This is a stable, documented Google Maps URL scheme that works on both desktop and mobile (mobile opens the Maps app if installed).
+
+### Adding the Link
+
+The `selectedCrash` state in `MapContainer.tsx` already holds `latitude` and `longitude` — the coordinates of the clicked crash. We just need to construct the URL and add a link at the bottom of the popup:
+
+```tsx
+<div className="mt-2 border-t pt-1.5" style={{ borderColor: 'var(--border)' }}>
+  <a
+    href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedCrash.latitude},${selectedCrash.longitude}`}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-[12px]"
+    style={{ color: 'var(--primary)', textDecoration: 'underline' }}
+  >
+    Open Street View
+  </a>
+</div>
+```
+
+A few details worth noting:
+
+- **`border-t` divider** — visually separates the link from the crash details above it, following the same pattern as section dividers elsewhere in the UI
+- **`var(--border)` and `var(--primary)`** — inline CSS custom property references that respond to dark mode at runtime, consistent with the rest of the popup (see the popup dark mode step)
+- **`rel="noopener noreferrer"`** — standard security attribute for any `target="_blank"` link that navigates away from the current page
+- **`text-[12px]`** — slightly smaller than the popup body text (`13px`) to visually de-emphasize it as a utility link rather than primary data
+
+### Copy Report Number to Clipboard
+
+The WSP crash report portal (`wrecr.wsp.wa.gov/wrecr/order`) requires the user to manually enter the collision report number to look up a crash. We can't pre-fill it (cross-origin JavaScript is blocked by the browser's same-origin policy, and the site is a React SPA that doesn't read URL query parameters). The next-best thing is a one-click copy button.
+
+The report number row becomes a flex container with the existing link and a small icon button:
+
+```tsx
+<div className="mt-1 flex items-center gap-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
+  <span>
+    Report #:{' '}
+    <a href="https://wrecr.wsp.wa.gov/wrecr/order" target="_blank" rel="noopener noreferrer" ...>
+      {selectedCrash.colliRptNum}
+    </a>
+  </span>
+  <button
+    onClick={() => handleCopyReportNum(selectedCrash.colliRptNum!)}
+    title="Copy report number"
+    style={{ color: 'var(--muted-foreground)', lineHeight: 1 }}
+  >
+    {copied ? <Check size={11} /> : <Copy size={11} />}
+  </button>
+</div>
+```
+
+The `copied` state and handler live in `MapContainer`:
+
+```tsx
+const [copied, setCopied] = useState(false)
+
+const handleCopyReportNum = useCallback((num: string) => {
+  navigator.clipboard.writeText(num)
+  setCopied(true)
+  setTimeout(() => setCopied(false), 2000)
+}, [])
+```
+
+A few notes:
+
+- **`useCallback` with empty deps** — `handleCopyReportNum` never changes; wrapping it avoids re-creating the function on every render
+- **`lineHeight: 1` on the button** — removes the extra line-height gap that would otherwise push the icon slightly off center relative to the text
+- **`!` non-null assertion** on `colliRptNum` in the `onClick` — safe because the entire block is gated on `selectedCrash.colliRptNum &&`
+- **`Check` icon for 2 seconds** — a standard confirmation pattern; the timeout resets automatically without any cleanup needed since the component remounts when a new crash is selected
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

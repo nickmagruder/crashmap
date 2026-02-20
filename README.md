@@ -45,6 +45,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-20 — Google Street View Link
+
+- Added "Open Street View" link to the crash detail popup in `MapContainer.tsx` — appears at the bottom of the popup below a divider line and opens Google Street View centered on the crash coordinates in a new tab using the `map_action=pano&viewpoint={lat},{lng}` URL scheme
+- Added copy-to-clipboard button next to the collision report number — Lucide `Copy` icon switches to `Check` for 2 seconds after clicking; uses `navigator.clipboard.writeText()`
+
 ### 2026-02-20 — Shareable Filter URLs
 
 - Added `lib/filterUrlState.ts` — pure `encodeFilterParams` / `decodeFilterParams` utilities that convert `FilterState` to/from `URLSearchParams`; default values are omitted so a clean URL (`/`) means the default view (Washington, 2025, all modes); `?state=none` encodes null/all-states; `None` in the severity CSV encodes `includeNoInjury`
