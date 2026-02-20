@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@apollo/client/react'
+import { Loader2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -26,12 +27,15 @@ export function GeographicFilter() {
 
   const { data: optionsData } = useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
 
-  const { data: countiesData } = useQuery<GetCountiesQuery>(GET_COUNTIES, {
-    variables: { state: filterState.state },
-    skip: !filterState.state,
-  })
+  const { data: countiesData, loading: countiesLoading } = useQuery<GetCountiesQuery>(
+    GET_COUNTIES,
+    {
+      variables: { state: filterState.state },
+      skip: !filterState.state,
+    }
+  )
 
-  const { data: citiesData } = useQuery<GetCitiesQuery>(GET_CITIES, {
+  const { data: citiesData, loading: citiesLoading } = useQuery<GetCitiesQuery>(GET_CITIES, {
     variables: { state: filterState.state, county: filterState.county },
     skip: !filterState.county,
   })
@@ -54,7 +58,12 @@ export function GeographicFilter() {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">Location</p>
+      <div className="flex items-center gap-1.5">
+        <p className="text-sm font-medium">Location</p>
+        {(countiesLoading || citiesLoading) && (
+          <Loader2 className="size-3 animate-spin text-muted-foreground" aria-label="Loading" />
+        )}
+      </div>
 
       <Select value={filterState.state ?? ALL} onValueChange={handleStateChange}>
         <SelectTrigger className="w-full">

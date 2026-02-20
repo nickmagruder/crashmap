@@ -4216,4 +4216,77 @@ curl -s -I -X OPTIONS https://crashmap.onrender.com/api/graphql \
 
 The response should include `Access-Control-Allow-Origin: https://crashmap.io` and `Access-Control-Allow-Methods: GET, POST, OPTIONS`.
 
+---
+
+## Phase 5: Polish — Loading States
+
+When users change a filter, the app fires a new GraphQL query and the map silently waits for fresh data. That gap — between action and response — is where loading states live. Without them the UI feels frozen or unresponsive.
+
+CrashMap already had the infrastructure for loading states: `FilterContext` holds an `isLoading` boolean (dispatched by `CrashLayer` whenever the Apollo query's `loading` flag changes), and `SummaryBar` already accepted an `isLoading` prop with an `animate-pulse` class on the crash count. We extended this foundation with three focused changes.
+
+### Step 1: Filter Button Spinner (AppShell)
+
+The filter button in the top-right corner is the most contextually appropriate place for a loading indicator — it's right where the user just interacted. We import `Loader2` from `lucide-react` alongside the existing `SlidersHorizontal` and conditionally swap the icon:
+
+```tsx
+{
+  filterState.isLoading ? (
+    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+  ) : (
+    <SlidersHorizontal className="size-4" suppressHydrationWarning />
+  )
+}
+```
+
+This applies to both the desktop sidebar button and the mobile overlay button. The button itself stays clickable during loading — no `disabled` state — so users can still open the filter panel while a fetch runs.
+
+### Step 2: SummaryBar Spinner
+
+The SummaryBar at the bottom of the screen shows the crash count. We add an explicit spinner icon to the left of the count while loading, alongside the existing pulse:
+
+```tsx
+<span className="flex items-center gap-1.5 text-sm font-medium tabular-nums whitespace-nowrap">
+  {isLoading && <Loader2 className="size-3 animate-spin" aria-hidden="true" />}
+  <span className={isLoading ? 'animate-pulse' : ''}>{countLabel} crashes</span>
+</span>
+```
+
+The `aria-hidden="true"` on the spinner keeps screen readers from announcing "spinning" repeatedly; the `aria-live="polite"` on the SummaryBar container already handles announcing the count update when it arrives.
+
+### Step 3: Geographic Dropdown Spinner (GeographicFilter)
+
+The cascading county/city dropdowns fire their own Apollo queries when a parent selection changes. The dropdowns were already disabled during loading (since the data arrays are empty until the query resolves), but there was no visual cue explaining _why_. We capture the `loading` flag from each query and display a small spinner next to the "Location" label:
+
+```tsx
+const { data: countiesData, loading: countiesLoading } = useQuery<GetCountiesQuery>(GET_COUNTIES, {
+  variables: { state: filterState.state },
+  skip: !filterState.state,
+})
+
+const { data: citiesData, loading: citiesLoading } = useQuery<GetCitiesQuery>(GET_CITIES, {
+  variables: { state: filterState.state, county: filterState.county },
+  skip: !filterState.county,
+})
+```
+
+```tsx
+<div className="flex items-center gap-1.5">
+  <p className="text-sm font-medium">Location</p>
+  {(countiesLoading || citiesLoading) && (
+    <Loader2 className="size-3 animate-spin text-muted-foreground" aria-label="Loading" />
+  )}
+</div>
+```
+
+The spinner is muted (`text-muted-foreground`) so it doesn't compete with the filter labels; `aria-label="Loading"` gives screen readers a description since there's no visible text.
+
+### Design Principles
+
+A few principles guided the choices here:
+
+- **Contextual placement** — Loading indicators live closest to what triggered them. The filter button spins because the user just clicked it. The location label spins because the dropdowns are loading.
+- **Non-blocking** — Nothing is disabled globally. Users can still open filters, scroll the map, or click while a fetch runs.
+- **Preserve existing state** — `SET_TOTAL_COUNT` only dispatches when `loading` is false, so the previous crash count stays visible in the SummaryBar rather than flashing back to `—` during a refetch. The map likewise keeps the previous crash circles visible while new data loads.
+- **Minimal noise** — Three small additions (spinner on button, spinner in bar, spinner by label) cover all the meaningful interaction points without cluttering the UI.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

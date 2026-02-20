@@ -1,5 +1,6 @@
 'use client'
 
+import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 interface SummaryBarProps {
@@ -22,10 +23,9 @@ export function SummaryBar({
       aria-live="polite"
       aria-label="Summary"
     >
-      <span
-        className={`text-sm font-medium tabular-nums whitespace-nowrap${isLoading ? ' animate-pulse' : ''}`}
-      >
-        {countLabel} crashes
+      <span className="flex items-center gap-1.5 text-sm font-medium tabular-nums whitespace-nowrap">
+        {isLoading && <Loader2 className="size-3 animate-spin" aria-hidden="true" />}
+        <span className={isLoading ? 'animate-pulse' : ''}>{countLabel} crashes</span>
       </span>
 
       {activeFilters.length > 0 && (

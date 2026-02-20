@@ -45,6 +45,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Loading States
+
+- `GeographicFilter` now captures `loading` from the counties and cities queries; a `Loader2` spinner appears next to the "Location" label while either cascading query is in flight
+- `SummaryBar` now shows a spinning `Loader2` icon alongside the existing `animate-pulse` on the crash count text while any query is in flight
+- `AppShell` filter button icon swaps from `SlidersHorizontal` to a spinning `Loader2` on both mobile and desktop while the crash query is in flight — directly signals that a filter change is being processed
+
 ### 2026-02-19 — CSP Headers and CORS
 
 - Added `Content-Security-Policy` header via `headers()` in `next.config.ts` — directives cover Next.js hydration (`unsafe-inline`; `unsafe-eval` in dev only for HMR), Mapbox tiles/telemetry (`*.mapbox.com`, `events.mapbox.com`), Mapbox blob: workers (`worker-src blob:`), and self-hosted Geist fonts (`font-src 'self'`)
