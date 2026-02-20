@@ -2,6 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ModeToggle } from '@/components/filters/ModeToggle'
 import { SeverityFilter } from '@/components/filters/SeverityFilter'
 import { DateFilter } from '@/components/filters/DateFilter'
+import { GeographicFilter } from '@/components/filters/GeographicFilter'
 
 interface SidebarProps {
   isOpen: boolean
@@ -19,6 +20,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <ModeToggle />
           <DateFilter />
           <SeverityFilter />
+          <GeographicFilter />
         </div>
       </SheetContent>
     </Sheet>

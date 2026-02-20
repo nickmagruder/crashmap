@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ModeToggle } from '@/components/filters/ModeToggle'
 import { SeverityFilter } from '@/components/filters/SeverityFilter'
 import { DateFilter } from '@/components/filters/DateFilter'
+import { GeographicFilter } from '@/components/filters/GeographicFilter'
 
 interface FilterOverlayProps {
   isOpen: boolean
@@ -32,6 +33,7 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
         <ModeToggle />
         <DateFilter />
         <SeverityFilter />
+        <GeographicFilter />
       </div>
     </div>
   )
