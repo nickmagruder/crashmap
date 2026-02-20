@@ -178,6 +178,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - `vitest.config.ts` — Vitest configuration with `@` path alias
 - `components/theme-provider.tsx` — thin `NextThemesProvider` wrapper (`attribute="class"`, `defaultTheme="system"`, `enableSystem`)
 - `components/ui/theme-toggle.tsx` — Sun/Moon icon button; CSS-driven icon swap via `dark:hidden`/`hidden dark:block`
+- `context/FilterContext.tsx` — React `useReducer` filter state; `FilterProvider`, `useFilterContext()`, `toCrashFilter()`, `getActiveFilterLabels()`
 - `components/layout/AppShell.tsx` — `'use client'` layout orchestrator; owns sidebar/overlay open state, renders SummaryBar and ThemeToggle
 - `components/map/MapContainer.tsx` — `'use client'` Mapbox map filling parent container
 - `components/sidebar/Sidebar.tsx` — Sheet-based right panel (desktop, ≥768px)
@@ -277,7 +278,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Add GeoJSON data layer — fetch crashes via GraphQL and render as a basic circle layer on the map using `Latitude`/`Longitude` fields
 - [x] Add severity-based circle styling — color, opacity, and size gradient per injury bucket (Death → Major → Minor → None) using Mapbox `interpolate` expressions; sizes scale with zoom
 - [x] Add crash detail popup — click a circle to show a tooltip with date, time, injury type, mode, location, involved persons, and collision report number (linked to WSP crash report portal)
-- [ ] Add filter state context — React Context with state + dispatch for all filters (mode, severity, date range, geo); no UI yet, just the shared state layer all filter components will consume
+- [x] Add filter state context — React Context with state + dispatch for all filters (mode, severity, date range, geo); `CrashLayer` query and `SummaryBar` count now driven by filter state
 - [ ] Add mode toggle filter — `ToggleGroup` in sidebar/overlay for Bicyclist / Pedestrian / All; wired to filter context
 - [ ] Add severity multi-select filter — `Checkbox` + `Label` for Death, Major, Minor; None/Unknown opt-in toggle; wired to filter context
 - [ ] Add date range quick-select — four year buttons (most recent 4 years) that set the date filter in context

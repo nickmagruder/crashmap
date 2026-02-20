@@ -9,11 +9,13 @@ import { FilterOverlay } from '@/components/overlay/FilterOverlay'
 import { SummaryBar } from '@/components/summary/SummaryBar'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { useFilterContext, getActiveFilterLabels } from '@/context/FilterContext'
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [overlayOpen, setOverlayOpen] = useState(false)
   const mapRef = useRef<MapRef>(null)
+  const { filterState } = useFilterContext()
 
   // Call resize() after sidebar/overlay transitions so Mapbox recomputes canvas size.
   // 300ms matches the shadcn Sheet slide animation duration.
@@ -53,7 +55,10 @@ export function AppShell() {
         </div>
       </div>
 
-      <SummaryBar />
+      <SummaryBar
+        crashCount={filterState.totalCount}
+        activeFilters={getActiveFilterLabels(filterState)}
+      />
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />

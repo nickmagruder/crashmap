@@ -100,17 +100,17 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
           offset={10}
           maxWidth="220px"
         >
-          <div style={{ padding: '6px 4px', fontSize: '13px', lineHeight: '1.6' }}>
+          <div className="px-1 py-1.5 text-[13px] leading-relaxed">
             {selectedCrash.crashDate && (
-              <div style={{ fontWeight: 600, marginBottom: '2px' }}>
-                {formatDate(selectedCrash.crashDate)}
-              </div>
+              <div className="mb-0.5 font-semibold">{formatDate(selectedCrash.crashDate)}</div>
             )}
             {selectedCrash.time && (
-              <div style={{ color: '#666', marginBottom: '4px' }}>{selectedCrash.time}</div>
+              <div className="mb-1" style={{ color: 'var(--muted-foreground)' }}>
+                {selectedCrash.time}
+              </div>
             )}
             {(selectedCrash.severity || selectedCrash.injuryType) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div className="flex items-center gap-1.5">
                 <span
                   style={{
                     width: 10,
@@ -128,21 +128,23 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
             )}
             {selectedCrash.mode && <div>{selectedCrash.mode}</div>}
             {(selectedCrash.city || selectedCrash.county) && (
-              <div style={{ color: '#666' }}>
+              <div style={{ color: 'var(--muted-foreground)' }}>
                 {[selectedCrash.city, selectedCrash.county].filter(Boolean).join(', ')}
               </div>
             )}
             {selectedCrash.involvedPersons != null && (
-              <div style={{ color: '#666' }}>{selectedCrash.involvedPersons} involved</div>
+              <div style={{ color: 'var(--muted-foreground)' }}>
+                {selectedCrash.involvedPersons} involved
+              </div>
             )}
             {selectedCrash.colliRptNum && (
-              <div style={{ color: '#999', fontSize: '11px', marginTop: '4px' }}>
+              <div className="mt-1 text-[11px]" style={{ color: 'var(--muted-foreground)' }}>
                 Report #:{' '}
                 <a
                   href="https://wrecr.wsp.wa.gov/wrecr/order"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: '#999', textDecoration: 'underline' }}
+                  style={{ color: 'var(--muted-foreground)', textDecoration: 'underline' }}
                 >
                   {selectedCrash.colliRptNum}
                 </a>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ApolloProvider } from './apollo-provider'
 import { ThemeProvider } from '@/components/theme-provider'
+import { FilterProvider } from '@/context/FilterContext'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import './globals.css'
 
@@ -34,7 +35,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ApolloProvider>{children}</ApolloProvider>
+          <ApolloProvider>
+            <FilterProvider>{children}</FilterProvider>
+          </ApolloProvider>
         </ThemeProvider>
       </body>
     </html>

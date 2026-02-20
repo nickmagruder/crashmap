@@ -124,3 +124,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Mapbox popup dark mode overrides ─────────────────────────────────────── */
+/* The Popup component renders outside React's style scope, so Tailwind classes
+   on inner divs won't affect the container shell. Override it via global CSS. */
+
+.dark .mapboxgl-popup-content {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Arrow for anchor="bottom" — the tip uses border-top-color for its fill */
+.dark .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.dark .mapboxgl-popup-close-button {
+  color: var(--muted-foreground);
+}
+
+.dark .mapboxgl-popup-close-button:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}

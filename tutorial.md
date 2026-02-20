@@ -2908,4 +2908,188 @@ This is verbose but accurate and doesn't require any external type imports.
 
 ---
 
+## Step N: Filter State Context
+
+Filters are the core of CrashMap's UX — every UI control (mode toggle, severity checkboxes, date picker, geographic dropdowns) needs to read and write the same shared filter state, and every data fetch needs to consume it. This calls for a single shared state layer before building any filter UI.
+
+### Why `useReducer` Instead of Multiple `useState` Calls
+
+With seven or more filter dimensions that interact with each other (selecting a state should reset county and city; severity and no-injury are interdependent), managing separate `useState` calls would scatter logic across components and make cascading resets easy to forget. `useReducer` centralizes all state transitions in one place with an explicit action vocabulary — and the reducer can be tested in isolation.
+
+### Defining the State Shape
+
+The full filter state lives in a single typed interface:
+
+```ts
+export interface FilterState {
+  mode: 'Bicyclist' | 'Pedestrian' | null // null = both modes
+  severity: SeverityBucket[] // default: Death, Major Injury, Minor Injury
+  includeNoInjury: boolean // opt-in to None bucket; default false
+  dateFilter: DateFilter // { type: 'none' } | { type: 'year'; year } | { type: 'range'; startDate; endDate }
+  state: string | null // geographic state name
+  county: string | null
+  city: string | null
+  totalCount: number | null // populated by CrashLayer after each query
+}
+```
+
+`totalCount` is stored here — even though it's query result data, not a user preference — because it needs to flow from `CrashLayer` (which owns the query) to `AppShell` (which renders `SummaryBar`) without prop drilling through the map container.
+
+### Actions and Cascading Resets
+
+Each filter dimension gets its own action type. The key insight for cascading dropdowns is that the reducer — not the UI component — is responsible for the reset:
+
+```ts
+case 'SET_STATE':
+  // Selecting a new state clears county and city automatically.
+  return { ...filterState, state: action.payload, county: null, city: null }
+
+case 'SET_COUNTY':
+  // Selecting a new county clears city automatically.
+  return { ...filterState, county: action.payload, city: null }
+```
+
+The UI fires `SET_STATE` and the downstream dropdowns are reset without the component knowing about them.
+
+### The `toCrashFilter` Helper
+
+Converting `FilterState` to the GraphQL `CrashFilter` input object is non-trivial: `includeNoInjury` needs to merge with `severity`, and the `dateFilter` discriminated union needs unpacking. A pure helper function handles this so it can be called anywhere and tested independently:
+
+```ts
+export function toCrashFilter(filterState: FilterState): CrashFilterInput {
+  const effectiveSeverity = [
+    ...filterState.severity,
+    ...(filterState.includeNoInjury ? ['None'] : []),
+  ]
+  const dateVars =
+    filterState.dateFilter.type === 'year'
+      ? { year: filterState.dateFilter.year }
+      : filterState.dateFilter.type === 'range'
+        ? { dateFrom: filterState.dateFilter.startDate, dateTo: filterState.dateFilter.endDate }
+        : {}
+  return {
+    severity: effectiveSeverity,
+    ...(filterState.mode ? { mode: filterState.mode } : {}),
+    ...(filterState.state ? { state: filterState.state } : {}),
+    ...(filterState.county ? { county: filterState.county } : {}),
+    ...(filterState.city ? { city: filterState.city } : {}),
+    ...dateVars,
+    includeNoInjury: filterState.includeNoInjury,
+  }
+}
+```
+
+### The `getActiveFilterLabels` Helper
+
+The `SummaryBar` shows badge chips for each active (non-default) filter. A pure helper derives these from the state:
+
+```ts
+export function getActiveFilterLabels(filterState: FilterState): string[] {
+  const labels: string[] = []
+  if (filterState.mode) labels.push(filterState.mode + 's')
+  // Only flag severity when it differs from the default three-bucket set
+  const severityChanged = /* ... */
+  if (severityChanged) labels.push(all.join(' + '))
+  if (filterState.dateFilter.type === 'year') labels.push(String(filterState.dateFilter.year))
+  // ... date range, state, county, city
+  return labels
+}
+```
+
+### Wiring It Together
+
+**`app/layout.tsx`** — wrap children inside `ApolloProvider`:
+
+```tsx
+<ApolloProvider>
+  <FilterProvider>{children}</FilterProvider>
+</ApolloProvider>
+```
+
+**`CrashLayer`** — read filter state, drive the query, dispatch the count back:
+
+```tsx
+const { filterState, dispatch } = useFilterContext()
+const { data } = useQuery<GetCrashesQuery>(GET_CRASHES, {
+  variables: { filter: toCrashFilter(filterState), limit: 5000 },
+})
+
+useEffect(() => {
+  dispatch({ type: 'SET_TOTAL_COUNT', payload: data?.crashes.totalCount ?? null })
+}, [data, dispatch])
+```
+
+**`AppShell`** — surface the count and active filter badges to `SummaryBar`:
+
+```tsx
+const { filterState } = useFilterContext()
+// ...
+<SummaryBar
+  crashCount={filterState.totalCount}
+  activeFilters={getActiveFilterLabels(filterState)}
+/>
+```
+
+With this plumbing in place, every filter control only needs to call `dispatch` — the map query, crash count, and filter badges all update automatically.
+
+---
+
+## Step N+1: Mapbox Popup Dark Mode
+
+The crash detail popup looks fine in light mode but stays white in dark mode. There are two separate issues with different root causes.
+
+### Issue 1: The Popup Container Background
+
+Mapbox GL JS creates and owns the popup container element (`.mapboxgl-popup-content`) — it's appended to the map's DOM container by the library, not by React. Its default stylesheet sets:
+
+```css
+.mapboxgl-popup-content {
+  background: #fff;
+}
+```
+
+The natural fix is a global CSS override targeting `.dark .mapboxgl-popup-content`. However, CSS cascade ordering between `mapbox-gl/dist/mapbox-gl.css` (imported in `layout.tsx`) and `globals.css` is not guaranteed after Next.js bundles everything. Adding `!important` ensures our dark mode rule wins regardless of bundle order:
+
+```css
+/* globals.css */
+.dark .mapboxgl-popup-content {
+  background: var(--card) !important;
+  color: var(--card-foreground) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* The triangular arrow tip for anchor="bottom" uses border-top-color */
+.dark .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.dark .mapboxgl-popup-close-button {
+  color: var(--muted-foreground);
+}
+```
+
+This uses the shadcn/ui CSS variables (`--card`, `--card-foreground`) already defined on `:root` and `.dark`.
+
+### Issue 2: Muted Text Inside the Popup Doesn't Update
+
+The popup content uses muted text for secondary info (time, location, report number). The Tailwind class `text-muted-foreground` doesn't respond to theme changes here.
+
+**Root cause:** Tailwind v4 uses `@theme inline` to define color variables, which may compile utility classes like `text-muted-foreground` with the color value resolved at build time rather than as a live `var()` reference. When used inside a third-party container like the Mapbox popup — which sits at the boundary of what Tailwind can reason about — this means the class color stays static.
+
+**The fix:** reference CSS custom properties directly in inline styles. Unlike Tailwind's compiled classes, `style` attribute `var()` references are always resolved at runtime against the current value of the CSS variable:
+
+```tsx
+// ❌ Static — may not update when .dark toggles
+<div className="text-muted-foreground">King County</div>
+
+// ✅ Live — always reflects the current theme
+<div style={{ color: 'var(--muted-foreground)' }}>King County</div>
+```
+
+Because `--muted-foreground` is defined on both `:root` (light) and `.dark` in `globals.css`, this inline reference updates immediately whenever next-themes toggles the theme class on `<html>`.
+
+This pattern is useful any time you need theme-responsive colors inside components rendered by third-party libraries that manage their own DOM.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
