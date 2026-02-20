@@ -288,10 +288,10 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Add severity multi-select filter — `Checkbox` + `Label` for Death, Major, Minor; None/Unknown opt-in toggle; wired to filter context
 - [x] Add date range quick-select — four year buttons (most recent 4 years) that set the date filter in context
 - [x] Add date range custom picker — `Popover` + `Calendar` for arbitrary start/end date selection; shares the same date filter state as quick-select buttons
-- [ ] Load filter options on app init via `filterOptions` GraphQL query
-- [ ] Add geographic cascading dropdowns — State → County → City `Select` components populated from `filterOptions` query data; each level resets when parent changes; wired to filter context
+- [x] Load filter options on app init via `filterOptions` GraphQL query
+- [x] Add geographic cascading dropdowns — State → County → City `Select` components populated from `filterOptions` query data; each level resets when parent changes; wired to filter context
 - [ ] Connect filters to GraphQL query variables — pass filter context state into `crashes` / `crashStats` query variables so map and summary bar update on filter change
-- [ ] Add Key to filters panel/sheet
+- [ ] Add a colors Key to filters panels
 
 #### Milestone: Optional UI
 

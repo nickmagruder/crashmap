@@ -3449,4 +3449,152 @@ Add `<DateFilter />` between `<ModeToggle />` and `<SeverityFilter />` in both `
 
 ---
 
+## Step N: Geographic Cascading Dropdowns (State → County → City)
+
+The last filter dimension is geography. Users can narrow the map to a specific state, then a county within that state, then a city within that county. Each level is populated from the `filterOptions` GraphQL query — the same query that powers the years list — using the `filter_metadata` materialized view we created in Phase 1.
+
+### Adding the Query Documents
+
+Add three new query documents to `lib/graphql/queries.ts`. The first fetches states and years on component mount. The second and third fetch counties and cities lazily — they're only sent when the user has already selected a parent level.
+
+```ts
+export type GetFilterOptionsQuery = {
+  filterOptions: {
+    states: string[]
+    years: number[]
+  }
+}
+
+export type GetCountiesQuery = {
+  filterOptions: {
+    counties: string[]
+  }
+}
+
+export type GetCitiesQuery = {
+  filterOptions: {
+    cities: string[]
+  }
+}
+
+export const GET_FILTER_OPTIONS = gql`
+  query GetFilterOptions {
+    filterOptions {
+      states
+      years
+    }
+  }
+`
+
+export const GET_COUNTIES = gql`
+  query GetCounties($state: String) {
+    filterOptions {
+      counties(state: $state)
+    }
+  }
+`
+
+export const GET_CITIES = gql`
+  query GetCities($state: String, $county: String) {
+    filterOptions {
+      cities(state: $state, county: $county)
+    }
+  }
+`
+```
+
+Exporting the TypeScript result types alongside the query documents lets us pass them as type parameters to `useQuery<T>()` without repeating the shape at each call site.
+
+### The GraphQL Schema Supports Field-Level Arguments
+
+The `FilterOptions` type in our schema has field-level arguments for cascading:
+
+```graphql
+type FilterOptions {
+  states: [String!]!
+  counties(state: String): [String!]!
+  cities(state: String, county: String): [String!]!
+  years: [Int!]!
+}
+```
+
+This means `GET_COUNTIES` and `GET_CITIES` are both `filterOptions` queries — just selecting different fields with different arguments. Apollo Client caches them separately by query name and variable hash, so they don't collide with `GET_FILTER_OPTIONS` or with each other.
+
+### The GeographicFilter Component
+
+Create `components/filters/GeographicFilter.tsx`. It fires three queries and wires their results to three shadcn `Select` dropdowns:
+
+```tsx
+'use client'
+
+import { useQuery } from '@apollo/client/react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useFilterContext } from '@/context/FilterContext'
+import {
+  GET_FILTER_OPTIONS,
+  GET_COUNTIES,
+  GET_CITIES,
+  type GetFilterOptionsQuery,
+  type GetCountiesQuery,
+  type GetCitiesQuery,
+} from '@/lib/graphql/queries'
+
+const ALL = '__all__'
+
+export function GeographicFilter() {
+  const { filterState, dispatch } = useFilterContext()
+
+  const { data: optionsData } = useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
+  const { data: countiesData } = useQuery<GetCountiesQuery>(GET_COUNTIES, {
+    variables: { state: filterState.state },
+    skip: !filterState.state,
+  })
+  const { data: citiesData } = useQuery<GetCitiesQuery>(GET_CITIES, {
+    variables: { state: filterState.state, county: filterState.county },
+    skip: !filterState.county,
+  })
+
+  const states = optionsData?.filterOptions?.states ?? []
+  const counties = countiesData?.filterOptions?.counties ?? []
+  const cities = citiesData?.filterOptions?.cities ?? []
+
+  // ...
+}
+```
+
+A few design decisions worth noting:
+
+**Sentinel value instead of empty string.** shadcn's `Select` component passes the selected item's `value` string to `onValueChange`. An empty string `""` is falsy and causes issues with the controlled-value logic. Instead, we use `'__all__'` as a sentinel to represent "no selection", then map it to `null` when dispatching to context.
+
+**`skip` for lazy queries.** Apollo Client's `skip` option prevents a query from running until its preconditions are met. `GET_COUNTIES` skips until a state is selected; `GET_CITIES` skips until a county is selected. This avoids unnecessary network requests on initial load and keeps the query variables well-defined.
+
+**Disabling downstream selects.** The county select is `disabled` when no state is selected or the counties list is empty (still loading). The city select follows the same pattern. This gives users clear affordances about the cascade — you must pick a state before counties become available.
+
+**Cascading resets are free.** The `FilterContext` reducer already handles cascading: `SET_STATE` clears county and city; `SET_COUNTY` clears city. No extra logic needed in the component — dispatching to context is enough.
+
+### Wiring to Both Surfaces
+
+Add `<GeographicFilter />` at the bottom of the filter list in both `Sidebar` and `FilterOverlay`:
+
+```tsx
+// In Sidebar.tsx and FilterOverlay.tsx
+import { GeographicFilter } from '@/components/filters/GeographicFilter'
+
+// Inside the filter list:
+<ModeToggle />
+<DateFilter />
+<SeverityFilter />
+<GeographicFilter />
+```
+
+Both surfaces read from the same `FilterContext`, so selecting a state in the mobile overlay and then opening the desktop sidebar will show the same selection — and vice versa. Apollo Client deduplicates network requests, so `GET_FILTER_OPTIONS` only hits the server once regardless of how many `GeographicFilter` instances are mounted.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
