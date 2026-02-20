@@ -59,8 +59,8 @@ const initialState: FilterState = {
   mode: null,
   severity: DEFAULT_SEVERITY,
   includeNoInjury: false,
-  dateFilter: { type: 'none' },
-  state: null,
+  dateFilter: { type: 'year', year: 2025 },
+  state: 'Washington',
   county: null,
   city: null,
   totalCount: null,
@@ -168,7 +168,7 @@ export function toCrashFilter(filterState: FilterState): CrashFilterInput {
 export function getActiveFilterLabels(filterState: FilterState): string[] {
   const labels: string[] = []
 
-  if (filterState.mode) labels.push(filterState.mode + 's')
+  labels.push(filterState.mode ? filterState.mode + 's' : 'All modes')
 
   // Only flag severity when it differs from the default three-bucket set.
   const defaultSet = new Set<string>(DEFAULT_SEVERITY)

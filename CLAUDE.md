@@ -178,7 +178,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - `vitest.config.ts` — Vitest configuration with `@` path alias
 - `components/theme-provider.tsx` — thin `NextThemesProvider` wrapper (`attribute="class"`, `defaultTheme="system"`, `enableSystem`)
 - `components/ui/theme-toggle.tsx` — Sun/Moon icon button; CSS-driven icon swap via `dark:hidden`/`hidden dark:block`
-- `context/FilterContext.tsx` — React `useReducer` filter state; `FilterProvider`, `useFilterContext()`, `toCrashFilter()`, `getActiveFilterLabels()`
+- `context/FilterContext.tsx` — React `useReducer` filter state; `FilterProvider`, `useFilterContext()`, `toCrashFilter()`, `getActiveFilterLabels()`; default initialState: `state: 'Washington'`, `year: 2025`, `mode: null`
 - `components/layout/AppShell.tsx` — `'use client'` layout orchestrator; owns sidebar/overlay open state, renders SummaryBar and ThemeToggle
 - `components/map/MapContainer.tsx` — `'use client'` Mapbox map filling parent container
 - `components/sidebar/Sidebar.tsx` — Sheet-based right panel (desktop, ≥768px)

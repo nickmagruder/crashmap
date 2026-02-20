@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.4.4
+**Version:** 0.4.5
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,6 +44,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
+
+### 2026-02-19 — Default Filter State (Washington, 2025, All Modes)
+
+- `initialState` in `FilterContext` now defaults to `state: 'Washington'`, `dateFilter: { type: 'year', year: 2025 }`, and `mode: null` (All modes) — the map loads focused on Washington 2025 data
+- `getActiveFilterLabels` now always emits a mode badge (`'All modes'` when null, `'Bicyclists'`/`'Pedestrians'` otherwise) so the SummaryBar always reflects the active mode selection; the existing `RESET` action returns to these same defaults
 
 ### 2026-02-19 — Auto-Zoom on Geographic Filter Change
 
