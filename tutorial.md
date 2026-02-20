@@ -4406,4 +4406,110 @@ const mapFallback = (
 - **`fallback={null}` is a valid strategy** — For the filters, a blank panel with a working map is better than a broken-looking fallback UI. The `ErrorBoundary` still catches and logs the error; it just doesn't show anything.
 - **`window.location.reload()` for the map** — The map error is catastrophic enough that a full reload (which re-initializes Mapbox's WebGL context) is the right recovery path. For filters, there's nothing to recover to, so we suppress.
 
+---
+
+## Step: Skeleton Screens
+
+Spinners communicate "something is happening." Skeletons communicate "something will appear _here_, in approximately this shape." For CrashMap there are two places where users see a blank or placeholder state on initial load:
+
+1. The crash count in `SummaryBar` shows a `—` dash until the first GraphQL query resolves.
+2. The geographic filter dropdowns render as disabled, empty `<Select>` elements until the `filterOptions` query returns state/county/city data.
+
+Both are good candidates for skeleton screens.
+
+### Step 1: Install the shadcn Skeleton component
+
+shadcn provides a simple `Skeleton` component out of the box:
+
+```bash
+npx shadcn@latest add skeleton
+```
+
+This creates `components/ui/skeleton.tsx`:
+
+```tsx
+import { cn } from '@/lib/utils'
+
+function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
+  return (
+    <div
+      data-slot="skeleton"
+      className={cn('bg-accent animate-pulse rounded-md', className)}
+      {...props}
+    />
+  )
+}
+
+export { Skeleton }
+```
+
+It's just a `div` with `bg-accent animate-pulse rounded-md`. The `bg-accent` color sits between your background and foreground, giving a neutral shimmer that works in both light and dark mode without any extra configuration. Size it with `h-*` and `w-*` utility classes to match the element it's replacing.
+
+### Step 2: Skeleton for the geographic filter
+
+`GeographicFilter` makes a `GET_FILTER_OPTIONS` query on mount to populate the State dropdown. During that initial fetch the three `<Select>` dropdowns exist in the DOM but are empty and disabled — an awkward "not ready yet" state. A skeleton is a cleaner signal.
+
+The original query didn't even track the loading flag:
+
+```tsx
+const { data: optionsData } = useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
+```
+
+Add `loading: optionsLoading` and use it to return an early skeleton:
+
+```tsx
+const { data: optionsData, loading: optionsLoading } =
+  useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
+
+// ...
+
+if (optionsLoading) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">Location</p>
+      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-9 w-full" />
+      <Skeleton className="h-9 w-full" />
+    </div>
+  )
+}
+```
+
+`h-9` matches shadcn's default `<SelectTrigger>` height, so the skeleton has the same footprint as the dropdowns it's replacing. Three stacked skeletons map to State, County, and City. Once `optionsLoading` flips to false, the component renders the real dropdowns as before.
+
+### Step 3: Skeleton for the crash count
+
+`SummaryBar` receives a `crashCount` prop that starts as `null` and transitions to a number once the first crash query resolves. The existing code renders a `—` dash for `null`:
+
+```tsx
+const countLabel = crashCount === null ? '—' : crashCount.toLocaleString()
+```
+
+Replace the dash with an inline skeleton:
+
+```tsx
+{
+  crashCount === null ? (
+    <>
+      <Skeleton className="inline-block h-4 w-10 align-middle" /> crashes
+    </>
+  ) : (
+    <span className={isLoading ? 'animate-pulse' : ''}>{countLabel} crashes</span>
+  )
+}
+```
+
+`inline-block` is needed because `Skeleton` is a `div` (block by default) but sits inside a `<span>`. `align-middle` keeps it vertically centered with the surrounding text. `w-10` (40px) is wide enough to suggest a 3–4 digit number without implying an exact value.
+
+The existing `Loader2` spinner and `animate-pulse` on the count text handle subsequent filter-triggered refetches, where there _is_ already a count to show — the skeleton only covers the cold-start case.
+
+### Why separate the two loading patterns
+
+| Pattern         | When to use                                                                       |
+| --------------- | --------------------------------------------------------------------------------- |
+| Skeleton        | Initial load — no content exists yet; user doesn't know what shape the data takes |
+| Spinner + pulse | Refetch — content exists; user knows what it looks like; just indicate "updating" |
+
+Using skeletons for refetches would cause the content to disappear and reappear on every filter change, which is jarring. The existing `notifyOnNetworkStatusChange: true` + previous-data-preservation approach is already correct for that case.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

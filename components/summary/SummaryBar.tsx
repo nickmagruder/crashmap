@@ -2,6 +2,7 @@
 
 import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface SummaryBarProps {
   crashCount?: number | null
@@ -25,7 +26,13 @@ export function SummaryBar({
     >
       <span className="flex items-center gap-1.5 text-sm font-medium tabular-nums whitespace-nowrap">
         {isLoading && <Loader2 className="size-3 animate-spin" aria-hidden="true" />}
-        <span className={isLoading ? 'animate-pulse' : ''}>{countLabel} crashes</span>
+        {crashCount === null ? (
+          <>
+            <Skeleton className="inline-block h-4 w-10 align-middle" /> crashes
+          </>
+        ) : (
+          <span className={isLoading ? 'animate-pulse' : ''}>{countLabel} crashes</span>
+        )}
       </span>
 
       {activeFilters.length > 0 && (

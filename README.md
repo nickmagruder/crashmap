@@ -45,6 +45,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Skeleton Screens
+
+- Added `components/ui/skeleton.tsx` via `npx shadcn@latest add skeleton` — animated pulse rectangle used as a placeholder wherever data is still loading
+- `GeographicFilter` now shows three skeleton rectangles (matching the height of the Select dropdowns) while the initial `filterOptions` query is in flight — replaces the previous behavior of rendering disabled, empty dropdowns
+- `SummaryBar` now shows an inline skeleton pill in place of the `—` dash while `crashCount` is null (the initial query hasn't resolved yet); once data arrives it switches to the real count with the existing pulse/spinner for subsequent refetches
+
 ### 2026-02-19 — Loading States
 
 - `GeographicFilter` now captures `loading` from the counties and cities queries; a `Loader2` spinner appears next to the "Location" label while either cascading query is in flight

@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useFilterContext } from '@/context/FilterContext'
 import {
   GET_FILTER_OPTIONS,
@@ -25,7 +26,8 @@ const ALL = '__all__'
 export function GeographicFilter() {
   const { filterState, dispatch } = useFilterContext()
 
-  const { data: optionsData } = useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
+  const { data: optionsData, loading: optionsLoading } =
+    useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
 
   const { data: countiesData, loading: countiesLoading } = useQuery<GetCountiesQuery>(
     GET_COUNTIES,
@@ -54,6 +56,17 @@ export function GeographicFilter() {
 
   function handleCityChange(value: string) {
     dispatch({ type: 'SET_CITY', payload: value === ALL ? null : value })
+  }
+
+  if (optionsLoading) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Location</p>
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    )
   }
 
   return (
