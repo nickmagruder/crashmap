@@ -3,6 +3,7 @@ import { ModeToggle } from '@/components/filters/ModeToggle'
 import { SeverityFilter } from '@/components/filters/SeverityFilter'
 import { DateFilter } from '@/components/filters/DateFilter'
 import { GeographicFilter } from '@/components/filters/GeographicFilter'
+import { ExportButton } from '@/components/export/ExportButton'
 
 interface SidebarProps {
   isOpen: boolean
@@ -21,6 +22,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <DateFilter />
           <SeverityFilter />
           <GeographicFilter />
+          <ExportButton variant="full" />
         </div>
       </SheetContent>
     </Sheet>

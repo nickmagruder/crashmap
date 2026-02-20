@@ -22,6 +22,7 @@ type SelectedCrash = {
   involvedPersons: number | null
   city: string | null
   county: string | null
+  jurisdiction: string | null
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -80,6 +81,7 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
         involvedPersons: p.involvedPersons as number | null,
         city: p.city as string | null,
         county: p.county as string | null,
+        jurisdiction: p.jurisdiction as string | null,
       })
     },
     []
@@ -139,6 +141,9 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
               <div style={{ color: 'var(--muted-foreground)' }}>
                 {[selectedCrash.city, selectedCrash.county].filter(Boolean).join(', ')}
               </div>
+            )}
+            {selectedCrash.jurisdiction && (
+              <div style={{ color: 'var(--muted-foreground)' }}>{selectedCrash.jurisdiction}</div>
             )}
             {selectedCrash.involvedPersons != null && (
               <div style={{ color: 'var(--muted-foreground)' }}>

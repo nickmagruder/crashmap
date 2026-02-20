@@ -4835,4 +4835,248 @@ A few notes:
 - **`!` non-null assertion** on `colliRptNum` in the `onClick` — safe because the entire block is gated on `selectedCrash.colliRptNum &&`
 - **`Check` icon for 2 seconds** — a standard confirmation pattern; the timeout resets automatically without any cleanup needed since the component remounts when a new crash is selected
 
+---
+
+## Phase 5: Data Export
+
+### Step: Add CSV Export for Filtered Results
+
+One of the most requested features in data visualization tools is the ability to download the underlying data. We'll add a CSV export that respects the current filters — so a user viewing Washington pedestrian crashes in 2025 can download exactly that dataset.
+
+#### Why CSV?
+
+CSV is the most universally compatible format for tabular data: it opens in Excel, Google Sheets, R, Python, and any text editor. We'll add a BOM (byte order mark) prefix so Excel recognizes the UTF-8 encoding and doesn't mangle special characters.
+
+#### The CSV utility
+
+Create `lib/csv-export.ts` with two pure functions — no external dependencies needed:
+
+```typescript
+type CrashRow = {
+  colliRptNum: string
+  crashDate?: string | null
+  time?: string | null
+  injuryType?: string | null
+  mode?: string | null
+  state?: string | null
+  county?: string | null
+  city?: string | null
+  jurisdiction?: string | null
+  region?: string | null
+  ageGroup?: string | null
+  involvedPersons?: number | null
+  latitude?: number | null
+  longitude?: number | null
+}
+
+const HEADERS = [
+  'Collision Report #',
+  'Date',
+  'Time',
+  'Injury Type',
+  'Mode',
+  'State',
+  'County',
+  'City',
+  'Jurisdiction',
+  'Region',
+  'Age Group',
+  'Involved Persons',
+  'Latitude',
+  'Longitude',
+]
+
+function escapeCell(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
+
+export function generateCsv(items: CrashRow[]): string {
+  const rows = items.map((item) => [
+    item.colliRptNum,
+    item.crashDate ?? '',
+    item.time ?? '',
+    item.injuryType ?? '',
+    item.mode ?? '',
+    item.state ?? '',
+    item.county ?? '',
+    item.city ?? '',
+    item.jurisdiction ?? '',
+    item.region ?? '',
+    item.ageGroup ?? '',
+    item.involvedPersons?.toString() ?? '',
+    item.latitude?.toString() ?? '',
+    item.longitude?.toString() ?? '',
+  ])
+  const lines = [HEADERS, ...rows].map((row) => row.map(escapeCell).join(','))
+  return '\ufeff' + lines.join('\r\n') // BOM prefix for Excel compatibility
+}
+
+export function downloadCsv(content: string, filename: string): void {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+```
+
+A few notes:
+
+- **`escapeCell`** — standard CSV escaping: wrap any cell containing a comma, double quote, or newline in double quotes, and double any embedded double quotes
+- **`\ufeff` BOM** — Excel on Windows needs this to correctly detect UTF-8 encoding; without it, names with accented characters (common in city/jurisdiction names) will appear garbled
+- **`\r\n` line endings** — the CSV spec (RFC 4180) calls for CRLF; Excel and most parsers accept LF-only too, but CRLF is safer
+- **`URL.createObjectURL` + programmatic click** — the standard browser download pattern; the URL is revoked immediately after clicking to free memory
+- **No external dependencies** — `papaparse` is a popular option, but our data shape is simple enough that a few lines of escaping logic is all we need
+
+#### The export GraphQL query
+
+The existing `GET_CRASHES` map query fetches a limited field set (just what's needed for the map circles). For export we want the full record. Add a separate query to `lib/graphql/queries.ts`:
+
+```typescript
+export const GET_CRASHES_EXPORT = gql`
+  query GetCrashesExport($filter: CrashFilter, $limit: Int) {
+    crashes(filter: $filter, limit: $limit) {
+      items {
+        colliRptNum
+        crashDate
+        time
+        injuryType
+        mode
+        state
+        county
+        city
+        jurisdiction
+        region
+        ageGroup
+        involvedPersons
+        latitude
+        longitude
+      }
+      totalCount
+    }
+  }
+`
+```
+
+Using a separate query document means Apollo caches map data and export data independently — switching filters invalidates both caches correctly, and clicking Export twice with the same filters reuses the cached result without a new network request.
+
+#### The ExportButton component
+
+Create `components/export/ExportButton.tsx` as a self-contained client component. It reads filter state from context, fires a lazy query on click, and triggers the download when data arrives:
+
+```typescript
+'use client'
+
+import { Download, Loader2 } from 'lucide-react'
+import { useLazyQuery } from '@apollo/client/react'
+import { Button } from '@/components/ui/button'
+import { useFilterContext, toCrashFilter } from '@/context/FilterContext'
+import { GET_CRASHES_EXPORT, type GetCrashesExportQuery } from '@/lib/graphql/queries'
+import { generateCsv, downloadCsv } from '@/lib/csv-export'
+import type { FilterState } from '@/context/FilterContext'
+
+function buildFilename(filterState: FilterState): string {
+  const parts: string[] = ['crashmap']
+  if (filterState.state) parts.push(filterState.state.toLowerCase().replace(/\s+/g, '-'))
+  if (filterState.county) parts.push(filterState.county.toLowerCase().replace(/\s+/g, '-'))
+  if (filterState.city) parts.push(filterState.city.toLowerCase().replace(/\s+/g, '-'))
+  if (filterState.dateFilter.type === 'year') {
+    parts.push(String(filterState.dateFilter.year))
+  } else if (filterState.dateFilter.type === 'range') {
+    parts.push(filterState.dateFilter.startDate.slice(0, 10))
+    parts.push(filterState.dateFilter.endDate.slice(0, 10))
+  }
+  parts.push(new Date().toISOString().slice(0, 10))
+  return parts.join('-') + '.csv'
+}
+
+interface ExportButtonProps {
+  variant?: 'icon' | 'full'
+}
+
+export function ExportButton({ variant = 'icon' }: ExportButtonProps) {
+  const { filterState } = useFilterContext()
+  const [fetchCrashes, { loading }] = useLazyQuery<GetCrashesExportQuery>(GET_CRASHES_EXPORT)
+
+  async function handleExport() {
+    const { data } = await fetchCrashes({
+      variables: { filter: toCrashFilter(filterState), limit: 5000 },
+    })
+    if (!data) return
+    const csv = generateCsv(data.crashes.items)
+    downloadCsv(csv, buildFilename(filterState))
+  }
+
+  if (variant === 'full') {
+    return (
+      <Button variant="outline" size="sm" onClick={handleExport} disabled={loading} className="w-full gap-2">
+        {loading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        {loading ? 'Exporting…' : 'Export CSV'}
+      </Button>
+    )
+  }
+
+  return (
+    <Button variant="ghost" size="icon" onClick={handleExport} disabled={loading} aria-label="Export CSV" title="Export CSV">
+      {loading ? <Loader2 className="size-3 animate-spin" /> : <Download className="size-3" />}
+    </Button>
+  )
+}
+```
+
+Key design decisions:
+
+- **`useLazyQuery`** — unlike `useQuery` (which fires immediately on mount), `useLazyQuery` returns a trigger function. We call it only when the user clicks Export, keeping the initial page load fast
+- **`'use client'`** — required because this component uses browser APIs (`URL.createObjectURL`) and React hooks
+- **Two variants** — `icon` renders a small ghost icon button that fits inside the SummaryBar pill without breaking its layout; `full` renders a full-width labeled button for the Sidebar and FilterOverlay footers
+- **`buildFilename`** — constructs a human-readable filename from the active filters so exported files are self-describing: `crashmap-washington-king-2025-2026-02-20.csv`
+- **`disabled={loading}`** — prevents double-clicks from firing duplicate requests while the first is in flight; the spinner gives visual feedback
+
+#### Placing the button in the UI
+
+The `icon` variant goes in the SummaryBar. Since `SummaryBar` is a presentational component, add an `actions?: React.ReactNode` prop and render it after the filter badges:
+
+```tsx
+{
+  actions && (
+    <>
+      <div className="h-4 w-px bg-border" aria-hidden="true" />
+      {actions}
+    </>
+  )
+}
+```
+
+Then in `AppShell`, pass the button as the slot:
+
+```tsx
+<SummaryBar
+  crashCount={filterState.totalCount}
+  activeFilters={getActiveFilterLabels(filterState)}
+  isLoading={filterState.isLoading}
+  actions={<ExportButton variant="icon" />}
+/>
+```
+
+The `full` variant goes at the bottom of `Sidebar` and as a sticky footer in `FilterOverlay`:
+
+```tsx
+// Sidebar — inside the filters div
+<ExportButton variant="full" />
+
+// FilterOverlay — after the scrollable content div
+<div className="border-t px-4 py-3">
+  <ExportButton variant="full" />
+</div>
+```
+
+This gives users three ways to trigger an export: the always-visible icon in the summary bar, the button at the bottom of the desktop sidebar, and the button in the mobile overlay footer.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

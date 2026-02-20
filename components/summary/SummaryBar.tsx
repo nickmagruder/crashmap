@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,12 +9,14 @@ interface SummaryBarProps {
   crashCount?: number | null
   activeFilters?: string[]
   isLoading?: boolean
+  actions?: React.ReactNode
 }
 
 export function SummaryBar({
   crashCount = null,
   activeFilters = [],
   isLoading = false,
+  actions,
 }: SummaryBarProps) {
   const countLabel = crashCount === null ? '—' : crashCount.toLocaleString()
 
@@ -45,6 +48,13 @@ export function SummaryBar({
               </Badge>
             ))}
           </div>
+        </>
+      )}
+
+      {actions && (
+        <>
+          <div className="h-4 w-px bg-border" aria-hidden="true" />
+          {actions}
         </>
       )}
     </div>

@@ -45,6 +45,19 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-20 — CSV Data Export
+
+- Added `lib/csv-export.ts` — `generateCsv()` converts crash records to a UTF-8 CSV string with BOM (for Excel compatibility) and `downloadCsv()` triggers a browser file download; no external dependencies
+- Added `GET_CRASHES_EXPORT` GraphQL query to `lib/graphql/queries.ts` — fetches all fields needed for export (colliRptNum, crashDate, time, injuryType, mode, state, county, city, jurisdiction, region, ageGroup, involvedPersons, latitude, longitude)
+- Added `components/export/ExportButton.tsx` — self-contained client component using `useLazyQuery`; fires on click with the current filter state (up to 5000 records); two variants: `icon` (ghost icon button for the SummaryBar pill) and `full` (full-width outline button for Sidebar/FilterOverlay); filename includes active geo and date filters (e.g. `crashmap-washington-king-2025-2026-02-20.csv`)
+- `SummaryBar` now accepts an optional `actions` slot (rendered with a separator after the filter badges); `AppShell` passes `<ExportButton variant="icon" />` there
+- `Sidebar` and `FilterOverlay` each include `<ExportButton variant="full" />` at the bottom of their filter lists
+
+### 2026-02-20 — Jurisdiction in Crash Popup
+
+- Added `jurisdiction` field to the `GET_CRASHES` GraphQL query, `CrashLayer` GeoJSON properties, and `MapContainer` `SelectedCrash` type
+- Popup now displays jurisdiction beneath the city/county line when present
+
 ### 2026-02-20 — Crash Layer Z-Ordering and Zoom Scaling
 
 - Split `CrashLayer` from a single `crashes-circles` layer into four separate Mapbox layers (`crashes-none`, `crashes-minor`, `crashes-major`, `crashes-death`) — layers render in order, so Death dots now always appear on top of Major Injury, which appear on top of Minor Injury, etc.
