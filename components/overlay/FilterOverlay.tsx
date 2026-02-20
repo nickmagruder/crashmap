@@ -4,6 +4,7 @@ import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ModeToggle } from '@/components/filters/ModeToggle'
 import { SeverityFilter } from '@/components/filters/SeverityFilter'
+import { DateFilter } from '@/components/filters/DateFilter'
 
 interface FilterOverlayProps {
   isOpen: boolean
@@ -29,6 +30,7 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
 
       <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
         <ModeToggle />
+        <DateFilter />
         <SeverityFilter />
       </div>
     </div>

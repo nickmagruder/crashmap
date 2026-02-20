@@ -45,6 +45,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — Date Filter (Year Quick-Select + Custom Range Picker)
+
+- Created `components/filters/DateFilter.tsx` — four year quick-select buttons (most recent 4 years, derived from `new Date().getFullYear()` at runtime); clicking the active year deselects it (`CLEAR_DATE`); clicking a new year dispatches `SET_DATE_YEAR`
+- Added a "Custom range…" Popover + Calendar button below the year buttons; uses `react-day-picker` `mode="range"` to capture a start and end date with two clicks; dispatches `SET_DATE_RANGE` only when both ends are selected, then auto-closes
+- `pendingRange` local state tracks in-progress calendar clicks without prematurely writing to context; reset if the popover is closed before a full range is chosen
+- "Clear dates" footer appears inside the popover when a range is committed; dispatches `CLEAR_DATE`
+- Year buttons and the custom range share the same `dateFilter` slot in `FilterContext` — selecting one implicitly clears the other
+- Added `DateFilter` to `Sidebar` and `FilterOverlay` between Mode and Severity sections
+
 ### 2026-02-19 — Severity Multi-Select Filter
 
 - Created `components/filters/SeverityFilter.tsx` — three checkboxes for Death, Major Injury, Minor Injury (all checked by default) plus a separate opt-in "No Injury / Unknown" checkbox below a divider; each row includes a colored dot matching the corresponding Mapbox circle color
