@@ -39,7 +39,7 @@ export function AppShell() {
             onClick={() => setSidebarOpen(true)}
             aria-label="Open filters"
           >
-            <SlidersHorizontal className="size-4" />
+            <SlidersHorizontal className="size-4" suppressHydrationWarning />
           </Button>
         </div>
         {/* Filter overlay toggle — mobile only */}
@@ -50,7 +50,7 @@ export function AppShell() {
             onClick={() => setOverlayOpen(true)}
             aria-label="Open filters"
           >
-            <SlidersHorizontal className="size-4" />
+            <SlidersHorizontal className="size-4" suppressHydrationWarning />
           </Button>
         </div>
       </div>
@@ -58,6 +58,7 @@ export function AppShell() {
       <SummaryBar
         crashCount={filterState.totalCount}
         activeFilters={getActiveFilterLabels(filterState)}
+        isLoading={filterState.isLoading}
       />
 
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />

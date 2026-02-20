@@ -5,9 +5,14 @@ import { Badge } from '@/components/ui/badge'
 interface SummaryBarProps {
   crashCount?: number | null
   activeFilters?: string[]
+  isLoading?: boolean
 }
 
-export function SummaryBar({ crashCount = null, activeFilters = [] }: SummaryBarProps) {
+export function SummaryBar({
+  crashCount = null,
+  activeFilters = [],
+  isLoading = false,
+}: SummaryBarProps) {
   const countLabel = crashCount === null ? '—' : crashCount.toLocaleString()
 
   return (
@@ -17,7 +22,9 @@ export function SummaryBar({ crashCount = null, activeFilters = [] }: SummaryBar
       aria-live="polite"
       aria-label="Summary"
     >
-      <span className="text-sm font-medium tabular-nums whitespace-nowrap">
+      <span
+        className={`text-sm font-medium tabular-nums whitespace-nowrap${isLoading ? ' animate-pulse' : ''}`}
+      >
         {countLabel} crashes
       </span>
 

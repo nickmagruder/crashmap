@@ -116,14 +116,22 @@ const circleLayer: LayerProps = {
 export function CrashLayer() {
   const { current: map } = useMap()
   const { filterState, dispatch } = useFilterContext()
-  const { data, error } = useQuery<GetCrashesQuery>(GET_CRASHES, {
+  const { data, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
     variables: { filter: toCrashFilter(filterState), limit: 5000 },
+    notifyOnNetworkStatusChange: true,
   })
+
+  // Surface loading state so SummaryBar can show a refetch indicator.
+  useEffect(() => {
+    dispatch({ type: 'SET_LOADING', payload: loading })
+  }, [loading, dispatch])
 
   // Surface the true total count to the filter context so SummaryBar can display it.
   useEffect(() => {
-    dispatch({ type: 'SET_TOTAL_COUNT', payload: data?.crashes.totalCount ?? null })
-  }, [data, dispatch])
+    if (!loading) {
+      dispatch({ type: 'SET_TOTAL_COUNT', payload: data?.crashes.totalCount ?? null })
+    }
+  }, [data, loading, dispatch])
 
   useEffect(() => {
     if (!map) return
