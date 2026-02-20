@@ -39,6 +39,7 @@ prisma/migrations/
 
 # claude
 .claude/
+CLAUDE.md
 
 # vercel
 .vercel
@@ -48,3 +49,4 @@ prisma/migrations/
 next-env.d.ts
 
 /lib/generated/prisma
+

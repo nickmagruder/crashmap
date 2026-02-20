@@ -45,6 +45,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-19 — CSP Headers and CORS
+
+- Added `Content-Security-Policy` header via `headers()` in `next.config.ts` — directives cover Next.js hydration (`unsafe-inline`; `unsafe-eval` in dev only for HMR), Mapbox tiles/telemetry (`*.mapbox.com`, `events.mapbox.com`), Mapbox blob: workers (`worker-src blob:`), and self-hosted Geist fonts (`font-src 'self'`)
+- Added `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy` (camera, microphone, geolocation all denied) to all routes
+- Added `OPTIONS` preflight handler and CORS headers to `app/api/graphql/route.ts` — cross-origin access restricted to `crashmap.io`, `crashmap.onrender.com`, and `localhost:3000`; `withCors()` helper clones the Apollo handler response to attach headers cleanly without losing body/status
+
 ### 2026-02-19 — Rate Limiting
 
 - Added `lib/rate-limit.ts` — zero-dependency in-memory sliding window rate limiter; 60 requests per minute per IP; `getClientIp()` reads the `x-forwarded-for` header (set by Render's proxy) to identify real client IPs; a `setInterval` sweep runs every 5 minutes to evict IPs with no recent activity
