@@ -6,6 +6,7 @@ import { Source, Layer, useMap } from 'react-map-gl/mapbox'
 import type { LayerProps } from 'react-map-gl/mapbox'
 import type { FeatureCollection, Point } from 'geojson'
 import { GET_CRASHES } from '@/lib/graphql/queries'
+import { useFilterContext, toCrashFilter } from '@/context/FilterContext'
 
 type CrashItem = {
   colliRptNum: string
@@ -114,9 +115,15 @@ const circleLayer: LayerProps = {
 
 export function CrashLayer() {
   const { current: map } = useMap()
+  const { filterState, dispatch } = useFilterContext()
   const { data, error } = useQuery<GetCrashesQuery>(GET_CRASHES, {
-    variables: { limit: 5000 },
+    variables: { filter: toCrashFilter(filterState), limit: 5000 },
   })
+
+  // Surface the true total count to the filter context so SummaryBar can display it.
+  useEffect(() => {
+    dispatch({ type: 'SET_TOTAL_COUNT', payload: data?.crashes.totalCount ?? null })
+  }, [data, dispatch])
 
   useEffect(() => {
     if (!map) return

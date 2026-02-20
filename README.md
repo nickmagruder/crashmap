@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.4.1
+**Version:** 0.4.2
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,6 +44,19 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
+
+### 2026-02-19 — Filter State Context
+
+- Created `context/FilterContext.tsx` — React `useReducer`-based filter state for all filter dimensions: mode (`Bicyclist`/`Pedestrian`/`null`), severity buckets (`Death`, `Major Injury`, `Minor Injury`), no-injury opt-in, date (year shortcut or custom range), and geographic cascading dropdowns (state → county → city)
+- Cascading resets baked into the reducer: selecting a new state clears county and city; selecting a new county clears city
+- `FilterProvider` wraps children in `app/layout.tsx`; `useFilterContext()` hook provides typed access to state and dispatch throughout the component tree
+- `toCrashFilter()` helper converts `FilterState` → `CrashFilter` GraphQL input object; `getActiveFilterLabels()` derives human-readable badge strings for non-default active filters
+- `CrashLayer` now reads filter state from context and passes it to the `GET_CRASHES` query; dispatches `SET_TOTAL_COUNT` after each query so `AppShell` can pass the live crash count to `SummaryBar`
+
+### 2026-02-19 — Crash Detail Popup — Dark Mode
+
+- Popup container dark mode override added to `globals.css` (`.dark .mapboxgl-popup-content`) — required `!important` to win the cascade against mapbox-gl's own stylesheet loaded via `layout.tsx`; popup arrow tip (`anchor-bottom`) and close button also themed
+- Popup content muted text switched from Tailwind `text-muted-foreground` class to inline `style={{ color: 'var(--muted-foreground)' }}` — Tailwind v4 `@theme inline` may compile color utility classes as static values rather than live CSS variable references; direct inline CSS `var()` references update reliably when the `.dark` class toggles on `<html>`
 
 ### 2026-02-19 — Crash Detail Popup
 
