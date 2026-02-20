@@ -5,6 +5,7 @@ import type { ASTNode, ValidationRule } from 'graphql'
 import { NextRequest } from 'next/server'
 import { typeDefs } from '@/lib/graphql/typeDefs'
 import { resolvers } from '@/lib/graphql/resolvers'
+import { getClientIp, checkRateLimit } from '@/lib/rate-limit'
 
 // ── Query depth limiting ──────────────────────────────────────────────────────
 // Rejects queries deeper than MAX_DEPTH before they reach any resolver.
@@ -39,9 +40,13 @@ const server = new ApolloServer({ typeDefs, resolvers, validationRules: [depthLi
 const handler = startServerAndCreateNextHandler<NextRequest>(server)
 
 export async function GET(request: NextRequest) {
+  const limited = checkRateLimit(getClientIp(request))
+  if (limited) return limited
   return handler(request)
 }
 
 export async function POST(request: NextRequest) {
+  const limited = checkRateLimit(getClientIp(request))
+  if (limited) return limited
   return handler(request)
 }

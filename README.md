@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.4.5
+**Version:** 0.5.0
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
@@ -44,6 +44,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ---
 
 ## Changelog
+
+### 2026-02-19 — Rate Limiting
+
+- Added `lib/rate-limit.ts` — zero-dependency in-memory sliding window rate limiter; 60 requests per minute per IP; `getClientIp()` reads the `x-forwarded-for` header (set by Render's proxy) to identify real client IPs; a `setInterval` sweep runs every 5 minutes to evict IPs with no recent activity
+- `GET` and `POST` handlers in `app/api/graphql/route.ts` now check the rate limit before delegating to Apollo Server; rate-limited requests receive a `429` response with a GraphQL-shaped `errors` body and a `Retry-After` header
 
 ### 2026-02-19 — Default Filter State (Washington, 2025, All Modes)
 

@@ -173,6 +173,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - `lib/graphql/resolvers.ts` — All resolvers with severity bucket mapping and `buildWhere` helper
 - `app/api/graphql/route.ts` — Apollo Server route handler; also contains the inline `depthLimitRule` validation rule (max depth: 5)
 - `lib/graphql/__generated__/types.ts` — Generated GraphQL types (committed; regenerated via `npm run codegen`)
+- `lib/rate-limit.ts` — In-memory sliding window rate limiter (60 req/min per IP); `getClientIp()` reads `x-forwarded-for` for Render's proxy; periodic `setInterval` sweep evicts idle IPs
 - `lib/graphql/__tests__/helpers.test.ts` — Unit tests for `rawToBucket`, `bucketsToRawValues`, `buildWhere`
 - `lib/graphql/__tests__/queries.test.ts` — Integration tests for all GraphQL queries via `executeOperation` with mocked Prisma
 - `vitest.config.ts` — Vitest configuration with `@` path alias
@@ -300,11 +301,13 @@ Severity-based visual hierarchy using color, opacity, AND size:
 
 #### Milestone: Production-ready public application
 
-- [ ] Add rate limiting middleware for public API abuse prevention
+- [x] Add rate limiting middleware for public API abuse prevention
 - [ ] Configure CSP headers and CORS in Next.js
-- [ ] Add loading states, error boundaries, skeleton screens
+- [ ] Add loading states
+- [ ] Add error boundaries
+- [ ] Add skeleton screens
 - [ ] Implement URL-based state for shareable filter configurations (e.g., `?severity=Death&mode=Pedestrian&state=Ohio&county=Franklin`)
-- [ ] Add data export (CSV/PDF) for filtered results
+- [ ] Add data export (CSV) for filtered results
 - [ ] Accessibility audit (WCAG 2.1 AA)
 - [ ] Add a data disclaimer, methodology page, and links to bicycle/pedestrian safety resources
 - [ ] Deploy to Render with staging and production environments (Web Service for Next.js app, existing PostgreSQL database)
@@ -320,7 +323,7 @@ Severity-based visual hierarchy using color, opacity, AND size:
 ### Phase 5: Iteration (Ongoing)
 
 - [ ] Gather user feedback and iterate on visualizations
-- [ ] Hide None/Unknown injuries by default — Mapbox layer filter excludes the None bucket on initial load
+- [x] Hide None/Unknown injuries by default — Mapbox layer filter excludes the None bucket on initial load
 - [ ] Add mode stroke differentiation — stroke color distinguishes bicyclists (blue `#1565C0`) vs. pedestrians (purple `#4A148C`); stroke width scales with zoom
 - [ ] **Stretch goal: Dashboard charts** (see Section 11) — add Recharts/D3 visualizations for severity, mode, time trends, and geographic breakdowns
 - [ ] **Stretch goal: Mobile bottom sheet** (see Section 11) — upgrade from full-screen overlay using `vaul` or `react-modal-sheet` for peek/half/full snap states
