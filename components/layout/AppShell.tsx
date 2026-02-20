@@ -10,6 +10,18 @@ import { SummaryBar } from '@/components/summary/SummaryBar'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useFilterContext, getActiveFilterLabels } from '@/context/FilterContext'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+
+const mapFallback = (
+  <div className="flex h-full w-full items-center justify-center bg-background">
+    <div className="space-y-3 text-center">
+      <p className="text-sm text-muted-foreground">Map failed to load.</p>
+      <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+        Refresh
+      </Button>
+    </div>
+  </div>
+)
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -26,7 +38,9 @@ export function AppShell() {
 
   return (
     <>
-      <MapContainer ref={mapRef} />
+      <ErrorBoundary fallback={mapFallback}>
+        <MapContainer ref={mapRef} />
+      </ErrorBoundary>
 
       {/* Top-right controls */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
@@ -69,8 +83,10 @@ export function AppShell() {
         isLoading={filterState.isLoading}
       />
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />
+      <ErrorBoundary fallback={null}>
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />
+      </ErrorBoundary>
     </>
   )
 }

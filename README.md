@@ -340,3 +340,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Refined generated Prisma model: renamed to `CrashData`, added camelCase field names with `@map` decorators and `@@map("crashdata")`
 - Ran `npx prisma generate` to produce typed client in `lib/generated/prisma/`
 - Added `lib/generated/prisma` to `.gitignore`
+
+### 2026-02-19 — Error Boundaries
+
+- Added `components/ErrorBoundary.tsx` — reusable React class component with a `fallback` prop; logs caught errors to console via `componentDidCatch`
+- Added `app/error.tsx` — Next.js route-level error page with a "Try again" reset button
+- Applied boundaries in `AppShell`: `MapContainer` gets a "Map failed to load / Refresh" full-screen fallback; `Sidebar` + `FilterOverlay` silently suppress (`fallback={null}`) so the map stays usable if filters crash

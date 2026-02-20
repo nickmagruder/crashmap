@@ -4289,4 +4289,121 @@ A few principles guided the choices here:
 - **Preserve existing state** — `SET_TOTAL_COUNT` only dispatches when `loading` is false, so the previous crash count stays visible in the SummaryBar rather than flashing back to `—` during a refetch. The map likewise keeps the previous crash circles visible while new data loads.
 - **Minimal noise** — Three small additions (spinner on button, spinner in bar, spinner by label) cover all the meaningful interaction points without cluttering the UI.
 
+---
+
+## Phase 5: Security, Polish & Deployment
+
+### Step 4: Error Boundaries
+
+React renders component trees synchronously. When a component throws during render, React's default behavior is to unmount the entire tree — the user sees a blank page. **Error boundaries** intercept those throws and render a fallback UI instead.
+
+React only supports class-based error boundaries (hooks can't implement `getDerivedStateFromError`). We create one generic, reusable component and apply it in two places.
+
+#### The `ErrorBoundary` component
+
+```tsx
+// components/ErrorBoundary.tsx
+'use client'
+
+import { Component, ReactNode } from 'react'
+
+type Props = {
+  fallback: ReactNode
+  children: ReactNode
+}
+
+type State = {
+  hasError: boolean
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false }
+
+  static getDerivedStateFromError(): State {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('ErrorBoundary caught:', error)
+  }
+
+  render() {
+    if (this.state.hasError) return this.props.fallback
+    return this.props.children
+  }
+}
+```
+
+`getDerivedStateFromError` runs during the render phase and flips `hasError`. `componentDidCatch` runs in the commit phase and is the right place to log errors. Both are needed: the static method updates state, the instance method handles side effects.
+
+#### Next.js route-level boundary (`app/error.tsx`)
+
+Next.js App Router uses file-based error boundaries via `error.tsx`. Place this file in `app/` to catch any error thrown by a page or layout segment:
+
+```tsx
+// app/error.tsx
+'use client'
+
+import { useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => {
+    console.error(error)
+  }, [error])
+
+  return (
+    <div className="flex h-dvh w-full items-center justify-center bg-background">
+      <div className="space-y-3 text-center">
+        <p className="text-sm text-muted-foreground">Something went wrong.</p>
+        <Button variant="outline" size="sm" onClick={reset}>
+          Try again
+        </Button>
+      </div>
+    </div>
+  )
+}
+```
+
+`reset()` re-renders the route segment from scratch. `h-dvh` fills the viewport since our page is full-screen.
+
+#### Applying boundaries in `AppShell`
+
+Two boundaries with different failure strategies:
+
+**Map boundary** — if Mapbox throws during initialization, show a user-visible fallback with a refresh button:
+
+```tsx
+const mapFallback = (
+  <div className="flex h-full w-full items-center justify-center bg-background">
+    <div className="space-y-3 text-center">
+      <p className="text-sm text-muted-foreground">Map failed to load.</p>
+      <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+        Refresh
+      </Button>
+    </div>
+  </div>
+)
+
+// In AppShell JSX:
+<ErrorBoundary fallback={mapFallback}>
+  <MapContainer ref={mapRef} />
+</ErrorBoundary>
+```
+
+**Filter boundary** — if the sidebar or overlay crashes, silently suppress and keep the map working. Losing filters is a degraded but acceptable state; losing the map is not:
+
+```tsx
+<ErrorBoundary fallback={null}>
+  <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+  <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />
+</ErrorBoundary>
+```
+
+#### Design rationale
+
+- **Granularity over breadth** — A single root boundary would protect the whole page, but it would also take down the map if filters crash. Separate boundaries let independent subtrees fail independently.
+- **`fallback={null}` is a valid strategy** — For the filters, a blank panel with a working map is better than a broken-looking fallback UI. The `ErrorBoundary` still catches and logs the error; it just doesn't show anything.
+- **`window.location.reload()` for the map** — The map error is catastrophic enough that a full reload (which re-initializes Mapbox's WebGL context) is the right recovery path. For filters, there's nothing to recover to, so we suppress.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
