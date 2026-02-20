@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { SlidersHorizontal } from 'lucide-react'
+import { Loader2, SlidersHorizontal } from 'lucide-react'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
@@ -39,7 +39,11 @@ export function AppShell() {
             onClick={() => setSidebarOpen(true)}
             aria-label="Open filters"
           >
-            <SlidersHorizontal className="size-4" suppressHydrationWarning />
+            {filterState.isLoading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <SlidersHorizontal className="size-4" suppressHydrationWarning />
+            )}
           </Button>
         </div>
         {/* Filter overlay toggle — mobile only */}
@@ -50,7 +54,11 @@ export function AppShell() {
             onClick={() => setOverlayOpen(true)}
             aria-label="Open filters"
           >
-            <SlidersHorizontal className="size-4" suppressHydrationWarning />
+            {filterState.isLoading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <SlidersHorizontal className="size-4" suppressHydrationWarning />
+            )}
           </Button>
         </div>
       </div>
