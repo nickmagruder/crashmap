@@ -291,12 +291,8 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [x] Load filter options on app init via `filterOptions` GraphQL query
 - [x] Add geographic cascading dropdowns — State → County → City `Select` components populated from `filterOptions` query data; each level resets when parent changes; wired to filter context
 - [x] Connect filters to GraphQL query variables — pass filter context state into `crashes` / `crashStats` query variables so map and summary bar update on filter change
-- [ ] Add a colors Key to filters panels
-
-#### Milestone: Optional UI
-
-- [ ] Optional: Add clustering — enable `cluster: true` on the GeoJSON source; cluster circles collapse at low zoom with count labels
-- [ ] Optional: Add heatmap layer — density heatmap visible at low zoom levels, hidden as zoom increases
+- [x] Implement automatic zoom/view changes when a geographic filter is changed. The view will automatically change to match the range of crashes.
+  - **Approach:** Two-ref pattern in `CrashLayer.tsx` — `prevGeoRef` tracks prior state/county/city values; `zoomPendingRef` flags a pending zoom. Effect 1 sets the flag when geo filter changes; Effect 2 executes `map.fitBounds()` or `map.flyTo()` when fresh data arrives. Only geo filter changes trigger zoom; severity/mode/date changes do not. See ARCHITECTURE.md §4 "Map Auto-Zoom" for full details.
 
 **Deliverables:** Working app with map and filters
 
@@ -332,5 +328,6 @@ Severity-based visual hierarchy using color, opacity, AND size:
 - [ ] Add an admin interface for uploading new crash data (protected with NextAuth.js)
 - [ ] Monitor query performance — add materialized views only if aggregation queries become slow
 - [ ] If data grows beyond 50K rows or traffic increases, revisit the caching strategy
+- [ ] Optional: Add clustering — enable `cluster: true` on the GeoJSON source; cluster circles collapse at low zoom with count labels
 
 ---
