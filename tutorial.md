@@ -5079,4 +5079,101 @@ The `full` variant goes at the bottom of `Sidebar` and as a sticky footer in `Fi
 
 This gives users three ways to trigger an export: the always-visible icon in the summary bar, the button at the bottom of the desktop sidebar, and the button in the mobile overlay footer.
 
+---
+
+## Step 18: About Panel and Pinnable Panels
+
+### The About panel
+
+At this point the app has rich filtering but no context for users: what is this data? How is it collected? What do the map symbols mean? We add an About panel that mirrors the Filters panel structurally but lives on the left side of the screen.
+
+Three new files:
+
+- `components/info/InfoPanelContent.tsx` — the static content itself (no hooks, no client state)
+- `components/info/InfoOverlay.tsx` — mobile full-screen overlay (same pattern as `FilterOverlay`, `md:hidden`)
+- `components/info/InfoSidePanel.tsx` — desktop panel, two modes: Sheet from left, or pinned column
+
+`InfoPanelContent` renders four sections: a dedication paragraph, "The Data" (methodology + link to the WSDOT Crash Data Portal), a map key (colored circles matching the actual Mapbox layer colors and opacities), and a data disclaimer. An "About" `<h2>` with a version/date sub-line sits at the top.
+
+### Pinnable panels
+
+"Pinned" means the panel stays permanently open alongside the map rather than floating over it. The key insight is layout: when a panel is pinned it becomes a flex sibling of the map container, pushing the map to one side. When unpinned it reverts to a Sheet (Radix Dialog portal) floating over the map.
+
+Change `AppShell` to return a flex container instead of a fragment:
+
+```tsx
+<div className="flex w-full h-full">
+  {/* Left: info panel (pinned) */}
+  {infoPanelOpen && infoPanelPinned && <InfoSidePanel pinned ... />}
+
+  {/* Center: map + overlays */}
+  <div className="flex-1 relative" style={{ minWidth: 0 }}>
+    <MapContainer ref={mapRef} />
+    ...
+    {/* Non-pinned sheets (render via portal, so position is unaffected by DOM placement) */}
+    <InfoSidePanel isOpen={infoPanelOpen && !infoPanelPinned} pinned={false} ... />
+    <Sidebar isOpen={sidebarOpen && !sidebarPinned} pinned={false} ... />
+  </div>
+
+  {/* Right: filter panel (pinned) */}
+  {sidebarOpen && sidebarPinned && <Sidebar pinned ... />}
+</div>
+```
+
+When `pinned=true`, the component renders a `div` (flex child). When `pinned=false`, it renders a `Sheet` (portal). These two rendering paths are mutually exclusive and controlled entirely by the parent.
+
+Call `map.resize()` whenever any panel open/pin state changes — Mapbox needs to know its canvas has changed size:
+
+```tsx
+useEffect(() => {
+  const id = setTimeout(() => mapRef.current?.resize(), 300)
+  return () => clearTimeout(id)
+}, [sidebarOpen, overlayOpen, infoPanelOpen, infoOverlayOpen, sidebarPinned, infoPanelPinned])
+```
+
+The 300ms delay matches the shadcn Sheet slide animation so the resize fires after the transition completes.
+
+### Pin/unpin UX
+
+Both panels use a shared header pattern: title + Pin (or PinOff) button + Close button. The shadcn `SheetContent` has a `showCloseButton` prop — pass `showCloseButton={false}` to suppress the built-in X and render your own so the header is identical across both modes:
+
+```tsx
+// Sheet version (non-pinned)
+<SheetContent side="left" showCloseButton={false} className="flex flex-col gap-0">
+  <div className="flex items-center gap-1 border-b px-4 py-3">
+    <SheetTitle className="flex-1">About</SheetTitle>
+    <Button onClick={onTogglePin}><Pin /></Button>  {/* desktop only */}
+    <SheetClose asChild><Button><X /></Button></SheetClose>
+  </div>
+  ...
+</SheetContent>
+
+// Pinned div version
+<div className="hidden md:flex flex-col w-80 border-r bg-background h-full">
+  <div className="flex items-center gap-1 border-b px-4 py-3">
+    <h2 className="flex-1">About</h2>
+    <Button onClick={onTogglePin}><PinOff /></Button>
+    <Button onClick={onClose}><X /></Button>
+  </div>
+  ...
+</div>
+```
+
+Pin state persists across open/close: if a user closes a pinned panel and reopens it via the button, it comes back pinned. Both panels default to open + pinned on desktop.
+
+### Emoji favicon
+
+Set the tab icon to an emoji with no image asset required — an inline SVG data URI in the Next.js `metadata` export:
+
+```tsx
+export const metadata: Metadata = {
+  title: 'CrashMap',
+  icons: {
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💥</text></svg>",
+  },
+}
+```
+
+This takes priority over any `favicon.ico` file and works in all modern browsers.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
