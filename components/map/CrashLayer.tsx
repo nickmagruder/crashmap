@@ -20,6 +20,7 @@ type CrashItem = {
   involvedPersons: number | null
   city: string | null
   county: string | null
+  jurisdiction: string | null
 }
 
 type GetCrashesQuery = {
@@ -205,6 +206,7 @@ export function CrashLayer() {
           involvedPersons: crash.involvedPersons,
           city: crash.city,
           county: crash.county,
+          jurisdiction: crash.jurisdiction,
         },
       })),
   }

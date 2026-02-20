@@ -6,6 +6,7 @@ import { ModeToggle } from '@/components/filters/ModeToggle'
 import { SeverityFilter } from '@/components/filters/SeverityFilter'
 import { DateFilter } from '@/components/filters/DateFilter'
 import { GeographicFilter } from '@/components/filters/GeographicFilter'
+import { ExportButton } from '@/components/export/ExportButton'
 
 interface FilterOverlayProps {
   isOpen: boolean
@@ -34,6 +35,10 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
         <DateFilter />
         <SeverityFilter />
         <GeographicFilter />
+      </div>
+
+      <div className="border-t px-4 py-3">
+        <ExportButton variant="full" />
       </div>
     </div>
   )

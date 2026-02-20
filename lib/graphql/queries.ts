@@ -63,8 +63,55 @@ export const GET_CRASHES = gql`
         involvedPersons
         city
         county
+        jurisdiction
       }
       totalCount
     }
   }
 `
+
+export const GET_CRASHES_EXPORT = gql`
+  query GetCrashesExport($filter: CrashFilter, $limit: Int) {
+    crashes(filter: $filter, limit: $limit) {
+      items {
+        colliRptNum
+        crashDate
+        time
+        injuryType
+        mode
+        state
+        county
+        city
+        jurisdiction
+        region
+        ageGroup
+        involvedPersons
+        latitude
+        longitude
+      }
+      totalCount
+    }
+  }
+`
+
+export type GetCrashesExportQuery = {
+  crashes: {
+    items: Array<{
+      colliRptNum: string
+      crashDate?: string | null
+      time?: string | null
+      injuryType?: string | null
+      mode?: string | null
+      state?: string | null
+      county?: string | null
+      city?: string | null
+      jurisdiction?: string | null
+      region?: string | null
+      ageGroup?: string | null
+      involvedPersons?: number | null
+      latitude?: number | null
+      longitude?: number | null
+    }>
+    totalCount: number
+  }
+}

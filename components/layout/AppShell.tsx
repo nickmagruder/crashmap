@@ -7,6 +7,7 @@ import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
 import { FilterOverlay } from '@/components/overlay/FilterOverlay'
 import { SummaryBar } from '@/components/summary/SummaryBar'
+import { ExportButton } from '@/components/export/ExportButton'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useFilterContext, getActiveFilterLabels } from '@/context/FilterContext'
@@ -81,6 +82,7 @@ export function AppShell() {
         crashCount={filterState.totalCount}
         activeFilters={getActiveFilterLabels(filterState)}
         isLoading={filterState.isLoading}
+        actions={<ExportButton variant="icon" />}
       />
 
       <ErrorBoundary fallback={null}>
