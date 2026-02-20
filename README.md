@@ -45,6 +45,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-20 — Shareable Filter URLs
+
+- Added `lib/filterUrlState.ts` — pure `encodeFilterParams` / `decodeFilterParams` utilities that convert `FilterState` to/from `URLSearchParams`; default values are omitted so a clean URL (`/`) means the default view (Washington, 2025, all modes); `?state=none` encodes null/all-states; `None` in the severity CSV encodes `includeNoInjury`
+- Added `components/FilterUrlSync.tsx` — invisible client component that syncs URL ↔ `FilterContext` via two effects: mount reads URL → `INIT_FROM_URL` dispatch; subsequent filter changes → `router.replace` (no history pollution); `skipFirstSyncRef` prevents the initial render from overwriting an incoming shared URL with defaults
+- Added `INIT_FROM_URL` action and `UrlFilterState` exported type to `context/FilterContext.tsx` — atomic state write that bypasses cascading reset logic
+- Wired `<FilterUrlSync />` in `app/layout.tsx` inside `<Suspense fallback={null}>` within `FilterProvider` (required by `useSearchParams` in the App Router)
+
 ### 2026-02-19 — Skeleton Screens
 
 - Added `components/ui/skeleton.tsx` via `npx shadcn@latest add skeleton` — animated pulse rectangle used as a placeholder wherever data is still loading

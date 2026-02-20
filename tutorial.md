@@ -4512,4 +4512,247 @@ The existing `Loader2` spinner and `animate-pulse` on the count text handle subs
 
 Using skeletons for refetches would cause the content to disappear and reappear on every filter change, which is jarring. The existing `notifyOnNetworkStatusChange: true` + previous-data-preservation approach is already correct for that case.
 
+---
+
+## Phase 5: Shareable Filter URLs
+
+One of the most useful features for a data visualization app is the ability to share a specific view via URL. Right now, all filter state lives in React Context — navigating to the same URL always shows the default filters. We want `?severity=Death&mode=Pedestrian&state=Ohio&county=Franklin` to restore that exact configuration on load.
+
+### The Core Challenge
+
+Filter state is managed by a `useReducer` in `FilterContext`. The URL is managed by the browser and Next.js's App Router. These two systems need to be kept in sync bidirectionally:
+
+1. **URL → State** (on page load / navigation): parse URL params, hydrate context
+2. **State → URL** (on filter interaction): encode context, update URL
+
+The tricky part is doing this without causing an infinite feedback loop between the two directions, and without overwriting an incoming shared URL on the first render.
+
+### Step 1: Define the URL parameter schema
+
+Before writing any code, decide what the URL should look like. The key principle: **omit default values**. A clean URL (`/`) means the default view. Params only appear when the user has changed something.
+
+Our URL schema:
+
+| Filter       | Default (omitted)                         | URL when non-default                                   |
+| ------------ | ----------------------------------------- | ------------------------------------------------------ |
+| Mode         | `null` (all)                              | `?mode=Bicyclist`                                      |
+| Severity     | `['Death','Major Injury','Minor Injury']` | `?severity=Death,Minor+Injury`                         |
+| Include None | `false`                                   | `None` appended to severity CSV                        |
+| Date         | `{ type:'year', year: 2025 }`             | `?year=2024`, `?dateFrom=...&dateTo=...`, `?date=none` |
+| State        | `'Washington'`                            | `?state=Ohio` or `?state=none` (all states)            |
+| County       | `null`                                    | `?county=Franklin`                                     |
+| City         | `null`                                    | `?city=Columbus`                                       |
+
+A few design decisions worth noting:
+
+- **Severity uses CSV** — `?severity=Death,Major+Injury,Minor+Injury` — because it's the only multi-value field. The `None` bucket is embedded in the same CSV (rather than a separate `?noInjury=1` param) since the two are always displayed together in the UI.
+- **`?state=none`** — we need a sentinel value for "all states" (null) because the default is _Washington_ (non-null). Without an explicit sentinel, absent `?state` is ambiguous: does it mean "Washington" or "all states"? The sentinel resolves this: absent = Washington, `?state=none` = all states.
+- **`?date=none`** — same problem for the date filter. Absent = default year (2025), `?date=none` = no date filter.
+
+### Step 2: Create pure encode/decode utilities
+
+Create `lib/filterUrlState.ts` with two pure functions — no React, no side effects, fully unit-testable:
+
+```typescript
+// lib/filterUrlState.ts
+import type { DateFilter, FilterState, ModeFilter, SeverityBucket } from '@/context/FilterContext'
+import { DEFAULT_SEVERITY } from '@/context/FilterContext'
+
+const DEFAULT_STATE = 'Washington'
+const DEFAULT_YEAR = 2025
+
+export function encodeFilterParams(filterState: FilterState): URLSearchParams {
+  const params = new URLSearchParams()
+
+  if (filterState.mode !== null) {
+    params.set('mode', filterState.mode)
+  }
+
+  const isDefault =
+    !filterState.includeNoInjury &&
+    filterState.severity.length === DEFAULT_SEVERITY.length &&
+    DEFAULT_SEVERITY.every((b) => filterState.severity.includes(b))
+
+  if (!isDefault) {
+    const buckets = [...filterState.severity, ...(filterState.includeNoInjury ? ['None'] : [])]
+    params.set('severity', buckets.join(','))
+  }
+
+  const { dateFilter } = filterState
+  if (dateFilter.type === 'none') {
+    params.set('date', 'none')
+  } else if (dateFilter.type === 'year' && dateFilter.year !== DEFAULT_YEAR) {
+    params.set('year', String(dateFilter.year))
+  } else if (dateFilter.type === 'range') {
+    params.set('dateFrom', dateFilter.startDate)
+    params.set('dateTo', dateFilter.endDate)
+  }
+
+  if (filterState.state !== DEFAULT_STATE) {
+    params.set('state', filterState.state === null ? 'none' : filterState.state)
+  }
+  if (filterState.county !== null) params.set('county', filterState.county)
+  if (filterState.city !== null) params.set('city', filterState.city)
+
+  return params
+}
+```
+
+The decode function is the mirror image, with defensive fallbacks for any invalid or absent param:
+
+```typescript
+export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
+  // mode: fall back to null if absent or invalid
+  const rawMode = params.get('mode')
+  const mode: ModeFilter = rawMode === 'Bicyclist' || rawMode === 'Pedestrian' ? rawMode : null
+
+  // severity: split CSV, extract 'None' as includeNoInjury flag
+  let severity = [...DEFAULT_SEVERITY]
+  let includeNoInjury = false
+  const rawSeverity = params.get('severity')
+  if (rawSeverity !== null) {
+    const parsed = rawSeverity
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => ['Death', 'Major Injury', 'Minor Injury', 'None'].includes(s))
+    if (parsed.length > 0) {
+      includeNoInjury = parsed.includes('None')
+      severity = parsed.filter((s) => s !== 'None') as SeverityBucket[]
+    }
+  }
+
+  // state: absent → Washington; 'none' → null
+  let state: string | null = DEFAULT_STATE
+  if (params.has('state')) {
+    const raw = params.get('state')!
+    state = raw === 'none' ? null : raw
+  }
+
+  // county/city: guard orphan params (county without state, city without county)
+  const county = params.get('county') !== null && state !== null ? params.get('county') : null
+  const city = params.get('city') !== null && county !== null ? params.get('city') : null
+
+  // ... (dateFilter decoding omitted for brevity)
+  return { mode, severity, includeNoInjury, dateFilter, state, county, city }
+}
+```
+
+Notice the **orphan param guard** for county/city: if someone manually types `?city=Seattle` without `?county=King+County`, we silently ignore the orphaned city. This prevents invalid partial states from hydrating into the reducer.
+
+### Step 3: Add INIT_FROM_URL to the reducer
+
+The filter reducer needs a new action that atomically sets all URL-derived values in one shot. This is important because we can't use existing actions like `SET_STATE` — that action cascades and clears county/city, which would break URL hydration if we dispatched `SET_STATE` before `SET_COUNTY`.
+
+```typescript
+// context/FilterContext.tsx
+
+export type UrlFilterState = {
+  mode: ModeFilter
+  severity: SeverityBucket[]
+  includeNoInjury: boolean
+  dateFilter: DateFilter
+  state: string | null
+  county: string | null
+  city: string | null
+}
+
+// Add to FilterAction union:
+| { type: 'INIT_FROM_URL'; payload: UrlFilterState }
+
+// Add to reducer:
+case 'INIT_FROM_URL':
+  return {
+    ...filterState,
+    mode: action.payload.mode,
+    severity: action.payload.severity,
+    includeNoInjury: action.payload.includeNoInjury,
+    dateFilter: action.payload.dateFilter,
+    state: action.payload.state,
+    county: action.payload.county,
+    city: action.payload.city,
+    // totalCount and isLoading are derived — never set from URL
+  }
+```
+
+The `INIT_FROM_URL` case writes all URL-derived fields at once, without cascading. The URL is the authoritative source here; we trust it to contain a consistent set of geo values (or not, in which case the UI degrades gracefully — showing no county results for a mismatched state).
+
+### Step 4: Create the sync bridge component
+
+The sync logic lives in a dedicated `FilterUrlSync` component that renders `null` — it exists purely for its side effects. This separation keeps the `FilterContext` clean (no routing hooks) and lets us control the `<Suspense>` boundary precisely.
+
+```typescript
+// components/FilterUrlSync.tsx
+'use client'
+
+import { useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useFilterContext } from '@/context/FilterContext'
+import { decodeFilterParams, encodeFilterParams } from '@/lib/filterUrlState'
+
+export function FilterUrlSync() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { filterState, dispatch } = useFilterContext()
+
+  // Skips Effect 2 on the first render (fires against initialState before
+  // INIT_FROM_URL has been processed by the reducer).
+  const skipFirstSyncRef = useRef(true)
+
+  // Effect 1: URL → state (mount only)
+  useEffect(() => {
+    dispatch({ type: 'INIT_FROM_URL', payload: decodeFilterParams(searchParams) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Effect 2: state → URL (after every filterState change)
+  useEffect(() => {
+    if (skipFirstSyncRef.current) {
+      skipFirstSyncRef.current = false
+      return
+    }
+    const params = encodeFilterParams(filterState)
+    const search = params.toString()
+    router.replace(search ? `?${search}` : '/', { scroll: false })
+  }, [filterState, router])
+
+  return null
+}
+```
+
+**The `skipFirstSyncRef` pattern** is the key correctness mechanism:
+
+- On mount, React runs Effect 1 and Effect 2 in order (same commit, Effect 1 first).
+- Effect 1 dispatches `INIT_FROM_URL`. The dispatch is queued — the reducer hasn't processed it yet.
+- Effect 2 fires next. `skipFirstSyncRef.current` is `true` → skips the URL write, sets the ref to `false`.
+- On the next render (after the dispatch processes), `filterState` now reflects the URL values.
+- Effect 2 fires again. `skipFirstSyncRef.current` is `false` → encodes the new `filterState` → writes to URL. Since the state was just decoded from the URL, encoding it back produces the same params → no visible change.
+
+Without this guard, Effect 2 on the first render would encode `initialState` (Washington, 2025, etc.) and call `router.replace`, overwriting the incoming shared URL before the hydration dispatch takes effect.
+
+**Why `router.replace` instead of `router.push`?** `router.push` adds a history entry for every filter interaction. After clicking five filters, the user would need to press Back five times to leave the page. `router.replace` swaps the current history entry silently — the URL is shareable but navigation still feels natural.
+
+### Step 5: Wire it into the layout
+
+`useSearchParams()` in the Next.js App Router requires a `<Suspense>` boundary. Without one, Next.js throws a build error in production. The `FilterUrlSync` component must be both inside `FilterProvider` (to access context) and wrapped in `Suspense` (for the hook):
+
+```tsx
+// app/layout.tsx
+import { Suspense } from 'react'
+import { FilterUrlSync } from '@/components/FilterUrlSync'
+
+// Inside RootLayout:
+;<FilterProvider>
+  <Suspense fallback={null}>
+    <FilterUrlSync />
+  </Suspense>
+  {children}
+</FilterProvider>
+```
+
+`fallback={null}` means nothing renders while search params are being read (which is instantaneous on the client). `FilterUrlSync` returns `null` anyway. The `<Suspense>` is a sibling of `{children}` — the map and all filter UI render immediately without waiting for URL sync to initialize.
+
+### How it interacts with the auto-zoom logic
+
+There's a nice emergent interaction here: when `INIT_FROM_URL` sets a non-default state/county/city, `CrashLayer`'s existing auto-zoom logic fires automatically. The `prevGeoRef` comparison detects that state changed (from `'Washington'` to `'Ohio'`, say), sets `zoomPendingRef = true`, and when data arrives the map zooms to fit Ohio's crashes. A shared URL with `?state=Ohio&county=Franklin` will both filter the data AND zoom the map to Franklin County — no special handling required.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
