@@ -4056,4 +4056,164 @@ done
 
 The first 60 return `200`. Request 61 onward returns `429` with a `Retry-After` header. After waiting 60 seconds, requests return `200` again.
 
+---
+
+## Phase 5: Security Headers and CORS
+
+With rate limiting in place, the next layer of protection is HTTP security headers and CORS. These don't stop determined attackers making direct HTTP requests, but they do close off whole classes of browser-based vulnerabilities: clickjacking, MIME sniffing, cross-origin data theft, and injection via third-party scripts.
+
+### Step 1: Understand what the app touches
+
+Before writing a Content Security Policy you need to inventory every external origin the browser connects to. For CrashMap:
+
+| What                                | Origin(s)                                                   |
+| ----------------------------------- | ----------------------------------------------------------- |
+| Mapbox tile API                     | `https://*.mapbox.com`                                      |
+| Mapbox telemetry/events             | `https://events.mapbox.com`                                 |
+| Mapbox GL Web Worker                | `blob:` (mapbox-gl spawns its worker via a blob URL)        |
+| Mapbox tile sprites/images          | `https://*.mapbox.com`, also `blob:`                        |
+| Geist font (via `next/font/google`) | `'self'` — next/font downloads at build time and self-hosts |
+| Next.js hydration scripts           | `'self'` + `'unsafe-inline'` (inline script tags)           |
+| Tailwind / Mapbox inline styles     | `'unsafe-inline'`                                           |
+| Next.js HMR (dev only)              | `'unsafe-eval'` (eval-based hot reloading)                  |
+
+### Step 2: Add security headers in `next.config.ts`
+
+Next.js exposes an async `headers()` function in `next.config.ts` that applies HTTP response headers to matched routes. This runs server-side at request time, so the browser receives these headers on every page load and API response.
+
+```ts
+import type { NextConfig } from 'next'
+
+const isDev = process.env.NODE_ENV === 'development'
+
+const cspDirectives = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://*.mapbox.com",
+  "connect-src 'self' https://*.mapbox.com https://events.mapbox.com",
+  'worker-src blob:',
+  "font-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ')
+
+const nextConfig: NextConfig = {
+  // ... existing config ...
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Content-Security-Policy', value: cspDirectives },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+    ]
+  },
+}
+```
+
+**Why each directive:**
+
+- **`default-src 'self'`** — baseline; everything not explicitly listed falls back to same-origin only.
+- **`script-src 'unsafe-inline'`** — Next.js embeds inline `<script>` tags for React hydration. A nonce-based CSP is possible with Next.js middleware but significantly more complex; `'unsafe-inline'` is the pragmatic choice here.
+- **`script-src 'unsafe-eval'` (dev only)** — Next.js HMR uses `eval()` for fast module reloading. We detect `NODE_ENV === 'development'` in `next.config.ts` at startup so the production build never gets this directive.
+- **`style-src 'unsafe-inline'`** — Mapbox GL and Tailwind both inject inline styles. No way around this without nonces on every style element.
+- **`img-src blob: https://*.mapbox.com`** — Mapbox loads tile images and sprites from its CDN. `blob:` covers canvas snapshot operations.
+- **`connect-src https://*.mapbox.com https://events.mapbox.com`** — all Mapbox API requests (tiles, geocoding, telemetry). The wildcard subdomain covers `api.mapbox.com`, `events.mapbox.com` is separate.
+- **`worker-src blob:`** — Mapbox GL spawns its WebWorker from a blob URL. Without this the map silently fails to render in browsers that enforce CSP for workers.
+- **`font-src 'self'`** — `next/font/google` downloads Geist at build time and serves it from `_next/static/`. The browser never fetches from `fonts.googleapis.com`.
+- **`object-src 'none'`** — disables Flash and other plugins (belt-and-suspenders; they're gone from modern browsers anyway).
+- **`frame-ancestors 'none'`** — prevents the app from being embedded in an `<iframe>` on another site (clickjacking protection). `X-Frame-Options: DENY` repeats this for older browsers that don't support CSP level 2.
+- **`base-uri 'self'`** — prevents injected `<base>` tags from redirecting all relative URLs to an attacker-controlled domain.
+- **`form-action 'self'`** — restricts where `<form>` submissions can be sent.
+
+**The other headers:**
+
+- **`X-Content-Type-Options: nosniff`** — tells the browser not to guess content types. Without it, a browser might execute a response as JavaScript even if the server sends `Content-Type: text/plain`.
+- **`Referrer-Policy: strict-origin-when-cross-origin`** — sends the full URL as the `Referer` header for same-origin requests (useful for analytics) but only the origin for cross-origin ones (avoids leaking path/query params to third parties).
+- **`Permissions-Policy`** — opts out of browser APIs the app doesn't use. CrashMap doesn't need camera, microphone, or geolocation access.
+
+### Step 3: Add CORS to the GraphQL route
+
+CORS headers tell browsers whether cross-origin JavaScript on _other_ websites is allowed to read responses from our API. Since CrashMap's data is public and there's no authentication, this doesn't prevent direct scraping — someone can always make `curl` requests. What it does prevent is other websites embedding our API and silently consuming our rate limit on behalf of their users' browsers.
+
+The pattern for adding CORS to a Next.js route handler while preserving the response from a third-party handler (Apollo Server in our case) is to clone the response with new headers:
+
+```ts
+const ALLOWED_ORIGINS = new Set([
+  'https://crashmap.io',
+  'https://crashmap.onrender.com',
+  'http://localhost:3000',
+])
+
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Max-Age': '86400',
+}
+
+function getCorsOrigin(request: NextRequest): string {
+  const origin = request.headers.get('origin')
+  return origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://crashmap.io'
+}
+
+async function withCors(response: Response, request: NextRequest): Promise<NextResponse> {
+  const headers = new Headers(response.headers)
+  headers.set('Access-Control-Allow-Origin', getCorsOrigin(request))
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    headers.set(key, value)
+  }
+  return new NextResponse(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}
+```
+
+The key technique is `new Headers(response.headers)` — this copies all existing headers from the Apollo response into a fresh, mutable `Headers` instance. We can then add CORS headers on top without risk of mutating a potentially-frozen object. The body, status, and status text pass through unchanged.
+
+We also need an `OPTIONS` handler for the browser's CORS preflight. Browsers send a `OPTIONS` request before any cross-origin `POST` to ask if the actual request is allowed. Without it, cross-origin GraphQL mutations (if we ever add them) would silently fail.
+
+```ts
+export async function OPTIONS(request: NextRequest) {
+  return withCors(new Response(null, { status: 204 }), request)
+}
+
+export async function GET(request: NextRequest) {
+  const limited = checkRateLimit(getClientIp(request))
+  if (limited) return limited
+  return withCors(await handler(request), request)
+}
+
+export async function POST(request: NextRequest) {
+  const limited = checkRateLimit(getClientIp(request))
+  if (limited) return limited
+  return withCors(await handler(request), request)
+}
+```
+
+Note that `Access-Control-Allow-Origin` must be a single origin value (not a list) when `Access-Control-Allow-Credentials` is involved. Since we don't use credentials, we could use `*` — but reflecting the requesting origin from an allowlist gives us more control.
+
+### Step 4: Verify
+
+Run `npm run build` to confirm TypeScript and the build both pass. Then start the dev server and open the browser DevTools Network tab — every HTML and API response should now carry the security headers. You can verify CSP enforcement by temporarily adding an inline script that tries to call `eval()` and observing the console error.
+
+For CORS, use `curl` with an `Origin` header:
+
+```bash
+curl -s -I -X OPTIONS https://crashmap.onrender.com/api/graphql \
+  -H 'Origin: https://crashmap.io' \
+  -H 'Access-Control-Request-Method: POST'
+```
+
+The response should include `Access-Control-Allow-Origin: https://crashmap.io` and `Access-Control-Allow-Methods: GET, POST, OPTIONS`.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
