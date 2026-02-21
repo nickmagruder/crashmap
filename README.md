@@ -45,6 +45,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-20 — Summary Bar Redesign and Emoji Mode Badges
+
+- `SummaryBar` mobile layout changed to a fixed full-width strip flush against the viewport bottom (`fixed bottom-0 left-0 right-0`), minimal height, no rounded corners; desktop changed to a `rounded-md` bar close to the bottom edge (`bottom-3`) with tighter padding
+- Crash count removed from `SummaryBar`; moved to the top of `FilterContent` in `Sidebar` and to the header of `FilterOverlay`
+- Export button hidden on mobile in `SummaryBar` (desktop-only via `hidden md:flex`)
+- `getActiveFilterLabels` updated: mode now shows emoji(s) (🚲, 🚶🏽‍♀️, or both) instead of text; year shortened to `'25` format; state label removed (only Washington data); county omitted when a city is also selected
+
 ### 2026-02-20 — About Panel, Pinnable Panels, and Emoji Favicon
 
 - Added `components/info/InfoPanelContent.tsx` — content for the About panel: a dedication, data description (with link to the WSDOT Crash Data Portal), a map key showing severity color legend, a data disclaimer, and a "Get Involved" list of bicycle/pedestrian safety and advocacy resources

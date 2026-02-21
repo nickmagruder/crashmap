@@ -933,4 +933,17 @@ const themes = {
 }
 ```
 
+## 10. Screen Reader Navigation
+
+### Concept
+
+- To be able to navigate the map using a screen reader using directional commands.
+- Broadly, the user will give an address, city, or city and neighborhood. Using an AI tool, a description of the location will be read. They will then will be able to navigate the map with arrow keys or "move north, move east, move west, move south" commands. With each movement, the next closest crash/neighborhood/city will be selected, the movement to the new location is described (how far, direction), an AI description of the streetscape is read, and the full details of that crash/neighborhood/city will be read. Further directional commands can be given, or an options menu can be opened. If options selected, the user can change mode (crash/neighborhood/city) or adjust filters, etc. Streetscape description can be turned on or off, or switched between detailed and brief descriptions.
+
+- Example Detailed prompt: For the purposes of describing a streetscape for a blind person, using online searches and street view tools: describe in a few sentences: the corner of Pine St and Boren St, Capitol Hill, Seattle, WA.
+- Example Brief prompt: For the purposes of describing a streetscape for a blind person, using online searches and street view tools: very quickly describe in one or two sentences: the corner of Pine St and Boren St, Capitol Hill, Seattle, WA.
+- Possible travel prompt:For the purposes of describing in-detail a hypothetical journey on foot for a blind person, using online searches and street view tools: describe in a few sentences: travel from Location 1 to Location 2. Include the distance of journey. Include whether the journey would be plausible or safe.
+- Location 1: Broadway and E Jefferson St, Seattle, WA, coordinates: 47.60619663739793, -122.32079494873855
+- Location 2: Broadway and E Fir St, Seattle, WA, coordinates of 47.602701919984966, -122.32077733634235
+
 ---

@@ -8,6 +8,7 @@ import { SeverityFilter } from '@/components/filters/SeverityFilter'
 import { DateFilter } from '@/components/filters/DateFilter'
 import { GeographicFilter } from '@/components/filters/GeographicFilter'
 import { ExportButton } from '@/components/export/ExportButton'
+import { useFilterContext } from '@/context/FilterContext'
 
 interface SidebarProps {
   pinned: boolean
@@ -17,8 +18,14 @@ interface SidebarProps {
 }
 
 function FilterContent() {
+  const { filterState } = useFilterContext()
   return (
     <div className="space-y-6 px-4 py-4">
+      {filterState.totalCount !== null && (
+        <p className="text-sm text-muted-foreground">
+          {filterState.totalCount.toLocaleString()} crashes
+        </p>
+      )}
       <ModeToggle />
       <DateFilter />
       <SeverityFilter />

@@ -5176,4 +5176,104 @@ export const metadata: Metadata = {
 
 This takes priority over any `favicon.ico` file and works in all modern browsers.
 
+---
+
+## Phase 5: Polish — Summary Bar Redesign
+
+### Step: Emoji mode badges and shorter filter labels
+
+The `SummaryBar` initially used text labels like "All modes", "Bicyclists", "Pedestrians" for the mode badge. Replacing them with emojis reduces visual noise and saves horizontal space — critical on mobile where the bar has minimal room.
+
+Update `getActiveFilterLabels` in `context/FilterContext.tsx`:
+
+```ts
+// Mode: use emoji(s) instead of text
+if (filterState.mode === 'Bicyclist') {
+  labels.push('🚲')
+} else if (filterState.mode === 'Pedestrian') {
+  labels.push('🚶🏽‍♀️')
+} else {
+  labels.push('🚲 🚶🏽‍♀️')
+}
+```
+
+Similarly, shorten year labels (`2025` → `'25`) and remove the state label entirely (since only Washington data is in the app). When a city is selected, skip the county label — the city name is sufficient context:
+
+```ts
+// Year: short format
+if (filterState.dateFilter.type === 'year') {
+  labels.push(`'${String(filterState.dateFilter.year).slice(2)}`)
+}
+
+// Geographic: no state; county only if no city
+if (!filterState.city && filterState.county) labels.push(filterState.county)
+if (filterState.city) labels.push(filterState.city)
+```
+
+### Step: Crash count moved to filter panels
+
+Displaying the crash count in the floating `SummaryBar` wastes space on mobile. Instead, show it at the top of the filter panels where it's in context alongside the active filter controls.
+
+In `Sidebar.tsx`, add it to the top of `FilterContent`:
+
+```tsx
+function FilterContent() {
+  const { filterState } = useFilterContext()
+  return (
+    <div className="space-y-6 px-4 py-4">
+      {filterState.totalCount !== null && (
+        <p className="text-sm text-muted-foreground">
+          {filterState.totalCount.toLocaleString()} crashes
+        </p>
+      )}
+      {/* ... rest of filters */}
+    </div>
+  )
+}
+```
+
+In `FilterOverlay.tsx`, add it to the header below the title:
+
+```tsx
+<div>
+  <h2 className="text-base font-semibold">Filters</h2>
+  {filterState.totalCount !== null && (
+    <p className="text-xs text-muted-foreground">
+      {filterState.totalCount.toLocaleString()} crashes
+    </p>
+  )}
+</div>
+```
+
+### Step: Mobile summary bar — flush-bottom strip
+
+The floating pill (`absolute bottom-6 ... rounded-full`) works well on desktop but is awkward on mobile — it floats over the map and obscures crash dots. The better pattern for mobile is a thin strip pinned to the very bottom of the viewport, similar to a browser bottom tab bar.
+
+Use responsive Tailwind classes to switch between the two layouts at the `md` breakpoint. The key insight is that `fixed` (mobile) can be overridden by `md:absolute` because media query rules take precedence over base rules at the matching breakpoint:
+
+```tsx
+className="
+  fixed bottom-0 left-0 right-0 z-10
+  flex items-center gap-2 border-t
+  bg-background/90 px-3 py-1.5 shadow-sm backdrop-blur-sm
+  md:absolute md:bottom-3 md:left-1/2 md:right-auto md:w-auto
+  md:-translate-x-1/2 md:rounded-md md:border md:px-4 md:py-1 md:shadow-md
+"
+```
+
+On mobile this produces a full-width strip with a single top border, flush against the viewport bottom. On desktop (`md:`) it becomes a compact floating bar centered horizontally, positioned just `12px` from the bottom of the map area, with `rounded-md` corners matching the icon buttons at the top of the UI.
+
+The export button is also hidden on mobile (the Filters overlay has a full-width Export button instead):
+
+```tsx
+{
+  actions && (
+    <div className="hidden md:flex items-center gap-1 ml-auto">
+      <div className="h-4 w-px bg-border" aria-hidden="true" />
+      {actions}
+    </div>
+  )
+}
+```
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
