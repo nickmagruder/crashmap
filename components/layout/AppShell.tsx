@@ -122,7 +122,6 @@ export function AppShell() {
         </div>
 
         <SummaryBar
-          crashCount={filterState.totalCount}
           activeFilters={getActiveFilterLabels(filterState)}
           isLoading={filterState.isLoading}
           actions={<ExportButton variant="icon" />}

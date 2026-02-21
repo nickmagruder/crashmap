@@ -7,6 +7,7 @@ import { SeverityFilter } from '@/components/filters/SeverityFilter'
 import { DateFilter } from '@/components/filters/DateFilter'
 import { GeographicFilter } from '@/components/filters/GeographicFilter'
 import { ExportButton } from '@/components/export/ExportButton'
+import { useFilterContext } from '@/context/FilterContext'
 
 interface FilterOverlayProps {
   isOpen: boolean
@@ -14,6 +15,7 @@ interface FilterOverlayProps {
 }
 
 export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
+  const { filterState } = useFilterContext()
   if (!isOpen) return null
 
   return (
@@ -24,7 +26,14 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
       aria-label="Filters"
     >
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <h2 className="text-base font-semibold">Filters</h2>
+        <div>
+          <h2 className="text-base font-semibold">Filters</h2>
+          {filterState.totalCount !== null && (
+            <p className="text-xs text-muted-foreground">
+              {filterState.totalCount.toLocaleString()} crashes
+            </p>
+          )}
+        </div>
         <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close filters">
           <X className="size-4" />
         </Button>

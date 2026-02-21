@@ -191,7 +191,14 @@ export function toCrashFilter(filterState: FilterState): CrashFilterInput {
 export function getActiveFilterLabels(filterState: FilterState): string[] {
   const labels: string[] = []
 
-  labels.push(filterState.mode ? filterState.mode + 's' : 'All modes')
+  // Mode: use emoji(s) instead of text
+  if (filterState.mode === 'Bicyclist') {
+    labels.push('🚲')
+  } else if (filterState.mode === 'Pedestrian') {
+    labels.push('🚶🏽‍♀️')
+  } else {
+    labels.push('🚲 🚶🏽‍♀️')
+  }
 
   // Only flag severity when it differs from the default three-bucket set.
   const defaultSet = new Set<string>(DEFAULT_SEVERITY)
@@ -206,14 +213,15 @@ export function getActiveFilterLabels(filterState: FilterState): string[] {
     labels.push(all.length === 0 ? 'No severity' : all.join(' + '))
   }
 
+  // Date: shorten year to '25 format; omit state (only Washington data available)
   if (filterState.dateFilter.type === 'year') {
-    labels.push(String(filterState.dateFilter.year))
+    labels.push(`'${String(filterState.dateFilter.year).slice(2)}`)
   } else if (filterState.dateFilter.type === 'range') {
     labels.push(`${filterState.dateFilter.startDate} – ${filterState.dateFilter.endDate}`)
   }
 
-  if (filterState.state) labels.push(filterState.state)
-  if (filterState.county) labels.push(filterState.county)
+  // Geographic: skip state label; show county only if no city is selected
+  if (!filterState.city && filterState.county) labels.push(filterState.county)
   if (filterState.city) labels.push(filterState.city)
 
   return labels

@@ -3,59 +3,41 @@
 import React from 'react'
 import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 
 interface SummaryBarProps {
-  crashCount?: number | null
   activeFilters?: string[]
   isLoading?: boolean
   actions?: React.ReactNode
 }
 
-export function SummaryBar({
-  crashCount = null,
-  activeFilters = [],
-  isLoading = false,
-  actions,
-}: SummaryBarProps) {
-  const countLabel = crashCount === null ? '—' : crashCount.toLocaleString()
-
+export function SummaryBar({ activeFilters = [], isLoading = false, actions }: SummaryBarProps) {
   return (
     <div
-      className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border bg-background/90 px-4 py-2 shadow-md backdrop-blur-sm"
+      // Mobile: fixed strip flush against the viewport bottom, full width, minimal height.
+      // Desktop: floating centered pill above the bottom edge of the map area.
+      className="fixed bottom-0 left-0 right-0 z-10 flex items-center gap-2 border-t bg-background/90 px-3 py-1.5 shadow-sm backdrop-blur-sm md:absolute md:bottom-3 md:left-1/2 md:right-auto md:w-auto md:-translate-x-1/2 md:rounded-md md:border md:px-4 md:py-1 md:shadow-md"
       role="status"
       aria-live="polite"
       aria-label="Summary"
     >
-      <span className="flex items-center gap-1.5 text-sm font-medium tabular-nums whitespace-nowrap">
-        {isLoading && <Loader2 className="size-3 animate-spin" aria-hidden="true" />}
-        {crashCount === null ? (
-          <>
-            <Skeleton className="inline-block h-4 w-10 align-middle" /> crashes
-          </>
-        ) : (
-          <span className={isLoading ? 'animate-pulse' : ''}>{countLabel} crashes</span>
-        )}
-      </span>
+      {isLoading && <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden="true" />}
 
       {activeFilters.length > 0 && (
-        <>
-          <div className="h-4 w-px bg-border" aria-hidden="true" />
-          <div className="flex flex-wrap gap-1.5">
-            {activeFilters.map((filter) => (
-              <Badge key={filter} variant="secondary" className="text-xs">
-                {filter}
-              </Badge>
-            ))}
-          </div>
-        </>
+        <div className="flex flex-wrap gap-1.5">
+          {activeFilters.map((filter) => (
+            <Badge key={filter} variant="secondary" className="text-xs">
+              {filter}
+            </Badge>
+          ))}
+        </div>
       )}
 
+      {/* Actions (e.g. export button) — desktop only */}
       {actions && (
-        <>
+        <div className="hidden md:flex items-center gap-1 ml-auto">
           <div className="h-4 w-px bg-border" aria-hidden="true" />
           {actions}
-        </>
+        </div>
       )}
     </div>
   )
