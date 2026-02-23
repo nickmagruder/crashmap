@@ -2,6 +2,27 @@ services:
   - type: web
     name: crashmap
     runtime: node
+    branch: main
+    autoDeploy: false
+    buildCommand: >-
+      npm ci && npm run build &&
+      cp -r public .next/standalone/public &&
+      cp -r .next/static .next/standalone/.next/static
+    startCommand: node .next/standalone/server.js
+    nodeVersion: 20
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_MAPBOX_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+
+  - type: web
+    name: crashmap-staging
+    runtime: node
+    branch: staging
+    autoDeploy: true
     buildCommand: >-
       npm ci && npm run build &&
       cp -r public .next/standalone/public &&

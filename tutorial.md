@@ -5477,4 +5477,132 @@ Previously, selecting a county would clear the city selection, and the city drop
 
 Since all data is from Washington, the State selector was removed from the Location filter UI. `state: 'Washington'` remains hardcoded in `toCrashFilter()` so the GraphQL query still filters by state for index efficiency, but users never see or interact with it.
 
+---
+
+## Step N: CI/CD Pipeline and Staging Environment
+
+With the core feature set in place, it's time to harden the deployment pipeline. The goal is a setup where:
+
+- **Every push to `main`** triggers a full CI check (lint, types, tests, codegen, build) and — only if all checks pass — automatically deploys to production on Render.
+- **A `staging` branch** gives you a live environment to verify changes before they touch production, without requiring CI to pass first.
+
+### The Problem with Render's Built-in Auto-Deploy
+
+Render's default "Auto-Deploy" setting watches the GitHub repo and deploys on every push to the tracked branch. This has two issues:
+
+1. It deploys even if CI fails — a broken build ships.
+2. There's no way to inject a separate CI gate between the git push and the deploy.
+
+The fix is to set `autoDeploy: false` on the production service and use a **Render deploy hook** — a private URL you POST to when you want a deploy to happen. The CI workflow calls this URL only after all checks pass.
+
+### Updating render.yaml
+
+The `render.yaml` Blueprint file declares both services:
+
+```yaml
+services:
+  - type: web
+    name: crashmap
+    runtime: node
+    branch: main
+    autoDeploy: false # only CI can trigger production deploys
+    buildCommand: >-
+      npm ci && npm run build &&
+      cp -r public .next/standalone/public &&
+      cp -r .next/static .next/standalone/.next/static
+    startCommand: node .next/standalone/server.js
+    nodeVersion: 20
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_MAPBOX_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+
+  - type: web
+    name: crashmap-staging
+    runtime: node
+    branch: staging
+    autoDeploy: true # staging deploys freely on every push
+    buildCommand: >-
+      npm ci && npm run build &&
+      cp -r public .next/standalone/public &&
+      cp -r .next/static .next/standalone/.next/static
+    startCommand: node .next/standalone/server.js
+    nodeVersion: 20
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_MAPBOX_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+```
+
+Since CrashMap is a read-only public app (no mutations), staging and production can safely share the same database — there's no risk of staging writes corrupting production data.
+
+### Creating the Staging Branch
+
+```bash
+git checkout -b staging main
+git push origin staging
+```
+
+In the Render dashboard, create the `crashmap-staging` web service manually (there's no Blueprint sync UI in all plan tiers): connect the same GitHub repo, set branch to `staging`, use the same build/start commands, set `autoDeploy` to on. Then set the three env vars (`DATABASE_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_APP_URL`).
+
+### Wiring the Deploy Hook to GitHub Actions
+
+In the Render dashboard for the production `crashmap` service, go to **Settings → Deploy Hook** and copy the private URL. Add it to GitHub as a repository secret named `RENDER_DEPLOY_HOOK_PRODUCTION` (Settings → Secrets and variables → Actions → New repository secret).
+
+### Codegen Drift Check
+
+The generated types file (`lib/graphql/__generated__/types.ts`) is committed to the repo. If someone updates `typeDefs.ts` or `resolvers.ts` but forgets to run `npm run codegen`, the committed types silently go stale. The CI drift check catches this:
+
+```yaml
+- name: Codegen drift check
+  run: |
+    npm run codegen
+    git diff --exit-code lib/graphql/__generated__/types.ts
+```
+
+`git diff --exit-code` returns a non-zero exit code if the file changed — failing the job. This forces the developer to run `npm run codegen` locally and commit the result before CI will pass.
+
+### The Updated CI Workflow
+
+The workflow splits into two jobs:
+
+- **`check`** — runs on every branch push: lint, format, typecheck, test, codegen drift, build.
+- **`deploy`** — runs only on `main` pushes, only after `check` passes; calls the Render deploy hook.
+
+```yaml
+deploy:
+  needs: check
+  runs-on: ubuntu-latest
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+  steps:
+    - name: Deploy to Render (production)
+      run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION }}"
+```
+
+The `needs: check` dependency means this job is skipped entirely if `check` fails. The `if:` guard means it only runs on direct pushes to `main` (i.e., when a PR is merged) — not on feature branch pushes.
+
+### The Full Flow
+
+```text
+Feature branch → PR → CI (check job) runs on the branch
+                    → CI passes → merge to main
+                                → CI (check job) runs on main
+                                → check passes → deploy job fires
+                                               → POST to Render deploy hook
+                                               → production deploys
+```
+
+```text
+push to staging → Render auto-deploys crashmap-staging immediately
+```
+
+Branch protection on `main` (configured in GitHub → Settings → Branches) ensures the `check` job must pass before a PR can be merged, closing the loop.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
