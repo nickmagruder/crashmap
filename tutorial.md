@@ -5384,4 +5384,97 @@ if (!feature || feature.geometry.type !== 'Point') {
 
 The result: clicking a crash zooms the map to street level (zoom 15.5) with a 45° pitch, and clicking anywhere else (or the X) smoothly returns to exactly where the user was before.
 
+---
+
+## Step N: Update Search as Map Moves
+
+### The Goal
+
+We want a toggle that switches the crash query from "filter by state/county/city text" to "filter by whatever's currently visible on the map." When the user pans or zooms, the query automatically updates. County and city filters should also be decoupled so either can be selected independently.
+
+### Why the Naive Approach Fails
+
+The existing `map.getBounds()` method seems like the obvious tool here, but it has a subtle gotcha: Mapbox stores **camera padding** when you call `fitBounds({ padding: 80 })`. After that, `getBounds()` returns the bounds of the inner _un-padded_ area — the viewport minus the padding margin — not the full canvas. The result is a bounding box that's noticeably smaller than what the user sees.
+
+The fix is to unproject the actual canvas corners:
+
+```ts
+const canvas = map.getCanvas()
+const sw = map.unproject([0, canvas.clientHeight]) // bottom-left pixel
+const ne = map.unproject([canvas.clientWidth, 0]) // top-right pixel
+```
+
+`unproject()` converts screen pixels directly to geographic coordinates, bypassing all camera transforms and padding. We also add a 5% buffer in each direction so crashes near the edges load before the user pans to them.
+
+### The `updateWithMovement` State
+
+Add `updateWithMovement: boolean` to `FilterState` and `UrlFilterState`, along with a `SET_UPDATE_WITH_MOVEMENT` action. Persisted in the URL as `?movement=1`.
+
+When `updateWithMovement` is on:
+
+- The crash query replaces `state`/`county`/`city` with a `bbox` input computed from the map viewport
+- The county and city selectors in the UI are disabled and greyed out
+- Auto-zoom on geographic filter change is suppressed (the user is navigating manually)
+- The active filter badge shows "📍 Viewport" instead of a county/city name
+
+### The `moveend` Listener Pattern
+
+In `CrashLayer`, when `updateWithMovement` turns on:
+
+1. Immediately capture the current viewport as the initial bbox
+2. Register a `moveend` listener that re-captures on each pan/zoom-end
+3. The bbox is local state (`useState`) in `CrashLayer` — it drives a new query variable, triggering Apollo to refetch
+
+```ts
+useEffect(() => {
+  if (!map || !filterState.updateWithMovement) return
+
+  function captureBbox() {
+    const canvas = map.getCanvas()
+    const sw = map.unproject([0, canvas.clientHeight])
+    const ne = map.unproject([canvas.clientWidth, 0])
+    const latBuf = (ne.lat - sw.lat) * 0.05
+    const lngBuf = (ne.lng - sw.lng) * 0.05
+    setBbox({
+      minLat: sw.lat - latBuf,
+      minLng: sw.lng - lngBuf,
+      maxLat: ne.lat + latBuf,
+      maxLng: ne.lng + lngBuf,
+    })
+  }
+
+  captureBbox() // seed immediately
+  map.on('moveend', captureBbox)
+  return () => map.off('moveend', captureBbox)
+}, [map, filterState.updateWithMovement])
+```
+
+Using `moveend` (not `move`) means the query only fires when the user finishes interacting, not on every animation frame.
+
+### Preventing the Flash with `previousData`
+
+When the bbox changes, Apollo receives new query variables it hasn't seen before — a **cache miss**. For a brief moment, `data` is `undefined` while the network request is in flight. Without a fix, the component hits `if (!data) return null` and unmounts all the crash dots, causing a jarring flash.
+
+Apollo's `useQuery` returns a `previousData` field that holds the last successful result. The fix is one line:
+
+```ts
+const { data, previousData, loading } = useQuery(...)
+const displayData = data ?? previousData
+```
+
+During a loading refetch, `displayData` falls back to the previous result so the old dots stay rendered. When the new response arrives, `displayData` switches to the fresh set — new dots appear, out-of-viewport dots disappear, with no blank-map flash in between.
+
+### Decoupling County and City
+
+Previously, selecting a county would clear the city selection, and the city dropdown only loaded cities within the selected county. The new behavior:
+
+- `SET_COUNTY` no longer resets `city` in the reducer
+- Both dropdowns always load all Washington options (county query: `state: 'Washington'`; city query: `state: 'Washington'` with no county filter)
+- A user can select King County and Seattle independently — if the city isn't in the county, the DB returns no results (correct)
+- URL decode likewise drops the old "city only valid if county is set" guard
+
+### Removing the State Selector
+
+Since all data is from Washington, the State selector was removed from the Location filter UI. `state: 'Washington'` remains hardcoded in `toCrashFilter()` so the GraphQL query still filters by state for index efficiency, but users never see or interact with it.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

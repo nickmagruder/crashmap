@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@apollo/client/react'
 import { Source, Layer, useMap } from 'react-map-gl/mapbox'
 import type { LayerProps } from 'react-map-gl/mapbox'
 import type { FeatureCollection, Point } from 'geojson'
 import { GET_CRASHES } from '@/lib/graphql/queries'
-import { useFilterContext, toCrashFilter } from '@/context/FilterContext'
+import { useFilterContext, toCrashFilter, type CrashFilterInput } from '@/context/FilterContext'
 
 type CrashItem = {
   colliRptNum: string
@@ -86,6 +86,10 @@ export function CrashLayer() {
   const { current: map } = useMap()
   const { filterState, dispatch } = useFilterContext()
 
+  // Viewport bbox — only used when updateWithMovement is on.
+  type BBox = NonNullable<CrashFilterInput['bbox']>
+  const [bbox, setBbox] = useState<BBox | undefined>(undefined)
+
   // Two-ref pattern for geo-filter-triggered auto-zoom.
   // Effect 1 sets a pending flag when state/county/city changes.
   // Effect 2 executes the zoom once fresh data arrives.
@@ -95,10 +99,27 @@ export function CrashLayer() {
     city: null,
   })
   const zoomPendingRef = useRef(false)
-  const { data, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
-    variables: { filter: toCrashFilter(filterState), limit: 5000 },
+
+  // Build the query filter: when updateWithMovement, use bbox and drop geo text fields.
+  const queryFilter: CrashFilterInput = filterState.updateWithMovement
+    ? {
+        ...toCrashFilter(filterState),
+        state: undefined,
+        county: undefined,
+        city: undefined,
+        bbox: bbox ?? undefined,
+      }
+    : toCrashFilter(filterState)
+
+  const { data, previousData, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
+    variables: { filter: queryFilter, limit: 5000 },
     notifyOnNetworkStatusChange: true,
   })
+
+  // During a loading refetch, data is undefined (cache miss on new bbox/variables).
+  // Fall back to previousData so the dots from the last result stay visible until
+  // the new response arrives — prevents the flash-to-empty on every map move.
+  const displayData = data ?? previousData
 
   // Surface loading state so SummaryBar can show a refetch indicator.
   useEffect(() => {
@@ -132,21 +153,59 @@ export function CrashLayer() {
     }
   }, [map])
 
-  // Effect 1: detect geographic filter changes and set pending zoom flag.
+  // When updateWithMovement is on: capture the current viewport and listen for moveend.
+  // The bbox state drives a query re-run on each pan/zoom-end.
   useEffect(() => {
+    if (!map || !filterState.updateWithMovement) return
+
+    function captureBbox() {
+      if (!map) return
+      // Use unproject on canvas corners instead of getBounds() — getBounds() returns
+      // the inner "unpadded" area when camera padding is active (e.g. after fitBounds).
+      // Unprojecting pixel corners always gives the true full-canvas viewport bounds.
+      const canvas = map.getCanvas()
+      const w = canvas.clientWidth
+      const h = canvas.clientHeight
+      const sw = map.unproject([0, h])
+      const ne = map.unproject([w, 0])
+      // Add 5% buffer so crashes near the edge load before the user pans to them.
+      const latBuf = (ne.lat - sw.lat) * 0.05
+      const lngBuf = (ne.lng - sw.lng) * 0.05
+      setBbox({
+        minLat: sw.lat - latBuf,
+        minLng: sw.lng - lngBuf,
+        maxLat: ne.lat + latBuf,
+        maxLng: ne.lng + lngBuf,
+      })
+    }
+
+    // Seed with the current viewport immediately.
+    captureBbox()
+    map.on('moveend', captureBbox)
+    return () => {
+      map.off('moveend', captureBbox)
+    }
+  }, [map, filterState.updateWithMovement])
+
+  // Effect 1: detect geographic filter changes and set pending zoom flag.
+  // Skip auto-zoom when updateWithMovement is on (map position is user-driven).
+  useEffect(() => {
+    if (filterState.updateWithMovement) return
     const { state, county, city } = filterState
     const prev = prevGeoRef.current
     const changed = state !== prev.state || county !== prev.county || city !== prev.city
     if (!changed) return
     prevGeoRef.current = { state, county, city }
     zoomPendingRef.current = !!(state || county || city)
-  }, [filterState.state, filterState.county, filterState.city]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filterState.state, filterState.county, filterState.city, filterState.updateWithMovement]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Effect 2: when fresh data arrives, execute a pending zoom to fit crash bounds.
   useEffect(() => {
-    if (loading || !zoomPendingRef.current || !map || !data?.crashes?.items?.length) return
+    if (loading || !zoomPendingRef.current || !map || !displayData?.crashes?.items?.length) return
 
-    const points = data.crashes.items.filter((c) => c.latitude != null && c.longitude != null)
+    const points = displayData.crashes.items.filter(
+      (c) => c.latitude != null && c.longitude != null
+    )
     if (points.length === 0) return
 
     zoomPendingRef.current = false
@@ -174,18 +233,18 @@ export function CrashLayer() {
       ],
       { padding: 80, duration: 800, maxZoom: 14 }
     )
-  }, [data, loading, map])
+  }, [displayData, loading, map])
 
   if (error) {
     console.error('CrashLayer query error:', error)
     return null
   }
 
-  if (!data) return null
+  if (!displayData) return null
 
   const geojson: FeatureCollection<Point> = {
     type: 'FeatureCollection',
-    features: data.crashes.items
+    features: displayData.crashes.items
       .filter(
         (crash: { latitude: number | null; longitude: number | null }) =>
           crash.latitude != null && crash.longitude != null
