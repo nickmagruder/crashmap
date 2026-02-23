@@ -21,6 +21,7 @@ export interface FilterState {
   county: string | null
   city: string | null
   updateWithMovement: boolean // when true, query uses viewport bbox instead of geo text filters
+  satellite: boolean // when true, map uses satellite-streets style regardless of theme
   totalCount: number | null // populated by CrashLayer after query
   isLoading: boolean // true while a filter-triggered refetch is in flight
 }
@@ -48,6 +49,7 @@ export type FilterAction =
   | { type: 'SET_COUNTY'; payload: string | null }
   | { type: 'SET_CITY'; payload: string | null }
   | { type: 'SET_UPDATE_WITH_MOVEMENT'; payload: boolean }
+  | { type: 'SET_SATELLITE'; payload: boolean }
   | { type: 'SET_TOTAL_COUNT'; payload: number | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'RESET' }
@@ -80,6 +82,7 @@ const initialState: FilterState = {
   county: null,
   city: null,
   updateWithMovement: false,
+  satellite: false,
   totalCount: null,
   isLoading: false,
 }
@@ -117,6 +120,8 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
       return { ...filterState, city: action.payload }
     case 'SET_UPDATE_WITH_MOVEMENT':
       return { ...filterState, updateWithMovement: action.payload }
+    case 'SET_SATELLITE':
+      return { ...filterState, satellite: action.payload }
     case 'SET_TOTAL_COUNT':
       return { ...filterState, totalCount: action.payload }
     case 'SET_LOADING':

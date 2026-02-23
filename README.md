@@ -45,6 +45,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-23 — Satellite Map, Apple Maps Link, Popup Refactor
+
+- Added "Satellite view" Switch toggle to the Map Controls section in the filter panel; when on, the map uses `mapbox://styles/mapbox/satellite-streets-v12` regardless of dark/light theme
+- Dot opacity reduced by 10% across all severity layers when satellite view is active (e.g. Death: 0.85 → 0.75) to maintain visual contrast against aerial imagery
+- Added "Open in Apple Maps" link to the crash detail popup above the existing Google Street View link; uses `https://maps.apple.com/?ll={lat},{lng}&z=20` (opens native Maps app on iOS/macOS)
+- Extracted crash popup into its own `components/map/CrashPopup.tsx` component; exports `SelectedCrash` type; owns `copied` state internally; `MapContainer` now renders `<CrashPopup crash={selectedCrash} onClose={closePopup} />`
+
 ### 2026-02-23 — CI/CD Pipeline and Staging Environment
 
 - Added `crashmap-staging` Render web service tracking the `staging` branch; auto-deploys on every push to `staging`

@@ -5638,4 +5638,131 @@ push to staging → Render auto-deploys crashmap-staging immediately
 
 Branch protection on `main` (configured in GitHub → Settings → Branches) ensures the `check` job must pass before a PR can be merged, closing the loop.
 
+---
+
+## Phase 6: Iteration — Satellite Map, Map Links, and Popup Refactor
+
+### Step 1: Add a Satellite View Toggle
+
+The Mapbox SDK ships several basemap styles. We want to let users switch to the satellite imagery style (`satellite-streets-v12`) without affecting the rest of the UI's dark/light mode.
+
+#### Store the preference in FilterContext
+
+Add `satellite: boolean` to `FilterState`, `SET_SATELLITE` to `FilterAction`, `satellite: false` to `initialState`, and the matching reducer case in `context/FilterContext.tsx`. This follows the same pattern as `updateWithMovement` — a display preference that doesn't affect the data query.
+
+#### Add the toggle to the filter panel
+
+In `components/filters/GeographicFilter.tsx`, add a `Switch` labeled "Satellite view" in the Map Controls section:
+
+```tsx
+<div className="flex items-center gap-2">
+  <Switch
+    id="satellite-view"
+    checked={filterState.satellite}
+    onCheckedChange={(checked) => dispatch({ type: 'SET_SATELLITE', payload: checked })}
+  />
+  <Label htmlFor="satellite-view" className="text-sm cursor-pointer">
+    Satellite view
+  </Label>
+</div>
+```
+
+#### Drive the map style from context
+
+In `MapContainer.tsx`, read `filterState.satellite` and override the style resolution:
+
+```ts
+const mapStyle = filterState.satellite
+  ? 'mapbox://styles/mapbox/satellite-streets-v12'
+  : resolvedTheme === 'dark'
+    ? 'mapbox://styles/mapbox/dark-v11'
+    : 'mapbox://styles/mapbox/light-v11'
+```
+
+When satellite is on, Mapbox switches the basemap immediately — no page reload needed. Dark/light mode continues to work normally when satellite is off.
+
+#### Reduce dot opacity on satellite
+
+Crash dots are semi-transparent by design, but against aerial imagery the colors can wash out. Move the layer definitions inside the `CrashLayer` component (so they can reference live state) and subtract 10% opacity when satellite is on:
+
+```ts
+const opacityOffset = filterState.satellite ? 0.1 : 0
+
+const deathLayer: LayerProps = {
+  paint: {
+    'circle-opacity': 0.85 + opacityOffset,
+    // ...
+  },
+}
+```
+
+This small nudge (e.g. Death: 0.85 → 0.75) keeps the dots visible and readable against the busier satellite background.
+
+### Step 2: Add Map Links to the Crash Popup
+
+It's useful to let users open a crash location in an external mapping app to explore the street-level context. Add two links at the bottom of the popup:
+
+**Apple Maps** (opens native Maps app on iOS/macOS, web on other platforms):
+
+```tsx
+<a
+  href={`https://maps.apple.com/?ll=${crash.latitude},${crash.longitude}&z=20`}
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  Open in Apple Maps
+</a>
+```
+
+**Google Street View** (already present — drops into Street View at the crash location):
+
+```tsx
+<a
+  href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${crash.latitude},${crash.longitude}`}
+  target="_blank"
+  rel="noopener noreferrer"
+>
+  Open Street View
+</a>
+```
+
+Group them in a flex column below a divider so they stack cleanly in the narrow popup.
+
+### Step 3: Extract the Popup into Its Own Component
+
+As the popup grew (links, copy button, color dot, conditional fields), the JSX became a sizable chunk inside `MapContainer.tsx`. Extracting it into `components/map/CrashPopup.tsx` makes each file easier to navigate and reason about.
+
+**What moves into `CrashPopup.tsx`:**
+
+- The `SelectedCrash` type (exported so `MapContainer` can reference it)
+- `SEVERITY_COLORS` map
+- `formatDate()` helper
+- The `copied` state and `handleCopyReportNum` callback (self-contained within the popup)
+- All popup JSX
+
+**The component signature:**
+
+```tsx
+type CrashPopupProps = {
+  crash: SelectedCrash
+  onClose: () => void
+}
+
+export function CrashPopup({ crash, onClose }: CrashPopupProps) { ... }
+```
+
+**MapContainer after the refactor:**
+
+```tsx
+import { CrashPopup } from './CrashPopup'
+import type { SelectedCrash } from './CrashPopup'
+
+// In the render:
+{
+  selectedCrash && <CrashPopup crash={selectedCrash} onClose={closePopup} />
+}
+```
+
+`MapContainer` keeps ownership of `selectedCrash` state and `closePopup` (because closing involves flying the map back to the saved viewport). Everything purely about rendering the popup card lives in `CrashPopup`.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

@@ -57,6 +57,10 @@ export function GeographicFilter() {
     dispatch({ type: 'SET_UPDATE_WITH_MOVEMENT', payload: checked })
   }
 
+  function handleSatelliteToggle(checked: boolean) {
+    dispatch({ type: 'SET_SATELLITE', payload: checked })
+  }
+
   if (countiesLoading && citiesLoading && !countiesData && !citiesData) {
     return (
       <div className="space-y-4">
@@ -135,6 +139,16 @@ export function GeographicFilter() {
             Showing crashes within the current viewport. Pan or zoom to update results.
           </p>
         )}
+        <div className="flex items-center gap-2">
+          <Switch
+            id="satellite-view"
+            checked={filterState.satellite}
+            onCheckedChange={handleSatelliteToggle}
+          />
+          <Label htmlFor="satellite-view" className="text-sm cursor-pointer">
+            Satellite view
+          </Label>
+        </div>
       </div>
     </div>
   )
