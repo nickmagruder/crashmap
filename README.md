@@ -52,6 +52,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Added codegen drift check to CI: runs `npm run codegen` and fails if `lib/graphql/__generated__/types.ts` differs from the committed file, catching schema-type divergence before it reaches production
 - Added `deploy` job to CI workflow that runs after `check` passes on `main` pushes; POSTs to `RENDER_DEPLOY_HOOK_PRODUCTION` GitHub secret to trigger the Render deploy
 - Full pipeline: Lint → Format → Typecheck → Test → Codegen check → Build → Deploy (main only)
+- Regenerated `lib/graphql/__generated__/types.ts` to match current `@graphql-codegen` output format (newer version adds semicolons and collapses some multi-line generics); required to pass the new drift check
 
 ### 2026-02-23 — Update Search as Map Moves, Decoupled Location Filters
 
