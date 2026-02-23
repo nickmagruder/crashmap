@@ -45,6 +45,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-23 — Popup Viewport Centering
+
+- Clicking a crash now animates the map to zoom in (zoom 15.5) and tilt (pitch 45°) on the crash location via `map.flyTo()`
+- The viewport before clicking is saved (center, zoom, bearing, pitch) and restored with a matching `flyTo()` when the popup is dismissed (via close button or clicking empty space)
+- Clicking from one crash to another while a popup is open flies to the new crash but keeps the original viewport for the eventual restore
+- Implemented with `useImperativeHandle` so the existing external `mapRef` used by `AppShell` for `map.resize()` continues to work unchanged; a `savedViewportRef` (not state) stores the captured viewport without triggering re-renders
+
 ### 2026-02-20 — Summary Bar Redesign and Emoji Mode Badges
 
 - `SummaryBar` mobile layout changed to a fixed full-width strip flush against the viewport bottom (`fixed bottom-0 left-0 right-0`), minimal height, no rounded corners; desktop changed to a `rounded-md` bar close to the bottom edge (`bottom-3`) with tighter padding
