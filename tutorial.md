@@ -5276,4 +5276,112 @@ The export button is also hidden on mobile (the Filters overlay has a full-width
 }
 ```
 
+### Step: Popup viewport centering — zoom in and restore on close
+
+When a user clicks a crash dot, the map should zoom in and tilt toward that location, then snap back to the original view when the popup is dismissed. This creates a clear focus-and-return pattern without losing the user's place.
+
+There are three sub-problems to solve:
+
+1. **Accessing the map imperatively** — `MapContainer` uses `forwardRef` to expose its `MapRef` to `AppShell` (for `map.resize()`). We need an internal ref for `flyTo()` calls without breaking the external one.
+2. **Saving viewport state without extra renders** — the "before" view (center, zoom, pitch, bearing) only needs to be restored once; storing it in a `ref` instead of `useState` avoids unnecessary re-renders.
+3. **Crash-to-crash navigation** — if the user clicks a second crash while one popup is open, the map should fly to the new crash but restore all the way back to the _original_ viewport, not the already-zoomed first crash.
+
+#### Split the internal and external refs with `useImperativeHandle`
+
+Replace the single `ref={ref}` on `<Map>` with an internal ref and forward it explicitly:
+
+```tsx
+import { forwardRef, useRef, useImperativeHandle } from 'react'
+
+export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
+  const internalMapRef = useRef<MapRef>(null)
+  useImperativeHandle(ref, () => internalMapRef.current!)
+
+  // ...
+
+  return <Map ref={internalMapRef} ...>
+})
+```
+
+`useImperativeHandle` proxies the forwarded `ref` to `internalMapRef.current` — `AppShell` still gets a valid `MapRef` (with `resize()`, etc.) while we gain direct access to the map inside the component.
+
+#### Capture the viewport on click
+
+Add a `savedViewportRef` to hold the pre-click state:
+
+```tsx
+type SavedViewport = {
+  center: [number, number]
+  zoom: number
+  bearing: number
+  pitch: number
+}
+
+const savedViewportRef = useRef<SavedViewport | null>(null)
+```
+
+In the click handler, save only when no popup is already open, then fly to the crash:
+
+```tsx
+const map = internalMapRef.current?.getMap()
+
+// Save viewport only once — clicking crash-to-crash keeps the original
+if (map && !savedViewportRef.current) {
+  const center = map.getCenter()
+  savedViewportRef.current = {
+    center: [center.lng, center.lat],
+    zoom: map.getZoom(),
+    bearing: map.getBearing(),
+    pitch: map.getPitch(),
+  }
+}
+
+map?.flyTo({
+  center: coords,
+  zoom: 15.5,
+  pitch: 45,
+  duration: 800,
+  essential: true,
+})
+```
+
+`essential: true` marks the animation as non-interruptible by `prefers-reduced-motion` accessibility settings (appropriate here since it's user-initiated). The `!savedViewportRef.current` guard is what enables crash-to-crash navigation: the first click saves the original view; subsequent clicks while a popup is open skip the save, so the restore always returns to the true original.
+
+#### Restore on close
+
+Extract popup dismissal into a dedicated `closePopup` callback:
+
+```tsx
+const closePopup = useCallback(() => {
+  setSelectedCrash(null)
+  const saved = savedViewportRef.current
+  if (saved && internalMapRef.current) {
+    internalMapRef.current.getMap()?.flyTo({
+      center: saved.center,
+      zoom: saved.zoom,
+      bearing: saved.bearing,
+      pitch: saved.pitch,
+      duration: 800,
+      essential: true,
+    })
+    savedViewportRef.current = null
+  }
+}, [])
+```
+
+Wire it to both the popup's close button and clicking empty space:
+
+```tsx
+// Popup close button
+<Popup onClose={closePopup} ...>
+
+// Click handler — empty space branch
+if (!feature || feature.geometry.type !== 'Point') {
+  closePopup()
+  return
+}
+```
+
+The result: clicking a crash zooms the map to street level (zoom 15.5) with a 45° pitch, and clicking anywhere else (or the X) smoothly returns to exactly where the user was before.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
