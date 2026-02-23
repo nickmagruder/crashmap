@@ -45,6 +45,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-23 — CI/CD Pipeline and Staging Environment
+
+- Added `crashmap-staging` Render web service tracking the `staging` branch; auto-deploys on every push to `staging`
+- Production service (`crashmap`) set to `autoDeploy: false`; deploys are now triggered exclusively via a Render deploy hook called from GitHub Actions after CI passes on `main`
+- Added codegen drift check to CI: runs `npm run codegen` and fails if `lib/graphql/__generated__/types.ts` differs from the committed file, catching schema-type divergence before it reaches production
+- Added `deploy` job to CI workflow that runs after `check` passes on `main` pushes; POSTs to `RENDER_DEPLOY_HOOK_PRODUCTION` GitHub secret to trigger the Render deploy
+- Full pipeline: Lint → Format → Typecheck → Test → Codegen check → Build → Deploy (main only)
+- Updated `codegen` script in `package.json` to pipe prettier through the output (`graphql-codegen ... && prettier --write lib/graphql/__generated__/types.ts`); fixes a prettier/codegen conflict where codegen adds semicolons but the project's `.prettierrc` (`semi: false`) strips them, causing an unresolvable drift loop on every commit
+
 ### 2026-02-23 — Update Search as Map Moves, Decoupled Location Filters
 
 - Added "Update search as map moves" toggle in the Map Controls section of the filter panel; when on, the crash query uses the current viewport bounding box instead of state/county/city text filters

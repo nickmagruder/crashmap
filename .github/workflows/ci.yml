@@ -39,5 +39,19 @@ jobs:
       - name: Test
         run: npm run test
 
+      - name: Codegen drift check
+        run: |
+          npm run codegen
+          git diff --exit-code lib/graphql/__generated__/types.ts
+
       - name: Build
         run: npm run build
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Deploy to Render (production)
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION }}"
