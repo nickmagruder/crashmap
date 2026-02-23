@@ -432,8 +432,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 ### 2026-02-23 — Monitoring (Sentry + Lighthouse CI)
 
 - Installed `@sentry/nextjs` and ran Sentry wizard; configured `instrumentation-client.ts` (client, Session Replay), `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts` (`onRequestError`), and `app/global-error.tsx`
-- DSN stored in `NEXT_PUBLIC_SENTRY_DSN` env var (Render + GitHub Actions); `SENTRY_AUTH_TOKEN` added as GitHub Actions secret for source-map uploads
-- Added `tunnelRoute: "/monitoring"` to `withSentryConfig` to bypass ad blockers; removed Vercel-only options
+- Added `consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })` and `enableLogs: true` to all three Sentry init files — forwards `console.log/warn/error` calls to Sentry Logs
+- DSN stored in `NEXT_PUBLIC_SENTRY_DSN` env var; declared in `render.yaml` for both services and set in Render dashboard; `SENTRY_AUTH_TOKEN` added as GitHub Actions secret and exposed in the CI build step env for source-map uploads
+- Added `tunnelRoute: "/monitoring"` to `withSentryConfig` to bypass ad blockers; updated `connect-src` CSP to include `*.ingest.sentry.io` and `*.ingest.us.sentry.io` as fallback
 - Updated `app/error.tsx` to call `Sentry.captureException` instead of `console.error`
 - Added Lighthouse CI: `.lighthouserc.json` targeting `https://crashmap.io`; `lighthouse` job in `ci.yml` runs after `deploy` on `main`, uploads report to temporary public storage (report-only, never fails CI)
 - Fixed `FilterUrlSync` sub-route redirect bug: `router.replace` now uses `usePathname()` to preserve the current path instead of always replacing to `/`

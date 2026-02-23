@@ -17,6 +17,8 @@ services:
         sync: false
       - key: NEXT_PUBLIC_APP_URL
         sync: false
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
 
   - type: web
     name: crashmap-staging
@@ -35,4 +37,6 @@ services:
       - key: NEXT_PUBLIC_MAPBOX_TOKEN
         sync: false
       - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_SENTRY_DSN
         sync: false
