@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useFilterContext } from '@/context/FilterContext'
 import { decodeFilterParams, encodeFilterParams } from '@/lib/filterUrlState'
 
@@ -19,6 +19,7 @@ import { decodeFilterParams, encodeFilterParams } from '@/lib/filterUrlState'
  */
 export function FilterUrlSync() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const { filterState, dispatch } = useFilterContext()
 
@@ -40,8 +41,8 @@ export function FilterUrlSync() {
     }
     const params = encodeFilterParams(filterState)
     const search = params.toString()
-    router.replace(search ? `?${search}` : '/', { scroll: false })
-  }, [filterState, router])
+    router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false })
+  }, [filterState, router, pathname])
 
   return null
 }
