@@ -10,6 +10,7 @@ export type UrlFilterState = {
   state: string | null
   county: string | null
   city: string | null
+  updateWithMovement: boolean
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -68,12 +69,17 @@ export function encodeFilterParams(filterState: FilterState): URLSearchParams {
     params.set('state', filterState.state === null ? 'none' : filterState.state)
   }
 
-  // county/city — omit when null
+  // county/city — omit when null (decoupled: neither depends on the other)
   if (filterState.county !== null) {
     params.set('county', filterState.county)
   }
   if (filterState.city !== null) {
     params.set('city', filterState.city)
+  }
+
+  // updateWithMovement — omit when false (the default)
+  if (filterState.updateWithMovement) {
+    params.set('movement', '1')
   }
 
   return params
@@ -136,13 +142,15 @@ export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
     state = rawState === 'none' ? null : rawState
   }
 
-  // county: only set if state is non-null (guard orphan params)
+  // county/city: decoupled — each can be set independently
   const rawCounty = params.get('county')
-  const county: string | null = rawCounty !== null && state !== null ? rawCounty : null
+  const county: string | null = rawCounty !== null ? rawCounty : null
 
-  // city: only set if county is non-null
   const rawCity = params.get('city')
-  const city: string | null = rawCity !== null && county !== null ? rawCity : null
+  const city: string | null = rawCity !== null ? rawCity : null
 
-  return { mode, severity, includeNoInjury, dateFilter, state, county, city }
+  // updateWithMovement
+  const updateWithMovement = params.get('movement') === '1'
+
+  return { mode, severity, includeNoInjury, dateFilter, state, county, city, updateWithMovement }
 }

@@ -45,6 +45,17 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-23 — Update Search as Map Moves, Decoupled Location Filters
+
+- Added "Update search as map moves" toggle in the Map Controls section of the filter panel; when on, the crash query uses the current viewport bounding box instead of state/county/city text filters
+- Map pans and zooms trigger a new query on `moveend`; previous dots stay visible during loading (Apollo `previousData`) so there is no flash-to-empty on each movement
+- Viewport bbox computed by unprojecting canvas corner pixels via `map.unproject()` rather than `map.getBounds()`, which ignores camera padding from prior `fitBounds` calls; bbox includes a 5% buffer beyond the canvas edges
+- Auto-zoom on geographic filter change is suppressed while "update with movement" is active (map position is user-driven)
+- Removed the State selector from the Location filter (all data is from Washington)
+- Decoupled County and City: either can be selected independently without resetting the other; both dropdowns load all Washington options regardless of the other's value
+- `?movement=1` URL param added to `filterUrlState` encode/decode for shareable movement-mode links
+- Active filter badge shows "📍 Viewport" when movement mode is on
+
 ### 2026-02-23 — Popup Viewport Centering
 
 - Clicking a crash now animates the map to zoom in (zoom 15.5) and tilt (pitch 45°) on the crash location via `map.flyTo()`

@@ -20,6 +20,7 @@ export interface FilterState {
   state: string | null // geographic state (e.g. "Washington")
   county: string | null
   city: string | null
+  updateWithMovement: boolean // when true, query uses viewport bbox instead of geo text filters
   totalCount: number | null // populated by CrashLayer after query
   isLoading: boolean // true while a filter-triggered refetch is in flight
 }
@@ -33,6 +34,7 @@ export type UrlFilterState = {
   state: string | null
   county: string | null
   city: string | null
+  updateWithMovement: boolean
 }
 
 export type FilterAction =
@@ -45,6 +47,7 @@ export type FilterAction =
   | { type: 'SET_STATE'; payload: string | null }
   | { type: 'SET_COUNTY'; payload: string | null }
   | { type: 'SET_CITY'; payload: string | null }
+  | { type: 'SET_UPDATE_WITH_MOVEMENT'; payload: boolean }
   | { type: 'SET_TOTAL_COUNT'; payload: number | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'RESET' }
@@ -61,6 +64,7 @@ export type CrashFilterInput = {
   dateTo?: string
   year?: number
   includeNoInjury?: boolean
+  bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number }
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -75,6 +79,7 @@ const initialState: FilterState = {
   state: 'Washington',
   county: null,
   city: null,
+  updateWithMovement: false,
   totalCount: null,
   isLoading: false,
 }
@@ -105,11 +110,13 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
     // Cascading: selecting a new state resets county and city.
     case 'SET_STATE':
       return { ...filterState, state: action.payload, county: null, city: null }
-    // Cascading: selecting a new county resets city.
+    // County and city are decoupled — selecting one does not reset the other.
     case 'SET_COUNTY':
-      return { ...filterState, county: action.payload, city: null }
+      return { ...filterState, county: action.payload }
     case 'SET_CITY':
       return { ...filterState, city: action.payload }
+    case 'SET_UPDATE_WITH_MOVEMENT':
+      return { ...filterState, updateWithMovement: action.payload }
     case 'SET_TOTAL_COUNT':
       return { ...filterState, totalCount: action.payload }
     case 'SET_LOADING':
@@ -126,6 +133,7 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
         state: action.payload.state,
         county: action.payload.county,
         city: action.payload.city,
+        updateWithMovement: action.payload.updateWithMovement,
       }
     default:
       return filterState
@@ -220,9 +228,13 @@ export function getActiveFilterLabels(filterState: FilterState): string[] {
     labels.push(`${filterState.dateFilter.startDate} – ${filterState.dateFilter.endDate}`)
   }
 
-  // Geographic: skip state label; show county only if no city is selected
-  if (!filterState.city && filterState.county) labels.push(filterState.county)
-  if (filterState.city) labels.push(filterState.city)
+  // Geographic: show viewport badge when movement mode is on; otherwise show county/city
+  if (filterState.updateWithMovement) {
+    labels.push('📍 Viewport')
+  } else {
+    if (filterState.county) labels.push(filterState.county)
+    if (filterState.city) labels.push(filterState.city)
+  }
 
   return labels
 }
