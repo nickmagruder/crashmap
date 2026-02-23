@@ -30,61 +30,64 @@ type GetCrashesQuery = {
   }
 }
 
-// Layers are rendered bottom-to-top: None → Minor → Major → Death
-// so higher-severity dots always appear on top of lower-severity ones.
-const noneLayer: LayerProps = {
-  id: 'crashes-none',
-  type: 'circle',
-  filter: ['==', ['get', 'severity'], 'None'],
-  paint: {
-    'circle-color': '#C5E1A5',
-    'circle-opacity': 0.5,
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1, 10, 5, 15, 9],
-    'circle-stroke-width': 0,
-  },
-}
-
-const minorLayer: LayerProps = {
-  id: 'crashes-minor',
-  type: 'circle',
-  filter: ['==', ['get', 'severity'], 'Minor Injury'],
-  paint: {
-    'circle-color': '#FDD835',
-    'circle-opacity': 0.55,
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1.5, 10, 6, 15, 12],
-    'circle-stroke-width': 0,
-  },
-}
-
-const majorLayer: LayerProps = {
-  id: 'crashes-major',
-  type: 'circle',
-  filter: ['==', ['get', 'severity'], 'Major Injury'],
-  paint: {
-    'circle-color': '#F57C00',
-    'circle-opacity': 0.7,
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2, 10, 7, 15, 15],
-    'circle-stroke-width': 0,
-  },
-}
-
-const deathLayer: LayerProps = {
-  id: 'crashes-death',
-  type: 'circle',
-  filter: ['==', ['get', 'severity'], 'Death'],
-  paint: {
-    'circle-color': '#B71C1C',
-    'circle-opacity': 0.85,
-    'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2.5, 10, 8, 15, 18],
-    'circle-stroke-width': 0,
-  },
-}
-
 const ALL_LAYER_IDS = ['crashes-none', 'crashes-minor', 'crashes-major', 'crashes-death']
 
 export function CrashLayer() {
   const { current: map } = useMap()
   const { filterState, dispatch } = useFilterContext()
+
+  // Reduce dot opacity by 10% on satellite to maintain visibility against imagery.
+  const opacityOffset = filterState.satellite ? 0.1 : 0
+
+  // Layers are rendered bottom-to-top: None → Minor → Major → Death
+  // so higher-severity dots always appear on top of lower-severity ones.
+  const noneLayer: LayerProps = {
+    id: 'crashes-none',
+    type: 'circle',
+    filter: ['==', ['get', 'severity'], 'None'],
+    paint: {
+      'circle-color': '#C5E1A5',
+      'circle-opacity': 0.5 + opacityOffset,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1, 10, 5, 15, 9],
+      'circle-stroke-width': 0,
+    },
+  }
+
+  const minorLayer: LayerProps = {
+    id: 'crashes-minor',
+    type: 'circle',
+    filter: ['==', ['get', 'severity'], 'Minor Injury'],
+    paint: {
+      'circle-color': '#FDD835',
+      'circle-opacity': 0.55 + opacityOffset,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1.5, 10, 6, 15, 12],
+      'circle-stroke-width': 0,
+    },
+  }
+
+  const majorLayer: LayerProps = {
+    id: 'crashes-major',
+    type: 'circle',
+    filter: ['==', ['get', 'severity'], 'Major Injury'],
+    paint: {
+      'circle-color': '#F57C00',
+      'circle-opacity': 0.7 + opacityOffset,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2, 10, 7, 15, 15],
+      'circle-stroke-width': 0,
+    },
+  }
+
+  const deathLayer: LayerProps = {
+    id: 'crashes-death',
+    type: 'circle',
+    filter: ['==', ['get', 'severity'], 'Death'],
+    paint: {
+      'circle-color': '#B71C1C',
+      'circle-opacity': 0.85 + opacityOffset,
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2.5, 10, 8, 15, 18],
+      'circle-stroke-width': 0,
+    },
+  }
 
   // Viewport bbox — only used when updateWithMovement is on.
   type BBox = NonNullable<CrashFilterInput['bbox']>

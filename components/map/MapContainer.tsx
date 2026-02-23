@@ -1,11 +1,13 @@
 'use client'
 
 import { forwardRef, useState, useCallback, useRef, useImperativeHandle } from 'react'
-import Map, { Popup } from 'react-map-gl/mapbox'
+import Map from 'react-map-gl/mapbox'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { useTheme } from 'next-themes'
-import { Check, Copy } from 'lucide-react'
 import { CrashLayer } from './CrashLayer'
+import { CrashPopup } from './CrashPopup'
+import type { SelectedCrash } from './CrashPopup'
+import { useFilterContext } from '@/context/FilterContext'
 
 type SavedViewport = {
   center: [number, number]
@@ -17,44 +19,15 @@ type SavedViewport = {
 const DESKTOP_VIEW = { longitude: -122.336, latitude: 47.6062, zoom: 10.5 }
 const MOBILE_VIEW = { longitude: -122.336, latitude: 47.6062, zoom: 10.25 }
 
-type SelectedCrash = {
-  longitude: number
-  latitude: number
-  colliRptNum: string | null
-  severity: string | null
-  injuryType: string | null
-  mode: string | null
-  crashDate: string | null
-  time: string | null
-  involvedPersons: number | null
-  city: string | null
-  county: string | null
-  jurisdiction: string | null
-}
-
-const SEVERITY_COLORS: Record<string, string> = {
-  Death: '#B71C1C',
-  'Major Injury': '#F57C00',
-  'Minor Injury': '#FDD835',
-  None: '#C5E1A5',
-}
-
-function formatDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
-
 export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
   const initialViewState = isMobile ? MOBILE_VIEW : DESKTOP_VIEW
 
   const { resolvedTheme } = useTheme()
-  const mapStyle =
-    resolvedTheme === 'dark'
+  const { filterState } = useFilterContext()
+  const mapStyle = filterState.satellite
+    ? 'mapbox://styles/mapbox/satellite-streets-v12'
+    : resolvedTheme === 'dark'
       ? 'mapbox://styles/mapbox/dark-v11'
       : 'mapbox://styles/mapbox/light-v11'
 
@@ -65,13 +38,6 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
   const savedViewportRef = useRef<SavedViewport | null>(null)
 
   const [selectedCrash, setSelectedCrash] = useState<SelectedCrash | null>(null)
-  const [copied, setCopied] = useState(false)
-
-  const handleCopyReportNum = useCallback((num: string) => {
-    navigator.clipboard.writeText(num)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }, [])
 
   const closePopup = useCallback(() => {
     setSelectedCrash(null)
@@ -148,97 +114,7 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
       onClick={handleMapClick}
     >
       <CrashLayer />
-
-      {selectedCrash && (
-        <Popup
-          longitude={selectedCrash.longitude}
-          latitude={selectedCrash.latitude}
-          onClose={closePopup}
-          closeButton
-          closeOnClick={false}
-          anchor="bottom"
-          offset={10}
-          maxWidth="220px"
-        >
-          <div className="px-1 py-1.5 text-[13px] leading-relaxed">
-            {selectedCrash.crashDate && (
-              <div className="mb-0.5 font-semibold">{formatDate(selectedCrash.crashDate)}</div>
-            )}
-            {selectedCrash.time && (
-              <div className="mb-1" style={{ color: 'var(--muted-foreground)' }}>
-                {selectedCrash.time}
-              </div>
-            )}
-            {(selectedCrash.severity || selectedCrash.injuryType) && (
-              <div className="flex items-center gap-1.5">
-                <span
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50%',
-                    backgroundColor: selectedCrash.severity
-                      ? (SEVERITY_COLORS[selectedCrash.severity] ?? '#999')
-                      : '#999',
-                    flexShrink: 0,
-                    border: '1px solid rgba(0,0,0,0.15)',
-                  }}
-                />
-                {selectedCrash.injuryType ?? selectedCrash.severity}
-              </div>
-            )}
-            {selectedCrash.mode && <div>{selectedCrash.mode}</div>}
-            {(selectedCrash.city || selectedCrash.county) && (
-              <div style={{ color: 'var(--muted-foreground)' }}>
-                {[selectedCrash.city, selectedCrash.county].filter(Boolean).join(', ')}
-              </div>
-            )}
-            {selectedCrash.jurisdiction && (
-              <div style={{ color: 'var(--muted-foreground)' }}>{selectedCrash.jurisdiction}</div>
-            )}
-            {selectedCrash.involvedPersons != null && (
-              <div style={{ color: 'var(--muted-foreground)' }}>
-                {selectedCrash.involvedPersons} involved
-              </div>
-            )}
-            {selectedCrash.colliRptNum && (
-              <div
-                className="mt-1 flex items-center gap-1 text-[11px]"
-                style={{ color: 'var(--muted-foreground)' }}
-              >
-                <span>
-                  Report #:{' '}
-                  <a
-                    href="https://wrecr.wsp.wa.gov/wrecr/order"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: 'var(--muted-foreground)', textDecoration: 'underline' }}
-                  >
-                    {selectedCrash.colliRptNum}
-                  </a>
-                </span>
-                <button
-                  onClick={() => handleCopyReportNum(selectedCrash.colliRptNum!)}
-                  title="Copy report number"
-                  style={{ color: 'var(--muted-foreground)', lineHeight: 1 }}
-                >
-                  {copied ? <Check size={11} /> : <Copy size={11} />}
-                </button>
-              </div>
-            )}
-            <div className="mt-2 border-t pt-1.5" style={{ borderColor: 'var(--border)' }}>
-              <a
-                href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedCrash.latitude},${selectedCrash.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[12px]"
-                style={{ color: 'var(--primary)', textDecoration: 'underline' }}
-              >
-                Open Street View
-              </a>
-            </div>
-          </div>
-        </Popup>
-      )}
+      {selectedCrash && <CrashPopup crash={selectedCrash} onClose={closePopup} />}
     </Map>
   )
 })
