@@ -5765,4 +5765,131 @@ import type { SelectedCrash } from './CrashPopup'
 
 `MapContainer` keeps ownership of `selectedCrash` state and `closePopup` (because closing involves flying the map back to the saved viewport). Everything purely about rendering the popup card lives in `CrashPopup`.
 
+---
+
+## Step N: Monitoring — Sentry (Error Tracking) + Lighthouse CI (Web Vitals)
+
+With the app deployed and publicly accessible, adding observability gives you visibility into real-world errors and performance without waiting for user reports.
+
+### Part 1: Sentry — Error Tracking
+
+**Install the SDK:**
+
+```bash
+npm install @sentry/nextjs
+```
+
+**Run the wizard** to authenticate with Sentry, wire up the DSN, and generate boilerplate config files:
+
+```bash
+npx @sentry/wizard@latest -i nextjs --saas --org <your-org> --project <your-project>
+```
+
+The wizard will:
+
+- Create `instrumentation-client.ts` (client-side init — Session Replay, logs, performance tracing)
+- Create/overwrite `sentry.server.config.ts` and `sentry.edge.config.ts`
+- Update `instrumentation.ts` with `onRequestError = Sentry.captureRequestError`
+- Create `app/global-error.tsx` (root-level error boundary)
+- Update `next.config.ts` with `withSentryConfig` options including `tunnelRoute: "/monitoring"` (routes browser Sentry requests through your own server to bypass ad blockers)
+- Create example test pages under `app/sentry-example-page/` and `app/api/sentry-example-api/` (delete after testing)
+
+**After the wizard — clean up these things:**
+
+1. **Replace the hardcoded DSN** — the wizard embeds your real DSN directly in the config files. Move it to an env var:
+
+   ```ts
+   // In instrumentation-client.ts, sentry.server.config.ts, sentry.edge.config.ts:
+   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+   ```
+
+   Using `NEXT_PUBLIC_` is correct: the DSN is already embedded in your JS bundle and is intentionally public. Set it in `.env.local` for development and in Render's environment variables for production.
+
+2. **Delete `sentry.client.config.ts`** if it exists — this was the v7 mechanism. The wizard's `instrumentation-client.ts` supersedes it.
+
+3. **Remove Vercel-only options** from `withSentryConfig` — the wizard adds `automaticVercelMonitors: true` which does nothing on Render. Remove it.
+
+4. **Update `app/error.tsx`** to call `Sentry.captureException` instead of `console.error`:
+
+   ```ts
+   import * as Sentry from '@sentry/nextjs'
+
+   useEffect(() => {
+     Sentry.captureException(error)
+   }, [error])
+   ```
+
+5. **Update CSP headers** — with `tunnelRoute`, browser Sentry requests hit `/monitoring` on your own domain (already covered by `'self'` in `connect-src`). But keep the `*.ingest.sentry.io` entries anyway as a fallback:
+
+   ```ts
+   "connect-src 'self' https://*.mapbox.com https://events.mapbox.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+   ```
+
+6. **Set secrets in GitHub Actions** — for source-map uploads during CI builds, add these as repository secrets (Settings → Secrets → Actions):
+   - `SENTRY_AUTH_TOKEN` — create at Sentry → Settings → Auth Tokens
+
+   The wizard hardcodes `org` and `project` as literal strings in `next.config.ts` — that's fine to leave as-is.
+
+**Verify it works:** Visit `/sentry-example-page` locally, click the button, and confirm the error appears in your Sentry Issues dashboard within seconds.
+
+> **Note on sub-route redirects:** `FilterUrlSync` uses `router.replace` to sync filter state to the URL. If it replaces with just `?params` (no path), Next.js keeps the current route. But if params are empty (all defaults), the original code replaced to `'/'` literally — which sends you back to the homepage from any sub-route like `/sentry-example-page`. Fix: use `usePathname()` and replace to `${pathname}?${search}` or `pathname` instead.
+
+### Part 2: Lighthouse CI — Web Vitals
+
+Lighthouse CI runs Google's Lighthouse audit against your deployed app and uploads the report to a temporary public URL after every merge to `main`.
+
+**Create `.lighthouserc.json`** in the project root:
+
+```json
+{
+  "ci": {
+    "collect": {
+      "url": ["https://crashmap.io"],
+      "numberOfRuns": 1
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}
+```
+
+**Add a `lighthouse` job to `.github/workflows/ci.yml`:**
+
+```yaml
+lighthouse:
+  needs: deploy
+  runs-on: ubuntu-latest
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+  steps:
+    - uses: actions/checkout@v4
+
+    - name: Wait for Render deployment
+      run: |
+        echo "Waiting for Render to finish deploying..."
+        sleep 180
+        for i in $(seq 1 10); do
+          status=$(curl -o /dev/null -s -w "%{http_code}" https://crashmap.io)
+          if [ "$status" = "200" ]; then
+            echo "Site returned 200"
+            exit 0
+          fi
+          echo "Attempt $i: HTTP $status — waiting 30s..."
+          sleep 30
+        done
+
+    - name: Run Lighthouse CI
+      uses: treosh/lighthouse-ci-action@v12
+      with:
+        configPath: .lighthouserc.json
+        uploadArtifacts: true
+        temporaryPublicStorage: true
+```
+
+The job depends on `deploy`, so it only runs after a successful Render deployment. It waits 3 minutes (Render's typical build time), then polls for a 200 before running Lighthouse. The report link appears in the GitHub Actions step output.
+
+No `assert` block means Lighthouse never fails CI — it's purely observational. For a map-heavy WebGL app you'd expect Performance scores in the 60–80 range depending on device/connection; Accessibility and Best Practices should be 90+.
+
+_This tutorial is a work in progress. More steps will be added as the project progresses._
 _This tutorial is a work in progress. More steps will be added as the project progresses._

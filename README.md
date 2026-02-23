@@ -429,6 +429,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Ran `npx prisma generate` to produce typed client in `lib/generated/prisma/`
 - Added `lib/generated/prisma` to `.gitignore`
 
+### 2026-02-23 — Monitoring (Sentry + Lighthouse CI)
+
+- Installed `@sentry/nextjs` and ran Sentry wizard; configured `instrumentation-client.ts` (client, Session Replay), `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts` (`onRequestError`), and `app/global-error.tsx`
+- DSN stored in `NEXT_PUBLIC_SENTRY_DSN` env var (Render + GitHub Actions); `SENTRY_AUTH_TOKEN` added as GitHub Actions secret for source-map uploads
+- Added `tunnelRoute: "/monitoring"` to `withSentryConfig` to bypass ad blockers; removed Vercel-only options
+- Updated `app/error.tsx` to call `Sentry.captureException` instead of `console.error`
+- Added Lighthouse CI: `.lighthouserc.json` targeting `https://crashmap.io`; `lighthouse` job in `ci.yml` runs after `deploy` on `main`, uploads report to temporary public storage (report-only, never fails CI)
+- Fixed `FilterUrlSync` sub-route redirect bug: `router.replace` now uses `usePathname()` to preserve the current path instead of always replacing to `/`
+
 ### 2026-02-19 — Error Boundaries
 
 - Added `components/ErrorBoundary.tsx` — reusable React class component with a `fallback` prop; logs caught errors to console via `componentDidCatch`

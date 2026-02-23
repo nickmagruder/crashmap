@@ -55,3 +55,33 @@ jobs:
     steps:
       - name: Deploy to Render (production)
         run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION }}"
+
+  lighthouse:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Render deployment
+        run: |
+          echo "Waiting for Render to finish deploying..."
+          sleep 180
+          for i in $(seq 1 10); do
+            status=$(curl -o /dev/null -s -w "%{http_code}" https://crashmap.io)
+            if [ "$status" = "200" ]; then
+              echo "Site returned 200"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $status — waiting 30s..."
+            sleep 30
+          done
+          echo "Site did not return 200 after 5 minutes post-sleep; running Lighthouse anyway"
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: .lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
