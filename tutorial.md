@@ -5918,5 +5918,52 @@ The job depends on `deploy`, so it only runs after a successful Render deploymen
 
 No `assert` block means Lighthouse never fails CI — it's purely observational. For a map-heavy WebGL app you'd expect Performance scores in the 60–80 range depending on device/connection; Accessibility and Best Practices should be 90+.
 
-_This tutorial is a work in progress. More steps will be added as the project progresses._
+## Phase 5: Health Check Endpoint
+
+Render uses a health check endpoint to determine when your app is ready to serve traffic after a deploy and to detect when the running service has gone unhealthy. Without one, Render falls back to TCP checks (just verifying the port is open), which can declare a service healthy before Next.js has finished initializing.
+
+### Create the endpoint
+
+Add `app/api/health/route.ts`:
+
+```ts
+export const dynamic = 'force-dynamic'
+
+export function GET() {
+  return Response.json({ status: 'ok' })
+}
+```
+
+`force-dynamic` tells Next.js not to statically cache this route. Without it, the build would pre-render the response and every request would receive the cached output — defeating the purpose of a live health check.
+
+### Declare it in render.yaml
+
+Add `healthCheckPath: /api/health` to both services:
+
+```yaml
+services:
+  - type: web
+    name: crashmap
+    healthCheckPath: /api/health
+    # ...
+
+  - type: web
+    name: crashmap-staging
+    healthCheckPath: /api/health
+    # ...
+```
+
+### Set it in the Render dashboard
+
+The `render.yaml` declaration covers new service creation, but for existing services you also need to set it manually:
+
+1. Open the Render dashboard → select the `crashmap` web service
+2. Go to **Settings** → **Health & Alerts**
+3. Set **Health Check Path** to `/api/health`
+4. Save — Render will start polling this path after every deploy
+
+Repeat for `crashmap-staging`.
+
+Render polls the health check path every 10 seconds. If it returns a non-2xx status three consecutive times, Render marks the service as unhealthy and alerts you. During a new deploy, Render waits for the health check to pass before shifting traffic to the new instance.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

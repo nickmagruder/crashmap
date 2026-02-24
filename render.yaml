@@ -4,6 +4,7 @@ services:
     runtime: node
     branch: main
     autoDeploy: false
+    healthCheckPath: /api/health
     buildCommand: >-
       npm ci && npm run build &&
       cp -r public .next/standalone/public &&
@@ -25,6 +26,7 @@ services:
     runtime: node
     branch: staging
     autoDeploy: true
+    healthCheckPath: /api/health
     buildCommand: >-
       npm ci && npm run build &&
       cp -r public .next/standalone/public &&
