@@ -45,6 +45,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Changelog
 
+### 2026-02-23 — Health Check Endpoint
+
+- Added `GET /api/health` route returning `200 {"status":"ok"}`; `force-dynamic` prevents static caching
+- Added `healthCheckPath: /api/health` to both `crashmap` and `crashmap-staging` services in `render.yaml`
+- Set **Health Check Path** to `/api/health` in Render dashboard (both services) → Health & Alerts
+
 ### 2026-02-23 — Satellite Map, Apple Maps Link, Popup Refactor
 
 - Added "Satellite view" Switch toggle to the Map Controls section in the filter panel; when on, the map uses `mapbox://styles/mapbox/satellite-streets-v12` regardless of dark/light theme
