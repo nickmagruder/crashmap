@@ -1,12 +1,12 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Info, Loader2, SlidersHorizontal } from 'lucide-react'
+import { Heart, Info, Loader2, SlidersHorizontal } from 'lucide-react'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
 import { FilterOverlay } from '@/components/overlay/FilterOverlay'
-import { InfoSidePanel } from '@/components/info/InfoSidePanel'
+import { InfoSidePanel, type InfoPanelView } from '@/components/info/InfoSidePanel'
 import { InfoOverlay } from '@/components/info/InfoOverlay'
 import { SummaryBar } from '@/components/summary/SummaryBar'
 import { ExportButton } from '@/components/export/ExportButton'
@@ -33,6 +33,7 @@ export function AppShell() {
   const [infoPanelOpen, setInfoPanelOpen] = useState(true)
   const [infoPanelPinned, setInfoPanelPinned] = useState(true)
   const [infoOverlayOpen, setInfoOverlayOpen] = useState(false)
+  const [infoPanelView, setInfoPanelView] = useState<InfoPanelView>('info')
   const mapRef = useRef<MapRef>(null)
   const { filterState } = useFilterContext()
 
@@ -51,6 +52,8 @@ export function AppShell() {
           pinned
           onClose={() => setInfoPanelOpen(false)}
           onTogglePin={() => setInfoPanelPinned(false)}
+          view={infoPanelView}
+          onSwitchView={setInfoPanelView}
         />
       )}
 
@@ -60,40 +63,73 @@ export function AppShell() {
           <MapContainer ref={mapRef} />
         </ErrorBoundary>
 
-        {/* Top-left: info/about toggle */}
+        {/* Top-left: info/about toggle + support */}
         <div className="absolute top-4 left-4 z-10 flex gap-2">
           {/* Desktop version */}
-          <div className="hidden md:block">
+          <div className="hidden md:flex gap-2">
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setInfoPanelOpen(true)}
+              className="dark:bg-zinc-900 dark:border-zinc-700"
+              onClick={() => {
+                setInfoPanelView('info')
+                setInfoPanelOpen(true)
+              }}
               aria-label="Open about panel"
             >
               <Info className="size-4" />
             </Button>
-          </div>
-          {/* Mobile version */}
-          <div className="md:hidden">
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setInfoOverlayOpen(true)}
+              className="dark:bg-zinc-900 dark:border-zinc-700"
+              onClick={() => {
+                setInfoPanelView('support')
+                setInfoPanelOpen(true)
+              }}
+              aria-label="Support this app"
+            >
+              <Heart className="size-4" />
+            </Button>
+          </div>
+          {/* Mobile version */}
+          <div className="md:hidden flex gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="dark:bg-zinc-900 dark:border-zinc-700"
+              onClick={() => {
+                setInfoPanelView('info')
+                setInfoOverlayOpen(true)
+              }}
               aria-label="Open about"
             >
               <Info className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="dark:bg-zinc-900 dark:border-zinc-700"
+              onClick={() => {
+                setInfoPanelView('support')
+                setInfoOverlayOpen(true)
+              }}
+              aria-label="Support this app"
+            >
+              <Heart className="size-4" />
             </Button>
           </div>
         </div>
 
         {/* Top-right controls */}
         <div className="absolute top-4 right-4 z-10 flex gap-2">
-          <ThemeToggle />
+          <ThemeToggle className="dark:bg-zinc-900 dark:border-zinc-700" />
           {/* Sidebar toggle — desktop only */}
           <div className="hidden md:block">
             <Button
               variant="outline"
               size="icon"
+              className="dark:bg-zinc-900 dark:border-zinc-700"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open filters"
             >
@@ -109,6 +145,7 @@ export function AppShell() {
             <Button
               variant="outline"
               size="icon"
+              className="dark:bg-zinc-900 dark:border-zinc-700"
               onClick={() => setOverlayOpen(true)}
               aria-label="Open filters"
             >
@@ -134,6 +171,8 @@ export function AppShell() {
             onClose={() => setInfoPanelOpen(false)}
             pinned={false}
             onTogglePin={() => setInfoPanelPinned(true)}
+            view={infoPanelView}
+            onSwitchView={setInfoPanelView}
           />
           {/* Desktop non-pinned filter panel (Sheet from right) */}
           <Sidebar
@@ -144,7 +183,12 @@ export function AppShell() {
           />
           {/* Mobile overlays */}
           <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />
-          <InfoOverlay isOpen={infoOverlayOpen} onClose={() => setInfoOverlayOpen(false)} />
+          <InfoOverlay
+            isOpen={infoOverlayOpen}
+            onClose={() => setInfoOverlayOpen(false)}
+            view={infoPanelView}
+            onSwitchView={setInfoPanelView}
+          />
         </ErrorBoundary>
       </div>
 

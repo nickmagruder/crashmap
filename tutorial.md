@@ -5966,4 +5966,30 @@ Repeat for `crashmap-staging`.
 
 Render polls the health check path every 10 seconds. If it returns a non-2xx status three consecutive times, Render marks the service as unhealthy and alerts you. During a new deploy, Render waits for the health check to pass before shifting traffic to the new instance.
 
+---
+
+## Adding a Support Panel
+
+### Why
+
+A free public app still has hosting costs. Adding a visible but non-intrusive way for users to support the project is worthwhile — and it belongs in the UI, not buried in a README.
+
+### Approach: Multi-View Left Panel
+
+Rather than adding a third panel type, we reuse the existing left info panel and add a `view` prop (`'info' | 'support'`). A new Heart button in the top-left map controls opens the panel in `'support'` view; the original Info button opens it in `'info'` view. Both views share the same panel shell (header, pin/close buttons, scroll area) — only the content component swaps.
+
+View switching is managed in `AppShell` via `infoPanelView` state and an `onSwitchView` callback passed down to the content components. The content components render a "← Back to Info" or "❤️ Support this App" link that calls the callback, switching the view in-place without closing the panel.
+
+### Key files
+
+- `components/info/PanelCredit.tsx` — Shared author credit block (name + tagline), used at the top of both content views.
+- `components/info/SupportPanelContent.tsx` — Support view content: blurb, donate links, contact link.
+- `components/info/InfoSidePanel.tsx` — Extended with `view` and `onSwitchView` props; `PanelBody` helper selects the right content component.
+- `components/info/InfoOverlay.tsx` — Same extension for the mobile overlay.
+- `components/layout/AppShell.tsx` — Adds `infoPanelView` state; Heart button sets view to `'support'` and opens the panel; Info button sets it to `'info'`.
+
+### Dark-mode button fix
+
+The top map buttons use `variant="outline"` which picks up `border-input` in dark mode — `oklch(1 0 0 / 15%)`, a semi-transparent white that looks washed out over the map. Fix: add `className="dark:bg-zinc-900 dark:border-zinc-700"` to each button for a solid, clearly-defined appearance. `ThemeToggle` needed a one-line `className` prop added to pass the class through to the underlying `Button`.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

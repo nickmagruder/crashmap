@@ -4,20 +4,51 @@ import { Pin, PinOff, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle, SheetClose } from '@/components/ui/sheet'
 import { InfoPanelContent } from './InfoPanelContent'
+import { SupportPanelContent } from './SupportPanelContent'
+
+export type InfoPanelView = 'info' | 'support'
 
 interface InfoSidePanelProps {
   pinned: boolean
   onClose: () => void
   onTogglePin: () => void
   isOpen?: boolean
+  view?: InfoPanelView
+  onSwitchView?: (view: InfoPanelView) => void
 }
 
-export function InfoSidePanel({ pinned, onClose, onTogglePin, isOpen }: InfoSidePanelProps) {
+const titles: Record<InfoPanelView, string> = {
+  info: '💥CrashMap',
+  support: '💥CrashMap',
+}
+
+function PanelBody({
+  view,
+  onSwitchView,
+}: {
+  view: InfoPanelView
+  onSwitchView?: (view: InfoPanelView) => void
+}) {
+  return view === 'support' ? (
+    <SupportPanelContent onSwitchView={onSwitchView ? () => onSwitchView('info') : undefined} />
+  ) : (
+    <InfoPanelContent onSwitchView={onSwitchView ? () => onSwitchView('support') : undefined} />
+  )
+}
+
+export function InfoSidePanel({
+  pinned,
+  onClose,
+  onTogglePin,
+  isOpen,
+  view = 'info',
+  onSwitchView,
+}: InfoSidePanelProps) {
   if (pinned) {
     return (
       <div className="hidden md:flex flex-col w-80 flex-shrink-0 border-r bg-background h-full overflow-hidden">
         <div className="flex items-center gap-1 border-b px-4 py-3">
-          <h2 className="text-base font-semibold flex-1">💥CrashMap</h2>
+          <h2 className="text-base font-semibold flex-1">{titles[view]}</h2>
           <Button variant="ghost" size="icon" onClick={onTogglePin} aria-label="Unpin panel">
             <PinOff className="size-4" />
           </Button>
@@ -26,7 +57,7 @@ export function InfoSidePanel({ pinned, onClose, onTogglePin, isOpen }: InfoSide
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <InfoPanelContent />
+          <PanelBody view={view} onSwitchView={onSwitchView} />
         </div>
       </div>
     )
@@ -40,7 +71,7 @@ export function InfoSidePanel({ pinned, onClose, onTogglePin, isOpen }: InfoSide
         showCloseButton={false}
       >
         <div className="flex items-center gap-1 border-b px-4 py-3">
-          <SheetTitle className="flex-1">💥CrashMap</SheetTitle>
+          <SheetTitle className="flex-1">{titles[view]}</SheetTitle>
           <Button
             variant="ghost"
             size="icon"
@@ -57,7 +88,7 @@ export function InfoSidePanel({ pinned, onClose, onTogglePin, isOpen }: InfoSide
           </SheetClose>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          <InfoPanelContent />
+          <PanelBody view={view} onSwitchView={onSwitchView} />
         </div>
       </SheetContent>
     </Sheet>
