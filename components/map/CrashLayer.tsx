@@ -37,7 +37,7 @@ export function CrashLayer() {
   const { filterState, dispatch } = useFilterContext()
 
   // Reduce dot opacity by 10% on satellite to maintain visibility against imagery.
-  const opacityOffset = filterState.satellite ? 0.1 : 0
+  const opacityOffset = filterState.satellite ? 0.15 : 0
 
   // Layers are rendered bottom-to-top: None → Minor → Major → Death
   // so higher-severity dots always appear on top of lower-severity ones.

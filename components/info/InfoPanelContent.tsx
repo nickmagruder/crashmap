@@ -1,4 +1,5 @@
 import { ExternalLink } from 'lucide-react'
+import { PanelCredit } from './PanelCredit'
 
 const resources = [
   {
@@ -23,15 +24,14 @@ const resources = [
   },
 ]
 
-export function InfoPanelContent() {
+interface InfoPanelContentProps {
+  onSwitchView?: () => void
+}
+
+export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-semibold">About</h2>
-        <p className="text-xs text-muted-foreground/60 mt-0.5">
-          Version 0.5.4 &middot; Updated 2/20/2026
-        </p>
-      </div>
+      <PanelCredit />
 
       <section>
         <p className="text-sm text-muted-foreground leading-relaxed">
@@ -62,7 +62,29 @@ export function InfoPanelContent() {
           </a>
           , which is compiled from police reports.
         </p>
+        <p className="text-sm text-muted-foreground leading-relaxed mt-3">
+          Find this project on{' '}
+          <a
+            href="https://github.com/nickmagruder/crashmap"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline inline-flex items-center gap-0.5"
+          >
+            GitHub
+            <ExternalLink className="size-3 flex-shrink-0" />
+          </a>
+          .
+        </p>
       </section>
+
+      {onSwitchView && (
+        <button
+          onClick={onSwitchView}
+          className="text-sm text-primary hover:underline flex items-center gap-1"
+        >
+          ❤️ Support this App
+        </button>
+      )}
 
       <section>
         <h3 className="text-sm font-semibold mb-3">Map Key</h3>
@@ -85,15 +107,6 @@ export function InfoPanelContent() {
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold mb-2">Data Disclaimer</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          This data is self-collected from publicly available state transportation department
-          records. It may be incomplete, contain errors, or not reflect the most recent crashes. It
-          should not be used as the sole basis for safety decisions or policy.
-        </p>
-      </section>
-
-      <section>
         <h3 className="text-sm font-semibold mb-2">📣 Get Involved!</h3>
         <ul className="space-y-2.5">
           {resources.map(({ href, label }) => (
@@ -110,6 +123,21 @@ export function InfoPanelContent() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold mb-2">Data Disclaimer</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          This data is self-collected from publicly available state transportation department
+          records. It may be incomplete, contain errors, or not reflect the most recent crashes. It
+          should not be used as the sole basis for safety decisions or policy.
+        </p>
+      </section>
+      <section>
+        <p className="text-xs text-muted-foreground/60 mt-0.5">
+          Version 0.6.0 &middot; Updated 2/23/2026
+        </p>
+        <p className="text-xs text-muted-foreground/60 mt-0.5">© Copyright 2026 Nick Magruder</p>
       </section>
     </div>
   )

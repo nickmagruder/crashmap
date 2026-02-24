@@ -3,13 +3,17 @@
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InfoPanelContent } from './InfoPanelContent'
+import { SupportPanelContent } from './SupportPanelContent'
+import type { InfoPanelView } from './InfoSidePanel'
 
 interface InfoOverlayProps {
   isOpen: boolean
   onClose: () => void
+  view?: InfoPanelView
+  onSwitchView?: (view: InfoPanelView) => void
 }
 
-export function InfoOverlay({ isOpen, onClose }: InfoOverlayProps) {
+export function InfoOverlay({ isOpen, onClose, view = 'info', onSwitchView }: InfoOverlayProps) {
   if (!isOpen) return null
 
   return (
@@ -27,7 +31,15 @@ export function InfoOverlay({ isOpen, onClose }: InfoOverlayProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <InfoPanelContent />
+        {view === 'support' ? (
+          <SupportPanelContent
+            onSwitchView={onSwitchView ? () => onSwitchView('info') : undefined}
+          />
+        ) : (
+          <InfoPanelContent
+            onSwitchView={onSwitchView ? () => onSwitchView('support') : undefined}
+          />
+        )}
       </div>
     </div>
   )
