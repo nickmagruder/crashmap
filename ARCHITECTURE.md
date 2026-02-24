@@ -347,12 +347,14 @@ type Query {
 
 Crash points use a **severity-based color and opacity gradient** on the Mapbox circle layer. Bicyclist and pedestrian icons use slightly different hues but follow the same gradient system.
 
-| Severity Bucket  | Raw DB Values                                          | Color                         | Opacity | Size (base) | Default Visibility   |
-| ---------------- | ------------------------------------------------------ | ----------------------------- | ------- | ----------- | -------------------- |
-| **Death**        | "Dead at Scene", "Died in Hospital", "Dead on Arrival" | Dark Red (`#B71C1C`)          | ~85%    | 8px         | ✅ Shown             |
-| **Major Injury** | "Suspected Serious Injury"                             | Orange (`#E65100`)            | ~70%    | 7px         | ✅ Shown             |
-| **Minor Injury** | "Suspected Minor Injury", "Possible Injury"            | Yellow (`#F9A825`)            | ~55%    | 6px         | ✅ Shown             |
-| **None**         | "No Apparent Injury", "Unknown"                        | Pale Yellow-Green (`#C5E1A5`) | ~50%    | 5px         | ❌ Hidden by default |
+| Severity Bucket  | Raw DB Values                                          | Standard Color                | Accessible Color (Paul Tol Muted) | Opacity | Size (base) | Default Visibility   |
+| ---------------- | ------------------------------------------------------ | ----------------------------- | --------------------------------- | ------- | ----------- | -------------------- |
+| **Death**        | "Dead at Scene", "Died in Hospital", "Dead on Arrival" | Dark Red (`#B71C1C`)          | Indigo (`#332288`)                | ~85%    | 8px         | ✅ Shown             |
+| **Major Injury** | "Suspected Serious Injury"                             | Orange (`#F57C00`)            | Rose (`#CC6677`)                  | ~70%    | 7px         | ✅ Shown             |
+| **Minor Injury** | "Suspected Minor Injury", "Possible Injury"            | Yellow (`#FDD835`)            | Tan (`#DDCC77`)                   | ~55%    | 6px         | ✅ Shown             |
+| **None**         | "No Apparent Injury", "Unknown"                        | Pale Yellow-Green (`#C5E1A5`) | Teal (`#44AA99`)                  | ~50%    | 5px         | ❌ Hidden by default |
+
+The accessible palette is toggled via an Eye button in the top-right controls bar (also a Switch in Map Controls in the filter panel). The Paul Tol Muted scheme is distinguishable under all forms of color vision deficiency (protanopia, deuteranopia, tritanopia). Colors are centralized in `lib/crashColors.ts` and consumed by `CrashLayer.tsx`, `SeverityFilter.tsx`, and `InfoPanelContent.tsx`.
 
 **Mapbox implementation** using data-driven styling:
 

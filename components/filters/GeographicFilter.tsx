@@ -61,6 +61,10 @@ export function GeographicFilter() {
     dispatch({ type: 'SET_SATELLITE', payload: checked })
   }
 
+  function handleAccessibleColorsToggle(checked: boolean) {
+    dispatch({ type: 'SET_ACCESSIBLE_COLORS', payload: checked })
+  }
+
   if (countiesLoading && citiesLoading && !countiesData && !citiesData) {
     return (
       <div className="space-y-4">
@@ -147,6 +151,16 @@ export function GeographicFilter() {
           />
           <Label htmlFor="satellite-view" className="text-sm cursor-pointer">
             Satellite view
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch
+            id="accessible-colors"
+            checked={filterState.accessibleColors}
+            onCheckedChange={handleAccessibleColorsToggle}
+          />
+          <Label htmlFor="accessible-colors" className="text-sm cursor-pointer">
+            Accessible colors
           </Label>
         </div>
       </div>

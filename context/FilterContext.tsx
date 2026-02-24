@@ -22,6 +22,7 @@ export interface FilterState {
   city: string | null
   updateWithMovement: boolean // when true, query uses viewport bbox instead of geo text filters
   satellite: boolean // when true, map uses satellite-streets style regardless of theme
+  accessibleColors: boolean // when true, uses colorblind-safe Paul Tol Muted palette
   totalCount: number | null // populated by CrashLayer after query
   isLoading: boolean // true while a filter-triggered refetch is in flight
 }
@@ -50,6 +51,7 @@ export type FilterAction =
   | { type: 'SET_CITY'; payload: string | null }
   | { type: 'SET_UPDATE_WITH_MOVEMENT'; payload: boolean }
   | { type: 'SET_SATELLITE'; payload: boolean }
+  | { type: 'SET_ACCESSIBLE_COLORS'; payload: boolean }
   | { type: 'SET_TOTAL_COUNT'; payload: number | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'RESET' }
@@ -83,6 +85,7 @@ const initialState: FilterState = {
   city: null,
   updateWithMovement: false,
   satellite: false,
+  accessibleColors: false,
   totalCount: null,
   isLoading: false,
 }
@@ -122,6 +125,8 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
       return { ...filterState, updateWithMovement: action.payload }
     case 'SET_SATELLITE':
       return { ...filterState, satellite: action.payload }
+    case 'SET_ACCESSIBLE_COLORS':
+      return { ...filterState, accessibleColors: action.payload }
     case 'SET_TOTAL_COUNT':
       return { ...filterState, totalCount: action.payload }
     case 'SET_LOADING':
