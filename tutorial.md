@@ -5825,10 +5825,37 @@ The wizard will:
    "connect-src 'self' https://*.mapbox.com https://events.mapbox.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
    ```
 
-6. **Set secrets in GitHub Actions** — for source-map uploads during CI builds, add these as repository secrets (Settings → Secrets → Actions):
-   - `SENTRY_AUTH_TOKEN` — create at Sentry → Settings → Auth Tokens
+6. **Add `consoleLoggingIntegration`** — enables Sentry Logs, which captures `console.log`, `console.warn`, and `console.error` calls as structured log entries in Sentry's Logs explorer. Add it to all three init files:
+
+   ```ts
+   // In sentry.server.config.ts, sentry.edge.config.ts, and instrumentation-client.ts:
+   integrations: [
+     Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+   ],
+   enableLogs: true,
+   ```
+
+   For `instrumentation-client.ts`, include it alongside `replayIntegration()`.
+
+7. **Set secrets in GitHub Actions** — for source-map uploads during CI builds:
+   - Add `SENTRY_AUTH_TOKEN` as a repository secret (Settings → Secrets → Actions); create the token at Sentry → Settings → Auth Tokens
+   - Expose it in the `Build` step of `ci.yml` — secrets are not automatically available to `run` commands:
+
+   ```yaml
+   - name: Build
+     run: npm run build
+     env:
+       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+   ```
 
    The wizard hardcodes `org` and `project` as literal strings in `next.config.ts` — that's fine to leave as-is.
+
+8. **Declare `NEXT_PUBLIC_SENTRY_DSN` in `render.yaml`** — so Render knows the variable exists for both services (set the actual value in the Render dashboard):
+
+   ```yaml
+   - key: NEXT_PUBLIC_SENTRY_DSN
+     sync: false
+   ```
 
 **Verify it works:** Visit `/sentry-example-page` locally, click the button, and confirm the error appears in your Sentry Issues dashboard within seconds.
 
