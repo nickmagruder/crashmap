@@ -2,19 +2,13 @@
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { useFilterContext, type SeverityBucket } from '@/context/FilterContext'
-
-// Colors match the circle layer styling in CrashLayer.tsx.
-const SEVERITY_COLORS: Record<SeverityBucket | 'None', string> = {
-  Death: '#B71C1C',
-  'Major Injury': '#E65100',
-  'Minor Injury': '#F9A825',
-  None: '#C5E1A5',
-}
+import { STANDARD_COLORS, ACCESSIBLE_COLORS } from '@/lib/crashColors'
 
 const BUCKETS: SeverityBucket[] = ['Death', 'Major Injury', 'Minor Injury']
 
 export function SeverityFilter() {
   const { filterState, dispatch } = useFilterContext()
+  const colors = filterState.accessibleColors ? ACCESSIBLE_COLORS : STANDARD_COLORS
 
   function toggleBucket(bucket: SeverityBucket, checked: boolean) {
     const next = checked
@@ -37,7 +31,7 @@ export function SeverityFilter() {
             />
             <span
               className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: SEVERITY_COLORS[bucket] }}
+              style={{ backgroundColor: colors[bucket] }}
               aria-hidden="true"
             />
             <label htmlFor={`severity-${bucket}`} className="cursor-pointer text-sm leading-none">
@@ -56,7 +50,7 @@ export function SeverityFilter() {
           />
           <span
             className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: SEVERITY_COLORS['None'] }}
+            style={{ backgroundColor: colors['None'] }}
             aria-hidden="true"
           />
           <label htmlFor="severity-none" className="cursor-pointer text-sm leading-none">

@@ -1,5 +1,9 @@
+'use client'
+
 import { ExternalLink } from 'lucide-react'
 import { PanelCredit } from './PanelCredit'
+import { useFilterContext } from '@/context/FilterContext'
+import { STANDARD_COLORS, ACCESSIBLE_COLORS } from '@/lib/crashColors'
 
 const resources = [
   {
@@ -29,6 +33,9 @@ interface InfoPanelContentProps {
 }
 
 export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
+  const { filterState } = useFilterContext()
+  const colors = filterState.accessibleColors ? ACCESSIBLE_COLORS : STANDARD_COLORS
+
   return (
     <div className="space-y-6">
       <PanelCredit />
@@ -45,6 +52,9 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
 
       <section>
         <h3 className="text-sm font-semibold mb-2">The Data</h3>
+        <p className="text-xs text-muted-foreground/60 mt-0.5">
+          *Current data only includes 2025 data from King County, more coming soon*
+        </p>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Each record represents a reported crash involving at least one &quot;pedacyclist&quot; or
           pedestrian with a known location. Crashes are classified by the most severe injury to any
@@ -90,10 +100,10 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
         <h3 className="text-sm font-semibold mb-3">Map Key</h3>
         <ul className="space-y-2">
           {[
-            { color: '#B71C1C', opacity: 0.85, size: 14, label: 'Fatal' },
-            { color: '#E65100', opacity: 0.7, size: 12, label: 'Major Injury' },
-            { color: '#F9A825', opacity: 0.55, size: 11, label: 'Minor Injury' },
-            { color: '#C5E1A5', opacity: 0.5, size: 10, label: 'No Injury / Unknown' },
+            { color: colors['Death'], opacity: 0.85, size: 14, label: 'Fatal' },
+            { color: colors['Major Injury'], opacity: 0.7, size: 12, label: 'Major Injury' },
+            { color: colors['Minor Injury'], opacity: 0.55, size: 11, label: 'Minor Injury' },
+            { color: colors['None'], opacity: 0.5, size: 10, label: 'No Injury / Unknown' },
           ].map(({ color, opacity, size, label }) => (
             <li key={label} className="flex items-center gap-2.5">
               <span
@@ -135,7 +145,7 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
       </section>
       <section>
         <p className="text-xs text-muted-foreground/60 mt-0.5">
-          Version 0.6.0 &middot; Updated 2/23/2026
+          Version 0.6.1 &middot; Updated 2/23/2026
         </p>
         <p className="text-xs text-muted-foreground/60 mt-0.5">© Copyright 2026 Nick Magruder</p>
       </section>

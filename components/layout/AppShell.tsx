@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Heart, Info, Loader2, SlidersHorizontal } from 'lucide-react'
+import { Eye, Heart, Info, Loader2, SlidersHorizontal } from 'lucide-react'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
@@ -35,7 +35,7 @@ export function AppShell() {
   const [infoOverlayOpen, setInfoOverlayOpen] = useState(false)
   const [infoPanelView, setInfoPanelView] = useState<InfoPanelView>('info')
   const mapRef = useRef<MapRef>(null)
-  const { filterState } = useFilterContext()
+  const { filterState, dispatch } = useFilterContext()
 
   // Call resize() after any panel transition so Mapbox recomputes canvas size.
   // 300ms matches the shadcn Sheet slide animation duration.
@@ -123,6 +123,29 @@ export function AppShell() {
 
         {/* Top-right controls */}
         <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <Button
+            variant={filterState.accessibleColors ? 'default' : 'outline'}
+            size="icon"
+            className={filterState.accessibleColors ? '' : 'dark:bg-zinc-900 dark:border-zinc-700'}
+            onClick={() =>
+              dispatch({
+                type: 'SET_ACCESSIBLE_COLORS',
+                payload: !filterState.accessibleColors,
+              })
+            }
+            aria-label={
+              filterState.accessibleColors
+                ? 'Disable accessible colors'
+                : 'Enable accessible colors'
+            }
+            title={
+              filterState.accessibleColors
+                ? 'Disable accessible colors'
+                : 'Enable accessible colors'
+            }
+          >
+            <Eye className="size-4" />
+          </Button>
           <ThemeToggle className="dark:bg-zinc-900 dark:border-zinc-700" />
           {/* Sidebar toggle — desktop only */}
           <div className="hidden md:block">

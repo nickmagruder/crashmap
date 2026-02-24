@@ -5992,4 +5992,38 @@ View switching is managed in `AppShell` via `infoPanelView` state and an `onSwit
 
 The top map buttons use `variant="outline"` which picks up `border-input` in dark mode — `oklch(1 0 0 / 15%)`, a semi-transparent white that looks washed out over the map. Fix: add `className="dark:bg-zinc-900 dark:border-zinc-700"` to each button for a solid, clearly-defined appearance. `ThemeToggle` needed a one-line `className` prop added to pass the class through to the underlying `Button`.
 
+### Accessible color scale
+
+Map dots rely on color to communicate severity — which is a problem for the ~8% of males with red-green color blindness who can't distinguish the standard dark-red / orange / yellow / green scale. We add a toggle that swaps to the **Paul Tol Muted** palette, a scheme specifically engineered to be distinguishable under all forms of color vision deficiency (protanopia, deuteranopia, tritanopia).
+
+**Step 1 — Centralize color constants.** Rather than scattering hex codes across multiple files (a pre-existing bug: `SeverityFilter.tsx` and `CrashLayer.tsx` had slightly different values), create `lib/crashColors.ts` with two exported maps:
+
+```ts
+export const STANDARD_COLORS: Record<SeverityBucket, string> = {
+  None: '#C5E1A5',
+  'Minor Injury': '#FDD835',
+  'Major Injury': '#F57C00',
+  Death: '#B71C1C',
+}
+export const ACCESSIBLE_COLORS: Record<SeverityBucket, string> = {
+  None: '#44AA99',
+  'Minor Injury': '#DDCC77',
+  'Major Injury': '#CC6677',
+  Death: '#332288',
+}
+```
+
+**Step 2 — Add state.** In `FilterContext.tsx`, add `accessibleColors: boolean` to `FilterState` (default `false`), a `SET_ACCESSIBLE_COLORS` action, and a reducer case — exactly mirroring the existing `satellite` toggle. No URL persistence needed (it's a visual preference, not a data filter).
+
+**Step 3 — Wire up the map layers.** In `CrashLayer.tsx`, derive a `colors` variable from `filterState.accessibleColors` and use it for all four `circle-color` paint properties instead of hardcoded hex values.
+
+**Step 4 — Wire up the UI legend.** In `SeverityFilter.tsx` and `InfoPanelContent.tsx`, do the same: pick from `STANDARD_COLORS` or `ACCESSIBLE_COLORS` based on `filterState.accessibleColors`. `InfoPanelContent` needs `'use client'` added since it now calls `useFilterContext()`.
+
+**Step 5 — Add the toggle controls.** Two entry points for the same state:
+
+- An `Eye` icon button in `AppShell.tsx` to the left of the theme toggle. Use `variant="default"` when active so the filled button communicates state at a glance.
+- A `Switch` in `GeographicFilter.tsx` under Map Controls, alongside the existing "Satellite view" toggle — consistent pattern, accessible from the filter panel.
+
+The result: users can enable the accessible palette from either the map toolbar or the filter panel, and the map dots, severity checkboxes, and info panel legend all update instantly in sync.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

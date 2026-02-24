@@ -1,12 +1,20 @@
 # CrashMap
 
-**Version:** 0.6.0
+**Version:** 0.6.1
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
 This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Changelog
+
+### 2026-02-23 — Accessible Color Scale
+
+- Added colorblind-safe color palette toggle using the Paul Tol Muted scheme: teal / tan / rose / indigo replaces the standard red / orange / yellow / green
+- Eye icon button in the top-right controls bar enables/disables accessible colors; button fills when active to show state at a glance
+- "Accessible colors" Switch toggle also added to Map Controls in the filter panel
+- Severity legend dots in the filter panel and Map Key in the info panel update in sync with the map layers
+- Extracted shared `lib/crashColors.ts` constants used by all three locations; fixes pre-existing color inconsistency between `CrashLayer.tsx` and `SeverityFilter.tsx`
 
 ### 2026-02-23 — Support Panel
 

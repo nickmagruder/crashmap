@@ -7,6 +7,7 @@ import type { LayerProps } from 'react-map-gl/mapbox'
 import type { FeatureCollection, Point } from 'geojson'
 import { GET_CRASHES } from '@/lib/graphql/queries'
 import { useFilterContext, toCrashFilter, type CrashFilterInput } from '@/context/FilterContext'
+import { STANDARD_COLORS, ACCESSIBLE_COLORS } from '@/lib/crashColors'
 
 type CrashItem = {
   colliRptNum: string
@@ -39,6 +40,8 @@ export function CrashLayer() {
   // Reduce dot opacity by 10% on satellite to maintain visibility against imagery.
   const opacityOffset = filterState.satellite ? 0.15 : 0
 
+  const colors = filterState.accessibleColors ? ACCESSIBLE_COLORS : STANDARD_COLORS
+
   // Layers are rendered bottom-to-top: None → Minor → Major → Death
   // so higher-severity dots always appear on top of lower-severity ones.
   const noneLayer: LayerProps = {
@@ -46,7 +49,7 @@ export function CrashLayer() {
     type: 'circle',
     filter: ['==', ['get', 'severity'], 'None'],
     paint: {
-      'circle-color': '#C5E1A5',
+      'circle-color': colors['None'],
       'circle-opacity': 0.5 + opacityOffset,
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1, 10, 5, 15, 9],
       'circle-stroke-width': 0,
@@ -58,7 +61,7 @@ export function CrashLayer() {
     type: 'circle',
     filter: ['==', ['get', 'severity'], 'Minor Injury'],
     paint: {
-      'circle-color': '#FDD835',
+      'circle-color': colors['Minor Injury'],
       'circle-opacity': 0.55 + opacityOffset,
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 1.5, 10, 6, 15, 12],
       'circle-stroke-width': 0,
@@ -70,7 +73,7 @@ export function CrashLayer() {
     type: 'circle',
     filter: ['==', ['get', 'severity'], 'Major Injury'],
     paint: {
-      'circle-color': '#F57C00',
+      'circle-color': colors['Major Injury'],
       'circle-opacity': 0.7 + opacityOffset,
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2, 10, 7, 15, 15],
       'circle-stroke-width': 0,
@@ -82,7 +85,7 @@ export function CrashLayer() {
     type: 'circle',
     filter: ['==', ['get', 'severity'], 'Death'],
     paint: {
-      'circle-color': '#B71C1C',
+      'circle-color': colors['Death'],
       'circle-opacity': 0.85 + opacityOffset,
       'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 2.5, 10, 8, 15, 18],
       'circle-stroke-width': 0,
