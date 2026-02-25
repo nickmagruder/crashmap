@@ -6224,4 +6224,184 @@ Rather than a transient toast, render a conditional banner absolutely positioned
 
 `pointer-events-none` ensures the banner doesn't block map interactions.
 
+---
+
+## Phase 5 Continued: Date Filter — Named Preset Buttons
+
+Instead of hardcoded year buttons (2025, 2024, …), the date filter now uses four dynamic named presets that always reflect the actual available data.
+
+### Why presets instead of years?
+
+Year buttons have two problems: they go stale (2025 becomes less useful once 2026 data exists), and they require a manual update with every new data import. Named presets like "YTD" or "90 Days" are always relevant and anchor to `dataBounds.maxDate` — the latest date actually in the database — so they never return empty results for dates after the last import.
+
+### Step 1: Add `DatePreset` type and utility to `FilterContext`
+
+Add the type and a shared utility that computes concrete date ranges from a preset name + data bounds:
+
+```ts
+// context/FilterContext.tsx
+export type DatePreset = 'ytd' | '90d' | 'last-year' | '3y'
+
+export type DateFilter =
+  | { type: 'none' }
+  | { type: 'year'; year: number }
+  | { type: 'range'; startDate: string; endDate: string }
+  | { type: 'preset'; preset: DatePreset } // ← new
+
+export const PRESET_LABELS: Record<DatePreset, string> = {
+  ytd: 'YTD',
+  '90d': '90 Days',
+  'last-year': 'Last Year',
+  '3y': '3 Years',
+}
+
+export function presetToDateRange(
+  preset: DatePreset,
+  dataBounds: { minDate: string; maxDate: string }
+): { startDate: string; endDate: string } {
+  const maxDate = parseISO(dataBounds.maxDate)
+  const today = new Date()
+  switch (preset) {
+    case 'ytd':
+      return { startDate: format(startOfYear(today), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+    case '90d':
+      return { startDate: format(subDays(maxDate, 90), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+    case 'last-year': {
+      const lastYear = subYears(today, 1)
+      return {
+        startDate: format(startOfYear(lastYear), 'yyyy-MM-dd'),
+        endDate: format(endOfYear(lastYear), 'yyyy-MM-dd'),
+      }
+    }
+    case '3y':
+      return {
+        startDate: format(subMonths(maxDate, 36), 'yyyy-MM-dd'),
+        endDate: dataBounds.maxDate,
+      }
+  }
+}
+```
+
+Key design decisions:
+
+- YTD, 90 Days, and 3 Years use `dataBounds.maxDate` as their end anchor — not `today`. This ensures no empty tail if data lags behind the current date.
+- Last Year uses the previous full calendar year, which is independent of `dataBounds`.
+- `presetToDateRange` is exported so it can be shared between `toCrashFilter` (for query variables) and `DateFilter` (for display labels) without duplicating the computation logic.
+
+Also add a `SET_DATE_PRESET` action and update `toCrashFilter` to resolve presets:
+
+```ts
+// In toCrashFilter:
+const dateVars = (() => {
+  const { dateFilter, dataBounds } = filterState
+  if (dateFilter.type === 'year') return { year: dateFilter.year }
+  if (dateFilter.type === 'range')
+    return { dateFrom: dateFilter.startDate, dateTo: dateFilter.endDate }
+  if (dateFilter.type === 'preset' && dataBounds) {
+    const { startDate, endDate } = presetToDateRange(dateFilter.preset, dataBounds)
+    return { dateFrom: startDate, dateTo: endDate }
+  }
+  return {}
+})()
+```
+
+If `dataBounds` hasn't loaded yet when a preset is active, `toCrashFilter` returns no date variables — but the query will be skipped at the call site anyway (see Step 3).
+
+Change the default filter to `ytd`:
+
+```ts
+const initialState: FilterState = {
+  ...
+  dateFilter: { type: 'preset', preset: 'ytd' },
+  ...
+}
+```
+
+### Step 2: Update URL encode/decode for presets
+
+Presets are stored by name in the URL so the active button stays highlighted on page reload:
+
+```ts
+// Encode: ?date=90d, ?date=last-year, ?date=3y; ytd is the default so omit it
+if (dateFilter.type === 'preset' && dateFilter.preset !== 'ytd') {
+  params.set('date', dateFilter.preset)
+}
+
+// Decode: parse the four known preset values
+const VALID_PRESETS = new Set(['ytd', '90d', 'last-year', '3y'])
+if (rawDate !== null && VALID_PRESETS.has(rawDate)) {
+  dateFilter = { type: 'preset', preset: rawDate as DatePreset }
+}
+```
+
+Old `?year=2025` URLs still decode to `{ type: 'year', year: 2025 }` for backward compatibility — the data will still load; the button just won't highlight (year buttons no longer exist in the UI).
+
+### Step 3: Skip the query until `dataBounds` loads
+
+Presets need `dataBounds.maxDate` before they can compute a query range. Add a second skip condition in `CrashLayer`:
+
+```ts
+const noDateFilter = filterState.dateFilter.type === 'none'
+const presetWithoutBounds =
+  filterState.dateFilter.type === 'preset' && filterState.dataBounds === null
+const skipQuery = noDateFilter || presetWithoutBounds
+
+const { data, previousData } = useQuery(GET_CRASHES, { skip: skipQuery, ... })
+const displayData = skipQuery ? undefined : (data ?? previousData)
+```
+
+This prevents the map from firing an unbounded query on initial render before the filter options query returns. In practice, `dataBounds` resolves quickly since `GET_FILTER_OPTIONS` is already fetched on app load for the cascading dropdowns.
+
+### Step 4: Update `DateFilter.tsx`
+
+Replace the year buttons loop with a preset buttons loop, and update the popover trigger label to show the computed date range when a preset is active:
+
+```tsx
+const QUICK_PRESETS: { id: DatePreset; label: string }[] = [
+  { id: 'ytd', label: 'YTD' },
+  { id: '90d', label: '90 Days' },
+  { id: 'last-year', label: 'Last Year' },
+  { id: '3y', label: '3 Years' },
+]
+
+// Resolve preset range for display (also used for calendarSelected seeding)
+const activePresetRange =
+  selectedPreset && dataBounds ? presetToDateRange(selectedPreset, dataBounds) : null
+
+// Popover trigger label shows computed range when a preset is active
+const rangeLabel = activePresetRange
+  ? `${format(parseISO(activePresetRange.startDate), DATE_DISPLAY_FORMAT)} – ${format(parseISO(activePresetRange.endDate), DATE_DISPLAY_FORMAT)}`
+  : selectedRange
+    ? `${format(parseISO(selectedRange.startDate), DATE_DISPLAY_FORMAT)} – ...`
+    : 'Custom range…'
+```
+
+The calendar also pre-populates with the computed range when a preset is active, so opening the popover shows the user what dates are currently selected:
+
+```ts
+const calendarSelected: DateRange | undefined =
+  pendingRange ??
+  (activePresetRange
+    ? { from: parseISO(activePresetRange.startDate), to: parseISO(activePresetRange.endDate) }
+    : selectedRange ? { from: ..., to: ... } : undefined)
+```
+
+When the popover opens, seed `month` to the start of the active preset range so the calendar doesn't jump to today:
+
+```ts
+function handleOpenChange(next: boolean) {
+  if (next) {
+    if (activePresetRange) {
+      setMonth(parseISO(activePresetRange.startDate))
+    } else if (selectedRange) {
+      setMonth(parseISO(selectedRange.startDate))
+    }
+  }
+  if (!next) setPendingRange(undefined)
+  setOpen(next)
+}
+```
+
+Clicking an active preset button toggles it off (dispatches `CLEAR_DATE`), consistent with the old year button behavior.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

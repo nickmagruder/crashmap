@@ -8,6 +8,16 @@ This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/a
 
 ## Changelog
 
+### 2026-02-25 — Date Filter: Named Preset Buttons
+
+- Replaced hardcoded year quick-select buttons (2025–2022) with four dynamic presets: **YTD**, **90 Days**, **Last Year**, and **3 Years**
+- Presets are stored as a named `DatePreset` type (`'ytd' | '90d' | 'last-year' | '3y'`) in `FilterContext` rather than being resolved immediately to date ranges — active button stays highlighted on page reload
+- Preset date ranges are anchored to `dataBounds.maxDate` so they never exceed available data (YTD: Jan 1 → max, 90 Days: max−90d → max, 3 Years: max−36mo → max, Last Year: always previous full calendar year)
+- URL encodes preset names (`?date=90d`, `?date=last-year`, `?date=3y`); YTD is the new default and is omitted from the URL; old `?year=N` URLs still decode correctly for backward compatibility
+- Popover trigger button now shows the computed date range when a preset is active (e.g. `01/01/2025 – 11/30/2025`)
+- `CrashLayer` skips the GraphQL query until `dataBounds` resolves to avoid an unbounded query on initial render with a preset active
+- Updated `presetToDateRange()` utility exported from `FilterContext` and shared between `toCrashFilter` (query variables) and `DateFilter` (display label)
+
 ### 2026-02-25 — Date Filter Refactor: shadcn Range Calendar
 
 - Replaced custom date picker (text inputs, year-nav arrows, Apply button) with the default shadcn Range Calendar (`mode="range"`, `captionLayout="dropdown"`) — reduced `DateFilter.tsx` from 247 to ~155 lines

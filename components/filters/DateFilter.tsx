@@ -9,11 +9,16 @@ import { useQuery } from '@apollo/client/react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { useFilterContext } from '@/context/FilterContext'
+import { useFilterContext, type DatePreset, presetToDateRange } from '@/context/FilterContext'
 import { GET_FILTER_OPTIONS, type GetFilterOptionsQuery } from '@/lib/graphql/queries'
 
-const CURRENT_YEAR = new Date().getFullYear()
-const QUICK_YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3, CURRENT_YEAR - 4]
+const QUICK_PRESETS: { id: DatePreset; label: string }[] = [
+  { id: 'ytd', label: 'YTD' },
+  { id: '90d', label: '90d' },
+  { id: 'last-year', label: 'Last Year' },
+  { id: '3y', label: '3yrs' },
+]
+
 const DATE_DISPLAY_FORMAT = 'MM/dd/yyyy'
 
 export function DateFilter() {
@@ -31,18 +36,29 @@ export function DateFilter() {
     }
   }, [boundsData, dispatch])
 
-  const selectedYear = filterState.dateFilter.type === 'year' ? filterState.dateFilter.year : null
+  const selectedPreset =
+    filterState.dateFilter.type === 'preset' ? filterState.dateFilter.preset : null
   const selectedRange = filterState.dateFilter.type === 'range' ? filterState.dateFilter : null
   const dataBounds = filterState.dataBounds
+
+  const activePresetRange =
+    selectedPreset && dataBounds ? presetToDateRange(selectedPreset, dataBounds) : null
+
   const calendarSelected: DateRange | undefined =
     pendingRange ??
-    (selectedRange
-      ? { from: parseISO(selectedRange.startDate), to: parseISO(selectedRange.endDate) }
-      : undefined)
-  const rangeLabel = selectedRange
-    ? `${selectedRange.startDate} – ${selectedRange.endDate}`
-    : 'Custom range…'
-  const canClear = !!(selectedRange || pendingRange?.from)
+    (activePresetRange
+      ? { from: parseISO(activePresetRange.startDate), to: parseISO(activePresetRange.endDate) }
+      : selectedRange
+        ? { from: parseISO(selectedRange.startDate), to: parseISO(selectedRange.endDate) }
+        : undefined)
+
+  const rangeLabel = activePresetRange
+    ? `${format(parseISO(activePresetRange.startDate), DATE_DISPLAY_FORMAT)} – ${format(parseISO(activePresetRange.endDate), DATE_DISPLAY_FORMAT)}`
+    : selectedRange
+      ? `${format(parseISO(selectedRange.startDate), DATE_DISPLAY_FORMAT)} – ${format(parseISO(selectedRange.endDate), DATE_DISPLAY_FORMAT)}`
+      : 'Custom range…'
+
+  const canClear = !!(selectedRange || selectedPreset || pendingRange?.from)
 
   function validateRange(from: Date, to: Date): string | null {
     if (isBefore(to, from)) return 'Start date must be before end date'
@@ -73,11 +89,11 @@ export function DateFilter() {
     return true
   }
 
-  function handleYearClick(year: number) {
-    if (selectedYear === year) {
+  function handlePresetClick(preset: DatePreset) {
+    if (selectedPreset === preset) {
       dispatch({ type: 'CLEAR_DATE' })
     } else {
-      dispatch({ type: 'SET_DATE_YEAR', payload: year })
+      dispatch({ type: 'SET_DATE_PRESET', payload: preset })
     }
   }
 
@@ -98,7 +114,13 @@ export function DateFilter() {
   }
 
   function handleOpenChange(next: boolean) {
-    if (next && selectedRange) setMonth(parseISO(selectedRange.startDate))
+    if (next) {
+      if (activePresetRange) {
+        setMonth(parseISO(activePresetRange.startDate))
+      } else if (selectedRange) {
+        setMonth(parseISO(selectedRange.startDate))
+      }
+    }
     if (!next) setPendingRange(undefined)
     setOpen(next)
   }
@@ -117,15 +139,15 @@ export function DateFilter() {
       <p className="text-sm font-medium">Date</p>
 
       <div className="flex flex-wrap gap-2">
-        {QUICK_YEARS.map((year) => (
+        {QUICK_PRESETS.map((preset) => (
           <Button
-            key={year}
-            variant={selectedYear === year ? 'default' : 'outline'}
+            key={preset.id}
+            variant={selectedPreset === preset.id ? 'default' : 'outline'}
             size="sm"
-            onClick={() => handleYearClick(year)}
-            aria-pressed={selectedYear === year}
+            onClick={() => handlePresetClick(preset.id)}
+            aria-pressed={selectedPreset === preset.id}
           >
-            {year}
+            {preset.label}
           </Button>
         ))}
       </div>

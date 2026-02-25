@@ -1,16 +1,20 @@
 'use client'
 
 import { createContext, useContext, useReducer, type ReactNode } from 'react'
+import { format, parseISO, subDays, subMonths, startOfYear, endOfYear, subYears } from 'date-fns'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type SeverityBucket = 'Death' | 'Major Injury' | 'Minor Injury' | 'None'
 export type ModeFilter = 'Bicyclist' | 'Pedestrian' | null
 
+export type DatePreset = 'ytd' | '90d' | 'last-year' | '3y'
+
 export type DateFilter =
   | { type: 'none' }
   | { type: 'year'; year: number }
   | { type: 'range'; startDate: string; endDate: string }
+  | { type: 'preset'; preset: DatePreset }
 
 export interface FilterState {
   mode: ModeFilter
@@ -45,6 +49,7 @@ export type FilterAction =
   | { type: 'SET_SEVERITY'; payload: SeverityBucket[] }
   | { type: 'TOGGLE_NO_INJURY' }
   | { type: 'SET_DATE_YEAR'; payload: number }
+  | { type: 'SET_DATE_PRESET'; payload: DatePreset }
   | { type: 'SET_DATE_RANGE'; payload: { startDate: string; endDate: string } }
   | { type: 'CLEAR_DATE' }
   | { type: 'SET_STATE'; payload: string | null }
@@ -77,11 +82,18 @@ export type CrashFilterInput = {
 
 export const DEFAULT_SEVERITY: SeverityBucket[] = ['Death', 'Major Injury', 'Minor Injury']
 
+export const PRESET_LABELS: Record<DatePreset, string> = {
+  ytd: 'YTD',
+  '90d': '90 Days',
+  'last-year': 'Last Year',
+  '3y': '3 Years',
+}
+
 const initialState: FilterState = {
   mode: null,
   severity: DEFAULT_SEVERITY,
   includeNoInjury: false,
-  dateFilter: { type: 'year', year: 2025 },
+  dateFilter: { type: 'preset', preset: 'ytd' },
   state: 'Washington',
   county: null,
   city: null,
@@ -105,6 +117,8 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
       return { ...filterState, includeNoInjury: !filterState.includeNoInjury }
     case 'SET_DATE_YEAR':
       return { ...filterState, dateFilter: { type: 'year', year: action.payload } }
+    case 'SET_DATE_PRESET':
+      return { ...filterState, dateFilter: { type: 'preset', preset: action.payload } }
     case 'SET_DATE_RANGE':
       return {
         ...filterState,
@@ -180,6 +194,37 @@ export function useFilterContext(): FilterContextValue {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
+ * Compute a concrete date range from a named preset, anchored to dataBounds.maxDate.
+ * YTD, 90d, and 3y use maxDate as their end anchor so they never exceed available data.
+ * Last Year always spans the previous complete calendar year.
+ */
+export function presetToDateRange(
+  preset: DatePreset,
+  dataBounds: { minDate: string; maxDate: string }
+): { startDate: string; endDate: string } {
+  const maxDate = parseISO(dataBounds.maxDate)
+  const today = new Date()
+  switch (preset) {
+    case 'ytd':
+      return { startDate: format(startOfYear(today), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+    case '90d':
+      return { startDate: format(subDays(maxDate, 90), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+    case 'last-year': {
+      const lastYear = subYears(today, 1)
+      return {
+        startDate: format(startOfYear(lastYear), 'yyyy-MM-dd'),
+        endDate: format(endOfYear(lastYear), 'yyyy-MM-dd'),
+      }
+    }
+    case '3y':
+      return {
+        startDate: format(subMonths(maxDate, 36), 'yyyy-MM-dd'),
+        endDate: dataBounds.maxDate,
+      }
+  }
+}
+
+/**
  * Convert FilterState to CrashFilter GraphQL input variables.
  * Pass this directly as the `filter` variable to Apollo queries.
  */
@@ -189,12 +234,17 @@ export function toCrashFilter(filterState: FilterState): CrashFilterInput {
     ...(filterState.includeNoInjury ? ['None'] : []),
   ]
 
-  const dateVars =
-    filterState.dateFilter.type === 'year'
-      ? { year: filterState.dateFilter.year }
-      : filterState.dateFilter.type === 'range'
-        ? { dateFrom: filterState.dateFilter.startDate, dateTo: filterState.dateFilter.endDate }
-        : {}
+  const dateVars = (() => {
+    const { dateFilter, dataBounds } = filterState
+    if (dateFilter.type === 'year') return { year: dateFilter.year }
+    if (dateFilter.type === 'range')
+      return { dateFrom: dateFilter.startDate, dateTo: dateFilter.endDate }
+    if (dateFilter.type === 'preset' && dataBounds) {
+      const { startDate, endDate } = presetToDateRange(dateFilter.preset, dataBounds)
+      return { dateFrom: startDate, dateTo: endDate }
+    }
+    return {}
+  })()
 
   return {
     severity: effectiveSeverity,
@@ -241,6 +291,8 @@ export function getActiveFilterLabels(filterState: FilterState): string[] {
     labels.push(`'${String(filterState.dateFilter.year).slice(2)}`)
   } else if (filterState.dateFilter.type === 'range') {
     labels.push(`${filterState.dateFilter.startDate} – ${filterState.dateFilter.endDate}`)
+  } else if (filterState.dateFilter.type === 'preset') {
+    labels.push(PRESET_LABELS[filterState.dateFilter.preset])
   }
 
   // Geographic: show viewport badge when movement mode is on; otherwise show county/city

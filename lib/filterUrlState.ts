@@ -1,4 +1,10 @@
-import type { DateFilter, FilterState, ModeFilter, SeverityBucket } from '@/context/FilterContext'
+import type {
+  DateFilter,
+  DatePreset,
+  FilterState,
+  ModeFilter,
+  SeverityBucket,
+} from '@/context/FilterContext'
 import { DEFAULT_SEVERITY } from '@/context/FilterContext'
 
 // The URL-serializable subset of FilterState (no derived fields).
@@ -16,10 +22,10 @@ export type UrlFilterState = {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DEFAULT_STATE = 'Washington'
-const DEFAULT_YEAR = 2025
 const DEFAULT_SEVERITY_SET = new Set<string>(DEFAULT_SEVERITY)
 const VALID_SEVERITY_BUCKETS = new Set<string>(['Death', 'Major Injury', 'Minor Injury', 'None'])
 const VALID_MODES = new Set<string>(['Bicyclist', 'Pedestrian'])
+const VALID_PRESETS = new Set<string>(['ytd', '90d', 'last-year', '3y'])
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function isDefaultSeverity(severity: SeverityBucket[], includeNoInjury: boolean): boolean {
@@ -51,17 +57,19 @@ export function encodeFilterParams(filterState: FilterState): URLSearchParams {
     params.set('severity', buckets.join(','))
   }
 
-  // dateFilter — omit when it's the default (year 2025)
+  // dateFilter — omit when it's the default (ytd preset)
   const { dateFilter } = filterState
   if (dateFilter.type === 'none') {
     params.set('date', 'none')
-  } else if (dateFilter.type === 'year' && dateFilter.year !== DEFAULT_YEAR) {
+  } else if (dateFilter.type === 'preset' && dateFilter.preset !== 'ytd') {
+    params.set('date', dateFilter.preset)
+  } else if (dateFilter.type === 'year') {
     params.set('year', String(dateFilter.year))
   } else if (dateFilter.type === 'range') {
     params.set('dateFrom', dateFilter.startDate)
     params.set('dateTo', dateFilter.endDate)
   }
-  // year === DEFAULT_YEAR → omit
+  // preset === 'ytd' → omit (default)
 
   // state — omit when it matches the default ('Washington')
   if (filterState.state !== DEFAULT_STATE) {
@@ -116,7 +124,7 @@ export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
   }
 
   // dateFilter
-  let dateFilter: DateFilter = { type: 'year', year: DEFAULT_YEAR }
+  let dateFilter: DateFilter = { type: 'preset', preset: 'ytd' }
   const rawDate = params.get('date')
   const rawYear = params.get('year')
   const rawDateFrom = params.get('dateFrom')
@@ -124,6 +132,8 @@ export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
 
   if (rawDate === 'none') {
     dateFilter = { type: 'none' }
+  } else if (rawDate !== null && VALID_PRESETS.has(rawDate)) {
+    dateFilter = { type: 'preset', preset: rawDate as DatePreset }
   } else if (rawDateFrom !== null && rawDateTo !== null) {
     if (ISO_DATE_RE.test(rawDateFrom) && ISO_DATE_RE.test(rawDateTo)) {
       dateFilter = { type: 'range', startDate: rawDateFrom, endDate: rawDateTo }
