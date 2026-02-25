@@ -1,25 +1,77 @@
 'use client'
 
-import { useState } from 'react'
-import { format, parseISO } from 'date-fns'
+import { useEffect, useState } from 'react'
+import { format, parseISO, isBefore, isAfter } from 'date-fns'
 import type { DateRange } from 'react-day-picker'
 import { CalendarIcon } from 'lucide-react'
+import { toast } from 'sonner'
+import { useQuery } from '@apollo/client/react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useFilterContext } from '@/context/FilterContext'
+import { GET_FILTER_OPTIONS, type GetFilterOptionsQuery } from '@/lib/graphql/queries'
 
 const CURRENT_YEAR = new Date().getFullYear()
 const QUICK_YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3, CURRENT_YEAR - 4]
+const DATE_DISPLAY_FORMAT = 'MM/dd/yyyy'
 
 export function DateFilter() {
   const { filterState, dispatch } = useFilterContext()
   const [open, setOpen] = useState(false)
-  // Tracks the in-progress selection inside the popover before both dates are chosen.
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>()
+  const [month, setMonth] = useState<Date>(() => new Date())
+
+  const { data: boundsData } = useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
+
+  useEffect(() => {
+    const { minDate, maxDate } = boundsData?.filterOptions ?? {}
+    if (minDate && maxDate) {
+      dispatch({ type: 'SET_DATE_BOUNDS', payload: { minDate, maxDate } })
+    }
+  }, [boundsData, dispatch])
 
   const selectedYear = filterState.dateFilter.type === 'year' ? filterState.dateFilter.year : null
   const selectedRange = filterState.dateFilter.type === 'range' ? filterState.dateFilter : null
+  const dataBounds = filterState.dataBounds
+  const calendarSelected: DateRange | undefined =
+    pendingRange ??
+    (selectedRange
+      ? { from: parseISO(selectedRange.startDate), to: parseISO(selectedRange.endDate) }
+      : undefined)
+  const rangeLabel = selectedRange
+    ? `${selectedRange.startDate} – ${selectedRange.endDate}`
+    : 'Custom range…'
+  const canClear = !!(selectedRange || pendingRange?.from)
+
+  function validateRange(from: Date, to: Date): string | null {
+    if (isBefore(to, from)) return 'Start date must be before end date'
+    if (dataBounds) {
+      const min = parseISO(dataBounds.minDate)
+      const max = parseISO(dataBounds.maxDate)
+      if (isBefore(from, min))
+        return `Data starts ${format(min, DATE_DISPLAY_FORMAT)} — no earlier records available`
+      if (isAfter(to, max))
+        return `Data ends ${format(max, DATE_DISPLAY_FORMAT)} — no later records available`
+    }
+    return null
+  }
+
+  function doCommit(from: Date, to: Date): boolean {
+    const error = validateRange(from, to)
+    if (error) {
+      toast.error(error)
+      return false
+    }
+    dispatch({
+      type: 'SET_DATE_RANGE',
+      payload: {
+        startDate: format(from, 'yyyy-MM-dd'),
+        endDate: format(to, 'yyyy-MM-dd'),
+      },
+    })
+    return true
+  }
 
   function handleYearClick(year: number) {
     if (selectedYear === year) {
@@ -30,36 +82,35 @@ export function DateFilter() {
   }
 
   function handleRangeSelect(range: DateRange | undefined) {
+    // DayPicker v9 sets from === to on the first click; treat that as start-only
+    if (range?.from && range?.to && range.from.getTime() === range.to.getTime()) {
+      setPendingRange({ from: range.from, to: undefined })
+      return
+    }
     setPendingRange(range)
-    // Only commit once both ends are chosen.
     if (range?.from && range?.to) {
-      dispatch({
-        type: 'SET_DATE_RANGE',
-        payload: {
-          startDate: format(range.from, 'yyyy-MM-dd'),
-          endDate: format(range.to, 'yyyy-MM-dd'),
-        },
-      })
-      setOpen(false)
+      const committed = doCommit(range.from, range.to)
+      if (committed) {
+        setPendingRange(undefined)
+        setOpen(false)
+      }
     }
   }
 
   function handleOpenChange(next: boolean) {
-    setOpen(next)
-    // Discard incomplete selection when closing.
+    if (next && selectedRange) setMonth(parseISO(selectedRange.startDate))
     if (!next) setPendingRange(undefined)
+    setOpen(next)
   }
 
-  // Show the committed range as the Calendar's selection; fall back to in-progress selection.
-  const calendarSelected: DateRange | undefined =
-    pendingRange ??
-    (selectedRange
-      ? { from: parseISO(selectedRange.startDate), to: parseISO(selectedRange.endDate) }
-      : undefined)
+  function handleMonthChange(newMonth: Date) {
+    setMonth(newMonth)
+  }
 
-  const rangeLabel = selectedRange
-    ? `${selectedRange.startDate} – ${selectedRange.endDate}`
-    : 'Custom range…'
+  function handleClear() {
+    dispatch({ type: 'CLEAR_DATE' })
+    setPendingRange(undefined)
+  }
 
   return (
     <div className="space-y-2">
@@ -95,21 +146,16 @@ export function DateFilter() {
             mode="range"
             selected={calendarSelected}
             onSelect={handleRangeSelect}
-            numberOfMonths={1}
+            captionLayout="dropdown"
+            month={month}
+            onMonthChange={handleMonthChange}
+            startMonth={dataBounds ? parseISO(dataBounds.minDate) : undefined}
+            endMonth={dataBounds ? parseISO(dataBounds.maxDate) : undefined}
           />
-          {selectedRange && (
+          {canClear && (
             <div className="border-t px-3 py-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  dispatch({ type: 'CLEAR_DATE' })
-                  setPendingRange(undefined)
-                  setOpen(false)
-                }}
-              >
-                Clear dates
+              <Button variant="ghost" size="sm" className="w-full" onClick={handleClear}>
+                Clear
               </Button>
             </div>
           )}

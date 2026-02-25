@@ -25,6 +25,7 @@ export interface FilterState {
   accessibleColors: boolean // when true, uses colorblind-safe Paul Tol Muted palette
   totalCount: number | null // populated by CrashLayer after query
   isLoading: boolean // true while a filter-triggered refetch is in flight
+  dataBounds: { minDate: string; maxDate: string } | null // min/max CrashDate in DB
 }
 
 // The URL-serializable subset of FilterState (no derived fields).
@@ -54,6 +55,7 @@ export type FilterAction =
   | { type: 'SET_ACCESSIBLE_COLORS'; payload: boolean }
   | { type: 'SET_TOTAL_COUNT'; payload: number | null }
   | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_DATE_BOUNDS'; payload: { minDate: string; maxDate: string } }
   | { type: 'RESET' }
   | { type: 'INIT_FROM_URL'; payload: UrlFilterState }
 
@@ -88,6 +90,7 @@ const initialState: FilterState = {
   accessibleColors: false,
   totalCount: null,
   isLoading: false,
+  dataBounds: null,
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
@@ -131,6 +134,8 @@ function filterReducer(filterState: FilterState, action: FilterAction): FilterSt
       return { ...filterState, totalCount: action.payload }
     case 'SET_LOADING':
       return { ...filterState, isLoading: action.payload }
+    case 'SET_DATE_BOUNDS':
+      return { ...filterState, dataBounds: action.payload }
     case 'RESET':
       return initialState
     case 'INIT_FROM_URL':

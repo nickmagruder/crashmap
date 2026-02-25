@@ -52,9 +52,8 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
 
       <section>
         <h3 className="text-sm font-semibold mb-2">The Data</h3>
-        <p className="text-xs text-muted-foreground/60 mt-0.5">
-          *Current data only includes 2025 data from King County, more coming soon*
-        </p>
+        <p className="text-sm text-muted-foreground leading-relaxed">The current data range is:</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">2015 - Jan 2026</p>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Each record represents a reported crash involving at least one &quot;pedacyclist&quot; or
           pedestrian with a known location. Crashes are classified by the most severe injury to any

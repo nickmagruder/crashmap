@@ -6,6 +6,8 @@ export type GetFilterOptionsQuery = {
   filterOptions: {
     states: string[]
     years: number[]
+    minDate: string | null
+    maxDate: string | null
   }
 }
 
@@ -28,6 +30,8 @@ export const GET_FILTER_OPTIONS = gql`
     filterOptions {
       states
       years
+      minDate
+      maxDate
     }
   }
 `

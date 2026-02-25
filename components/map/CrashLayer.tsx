@@ -117,15 +117,19 @@ export function CrashLayer() {
       }
     : toCrashFilter(filterState)
 
+  const noDateFilter = filterState.dateFilter.type === 'none'
+
   const { data, previousData, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
     variables: { filter: queryFilter, limit: 5000 },
     notifyOnNetworkStatusChange: true,
+    skip: noDateFilter,
   })
 
   // During a loading refetch, data is undefined (cache miss on new bbox/variables).
   // Fall back to previousData so the dots from the last result stay visible until
   // the new response arrives — prevents the flash-to-empty on every map move.
-  const displayData = data ?? previousData
+  // When no date filter is active, force undefined so the map clears immediately.
+  const displayData = noDateFilter ? undefined : (data ?? previousData)
 
   // Surface loading state so SummaryBar can show a refetch indicator.
   useEffect(() => {

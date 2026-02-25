@@ -5,6 +5,7 @@ import { ApolloProvider } from './apollo-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { FilterProvider } from '@/context/FilterContext'
 import { FilterUrlSync } from '@/components/FilterUrlSync'
+import { Toaster } from '@/components/ui/sonner'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import './globals.css'
 
@@ -46,6 +47,7 @@ export default function RootLayout({
                 <FilterUrlSync />
               </Suspense>
               {children}
+              <Toaster />
             </FilterProvider>
           </ApolloProvider>
         </ThemeProvider>

@@ -81,6 +81,8 @@ export const typeDefs = `#graphql
     years: [Int!]!
     severities: [String!]!
     modes: [String!]!
+    minDate: String   # earliest CrashDate in DB as YYYY-MM-DD
+    maxDate: String   # latest CrashDate in DB as YYYY-MM-DD
   }
 
   # ── Queries ───────────────────────────────────────────────────────────────────

@@ -8,6 +8,29 @@ This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/a
 
 ## Changelog
 
+### 2026-02-25 — Date Filter Refactor: shadcn Range Calendar
+
+- Replaced custom date picker (text inputs, year-nav arrows, Apply button) with the default shadcn Range Calendar (`mode="range"`, `captionLayout="dropdown"`) — reduced `DateFilter.tsx` from 247 to ~155 lines
+- Added month/year dropdown navigation bounded by `dataBounds` (`startMonth`/`endMonth` props)
+- Fixed DayPicker v9 single-click bug: v9 sets `from === to` on first click; intercepted in `handleRangeSelect` to treat it as start-only, keeping the popover open for end-date selection
+- Added controlled `month`/`setMonth` state + `onMonthChange` handler to prevent dropdown navigation from corrupting the pending range selection
+- Changed Clear to keep the popover open (allows immediately starting a new selection)
+- `dateFilter.type === 'none'` now skips the GraphQL query entirely (`skip: noDateFilter` in `CrashLayer`), clearing all map dots when no date is active
+- Added persistent "No dates selected" warning banner (top-center of map, `TriangleAlert` icon) that appears whenever `dateFilter.type === 'none'`
+
+### 2026-02-25 — Date Filter Overhaul + Data Bounds Validation
+
+- Refactored `DateFilter.tsx` to follow a new project-wide React file structure convention (imports → types → helpers → component → hooks → guard clauses → render); all React files follow this order going forward
+- Fixed calendar jumping to today's month after first date click by adding controlled `month`/`onMonthChange` state
+- Added prev/next year arrow buttons (`«`/`»`) inside the popover, sitting above the calendar's own month arrows; both share the same controlled month state
+- Added Start/End text inputs (MM/DD/YYYY format) inside the popover above the calendar; bidirectional sync: calendar clicks fill the inputs, valid typed dates update the calendar highlight and navigate to that month
+- Changed commit behavior: dates are no longer applied on calendar click; they commit only on "Apply" button click or when clicking outside the popover; an "Apply" button appears when a complete pending range exists; "Clear" appears when a committed range exists; both share the same footer row
+- Added `dataBounds: { minDate: string; maxDate: string } | null` to `FilterState` in `FilterContext`; populated on app load via `GET_FILTER_OPTIONS` query dispatching `SET_DATE_BOUNDS`
+- Added `minDate` and `maxDate` fields to the `FilterOptions` GraphQL type and resolvers (each runs `SELECT MIN/MAX("CrashDate") FROM crashdata`); updated `GET_FILTER_OPTIONS` client query and generated types
+- Installed shadcn Sonner (`npx shadcn@latest add sonner`); added `<Toaster />` to `app/layout.tsx`
+- Added validation in `DateFilter` that fires a toast error (via Sonner) when: start > end, start < `dataBounds.minDate`, end > `dataBounds.maxDate`, or text input is 10 chars but not a valid MM/DD/YYYY date; validation blocks commit on Apply but allows close on outside-click (discards pending range)
+- Added shadcn `Input` component (`npx shadcn@latest add input`)
+
 ### 2026-02-24 — Drop CrashStatePlaneX / CrashStatePlaneY from Prisma Schema
 
 - Removed `crashStatePlaneX` and `crashStatePlaneY` fields from `prisma/schema.prisma` to match the DB columns already dropped from the Render PostgreSQL database; all spatial work uses `Latitude`, `Longitude`, and the PostGIS `geom` generated column exclusively
