@@ -221,5 +221,19 @@ export const resolvers: Resolvers = {
     severities: () => ['Death', 'Major Injury', 'Minor Injury', 'None'],
 
     modes: () => ['Bicyclist', 'Pedestrian'],
+
+    minDate: async () => {
+      const result = await prisma.$queryRaw<[{ min: Date | null }]>`
+        SELECT MIN("CrashDate") as min FROM crashdata
+      `
+      return result[0]?.min?.toISOString().slice(0, 10) ?? null
+    },
+
+    maxDate: async () => {
+      const result = await prisma.$queryRaw<[{ max: Date | null }]>`
+        SELECT MAX("CrashDate") as max FROM crashdata
+      `
+      return result[0]?.max?.toISOString().slice(0, 10) ?? null
+    },
   },
 }

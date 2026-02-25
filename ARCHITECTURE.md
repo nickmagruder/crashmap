@@ -331,6 +331,8 @@ type FilterOptions {
   years: [String!]!
   severities: [String!]!
   modes: [String!]!
+  minDate: String # earliest CrashDate in DB (YYYY-MM-DD); used for date range validation
+  maxDate: String # latest CrashDate in DB (YYYY-MM-DD); used for date range validation
 }
 
 type Query {

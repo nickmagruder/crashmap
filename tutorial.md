@@ -6022,4 +6022,206 @@ export const ACCESSIBLE_COLORS: Record<SeverityBucket, string> = {
 
 The result: users can enable the accessible palette from either the map toolbar or the filter panel, and the map dots, severity checkboxes, and info panel legend all update instantly in sync.
 
+---
+
+## Phase 5 Continued: Date Filter Overhaul
+
+### Step: Establishing a React file structure convention
+
+As components grew more complex, we adopted a consistent internal ordering for all React files. Every component now layers its contents in this order — no section labels or comments needed:
+
+1. Imports
+2. Types & interfaces
+3. Small helper components
+4. Main component function
+5. Hooks (useState, useEffect, useQuery, context)
+6. Guard clauses (early returns)
+7. Render (return statement)
+
+This makes it easy to scan any file and immediately find what you're looking for.
+
+### Step: Overhauling the date range picker
+
+The original `DateFilter` used a basic `react-day-picker` Calendar with `mode="range"` and committed the range as soon as both dates were clicked. Several UX problems accumulated over time:
+
+1. **Calendar jumped to today's month** after the first click, because react-day-picker v9 auto-navigates to the `selected` prop when it changes.
+2. **No year navigation** — the user could only move month-by-month.
+3. **No text entry** — no way to type a date directly.
+4. **Instant commit** — selecting the second date immediately fired the filter with no chance to review.
+
+We fixed all four in a single pass by adding a controlled `month` state:
+
+```tsx
+const [month, setMonth] = useState<Date>(() => new Date())
+// ...
+<Calendar month={month} onMonthChange={setMonth} ... />
+```
+
+With `month` controlled externally, react-day-picker stops auto-navigating. The `«`/`»` year buttons and `<`/`>` month buttons both write to the same state.
+
+**Year arrows** sit in a thin row between the text inputs and the calendar, giving two levels of navigation without overwhelming the UI.
+
+**Start/End text inputs** (MM/DD/YYYY format) live at the top of the popover. They use bidirectional sync:
+
+- Calendar click → fills both inputs via `format(date, 'MM/dd/yyyy')`
+- Typing a valid date → updates the calendar highlight and navigates the month
+
+**Deferred commit** — dates are no longer applied the moment the second is clicked. Instead:
+
+- An **Apply** button appears once a complete pending range exists
+- Clicking **outside** the popover also commits if the range is complete
+- **Clear** appears when a committed range exists
+
+The `doCommit()` helper returns a boolean so `handleApply` can keep the popover open on validation failure.
+
+### Step: Data bounds in FilterContext
+
+To validate user-entered dates, we need to know the actual date range of data in the database. We added `minDate` and `maxDate` to the existing `FilterOptions` GraphQL type:
+
+```graphql
+type FilterOptions {
+  # ... existing fields
+  minDate: String # earliest CrashDate as YYYY-MM-DD
+  maxDate: String # latest CrashDate as YYYY-MM-DD
+}
+```
+
+Each resolver runs a simple aggregate query:
+
+```ts
+minDate: async () => {
+  const result = await prisma.$queryRaw<[{ min: Date | null }]>`
+    SELECT MIN("CrashDate") as min FROM crashdata
+  `
+  return result[0]?.min?.toISOString().slice(0, 10) ?? null
+},
+```
+
+On the client side, `dataBounds: { minDate: string; maxDate: string } | null` was added to `FilterState` (initialized to `null`). A `useQuery(GET_FILTER_OPTIONS)` call in `DateFilter` dispatches `SET_DATE_BOUNDS` when the data arrives. Since Apollo caches the result, this runs once per app load.
+
+### Step: Toast validation errors
+
+We installed [Sonner](https://sonner.emilkowal.ski/) via `npx shadcn@latest add sonner` and added `<Toaster />` to `app/layout.tsx`.
+
+Validation runs in `doCommit()` before dispatching to FilterContext:
+
+```ts
+function validateRange(from: Date, to: Date): string | null {
+  if (isBefore(to, from)) return 'Start date must be before end date'
+  if (dataBounds) {
+    const min = parseISO(dataBounds.minDate)
+    const max = parseISO(dataBounds.maxDate)
+    if (isBefore(from, min))
+      return `Data starts ${format(min, DATE_INPUT_FORMAT)} — no earlier records available`
+    if (isAfter(to, max))
+      return `Data ends ${format(max, DATE_INPUT_FORMAT)} — no later records available`
+  }
+  return null
+}
+```
+
+Text inputs also fire a format error toast when the user types exactly 10 characters (the full `MM/DD/YYYY` length) but the value fails `isValid(parse(...))`.
+
+---
+
+## Phase 5 Continued: Date Filter — shadcn Range Calendar Refactor
+
+### Overview
+
+The custom date picker (text inputs, year-nav arrows, Apply button, deferred-commit) was replaced with the standard shadcn Range Calendar. This reduced `DateFilter.tsx` from 247 to ~155 lines and eliminated several classes of state-sync bugs.
+
+### Step 1: Replace the custom picker with the default shadcn Calendar
+
+The existing `<Calendar>` component already supports `mode="range"` — no new package needed. Remove the text inputs, year-nav arrows, and Apply button. Let immediate commit replace the deferred-commit pattern:
+
+```tsx
+<Calendar
+  mode="range"
+  selected={calendarSelected}
+  onSelect={handleRangeSelect}
+  captionLayout="dropdown"
+  month={month}
+  onMonthChange={handleMonthChange}
+  startMonth={dataBounds ? parseISO(dataBounds.minDate) : undefined}
+  endMonth={dataBounds ? parseISO(dataBounds.maxDate) : undefined}
+/>
+```
+
+`captionLayout="dropdown"` replaces the custom year-nav arrows with DayPicker's built-in month/year dropdowns. `startMonth`/`endMonth` bound the dropdown to actual data dates.
+
+### Step 2: Fix DayPicker v9 single-click behavior
+
+DayPicker v9 changed range mode: a single click immediately sets `from === to` (a zero-length range), which would trigger `doCommit` on the first click and close the popover. Intercept this case and treat it as start-only:
+
+```ts
+function handleRangeSelect(range: DateRange | undefined) {
+  // DayPicker v9 sets from === to on first click; treat that as start-only
+  if (range?.from && range?.to && range.from.getTime() === range.to.getTime()) {
+    setPendingRange({ from: range.from, to: undefined })
+    return
+  }
+  setPendingRange(range)
+  if (range?.from && range?.to) {
+    const committed = doCommit(range.from, range.to)
+    if (committed) {
+      setPendingRange(undefined)
+      setOpen(false)
+    }
+  }
+}
+```
+
+### Step 3: Control the month state to fix dropdown navigation
+
+Without controlled month state, using a year/month dropdown fires DayPicker's internal navigation in a way that can corrupt the pending range selection. Add `month`/`setMonth` state and wire it to `onMonthChange`:
+
+```ts
+const [month, setMonth] = useState<Date>(() => new Date())
+```
+
+When the popover opens with an existing committed range, seed `month` to the range start so the calendar opens at the right place:
+
+```ts
+function handleOpenChange(next: boolean) {
+  if (next && selectedRange) setMonth(parseISO(selectedRange.startDate))
+  if (!next) setPendingRange(undefined)
+  setOpen(next)
+}
+```
+
+### Step 4: Skip the query when no date filter is active
+
+When `dateFilter.type === 'none'`, skip the GraphQL query and force `displayData` to `undefined` so the map clears immediately (rather than showing stale `previousData`):
+
+```ts
+const noDateFilter = filterState.dateFilter.type === 'none'
+
+const { data, previousData, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
+  variables: { filter: queryFilter, limit: 5000 },
+  notifyOnNetworkStatusChange: true,
+  skip: noDateFilter,
+})
+
+const displayData = noDateFilter ? undefined : (data ?? previousData)
+```
+
+### Step 5: Add a persistent warning banner
+
+Rather than a transient toast, render a conditional banner absolutely positioned at the top-center of the map in `AppShell.tsx`:
+
+```tsx
+{
+  filterState.dateFilter.type === 'none' && (
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+      <div className="rounded-full bg-background/90 border px-4 py-1.5 text-sm font-medium shadow-sm dark:bg-zinc-900/90 dark:border-zinc-700 flex items-center gap-2">
+        <TriangleAlert className="size-4 text-yellow-600 dark:text-yellow-400" />
+        No dates selected — use the filters to select a date range
+      </div>
+    </div>
+  )
+}
+```
+
+`pointer-events-none` ensures the banner doesn't block map interactions.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

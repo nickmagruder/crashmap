@@ -88,6 +88,8 @@ export type FilterOptions = {
   __typename?: 'FilterOptions'
   cities: Array<Scalars['String']['output']>
   counties: Array<Scalars['String']['output']>
+  maxDate?: Maybe<Scalars['String']['output']>
+  minDate?: Maybe<Scalars['String']['output']>
   modes: Array<Scalars['String']['output']>
   severities: Array<Scalars['String']['output']>
   states: Array<Scalars['String']['output']>
@@ -337,6 +339,8 @@ export type FilterOptionsResolvers<
     ContextType,
     Partial<FilterOptionsCountiesArgs>
   >
+  maxDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
+  minDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>
   modes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>
   severities?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>
   states?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>
