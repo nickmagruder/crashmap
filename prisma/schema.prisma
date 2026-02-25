@@ -19,8 +19,6 @@ model CrashData {
   mostSevereInjuryType String?                  @map("MostSevereInjuryType")
   ageGroup             String?                  @map("AgeGroup")
   involvedPersons      Int?                     @map("InvolvedPersons") @db.SmallInt
-  crashStatePlaneX     Float?                   @map("CrashStatePlaneX") @db.Real
-  crashStatePlaneY     Float?                   @map("CrashStatePlaneY") @db.Real
   latitude             Float?                   @map("Latitude")
   longitude            Float?                   @map("Longitude")
   mode                 String?                  @map("Mode")

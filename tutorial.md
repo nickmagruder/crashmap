@@ -50,8 +50,6 @@ CREATE TABLE public.crashdata
     "MostSevereInjuryType" text,          -- Death, Serious Injury, Minor Injury, None/Unknown
     "AgeGroup" text,
     "InvolvedPersons" smallint,
-    "CrashStatePlaneX" real,
-    "CrashStatePlaneY" real,
     "Latitude" double precision,
     "Longitude" double precision,
     "Mode" text,                          -- "Bicyclist" or "Pedestrian"
@@ -219,8 +217,6 @@ model CrashData {
   mostSevereInjuryType String?   @map("MostSevereInjuryType")
   ageGroup             String?   @map("AgeGroup")
   involvedPersons      Int?      @map("InvolvedPersons") @db.SmallInt
-  crashStatePlaneX     Float?    @map("CrashStatePlaneX") @db.Real
-  crashStatePlaneY     Float?    @map("CrashStatePlaneY") @db.Real
   latitude             Float?    @map("Latitude")
   longitude            Float?    @map("Longitude")
   mode                 String?   @map("Mode")
