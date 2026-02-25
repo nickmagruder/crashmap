@@ -1,12 +1,17 @@
 # CrashMap
 
-**Version:** 0.6.1
+**Version:** 0.7.0
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
 This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Changelog
+
+### 2026-02-24 — Drop CrashStatePlaneX / CrashStatePlaneY from Prisma Schema
+
+- Removed `crashStatePlaneX` and `crashStatePlaneY` fields from `prisma/schema.prisma` to match the DB columns already dropped from the Render PostgreSQL database; all spatial work uses `Latitude`, `Longitude`, and the PostGIS `geom` generated column exclusively
+- Regenerated Prisma client (`npx prisma generate`); no migration needed since the DB columns were already dropped manually
 
 ### 2026-02-23 — Accessible Color Scale
 
