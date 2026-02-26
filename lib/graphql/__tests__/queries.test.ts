@@ -107,17 +107,17 @@ describe('crashes query', () => {
     expect(item.crashDate).toBe('2024-06-15')
   })
 
-  it('caps limit at 10000', async () => {
+  it('caps limit at 40000', async () => {
     mockPrisma.crashData.findMany.mockResolvedValue([])
     mockPrisma.crashData.count.mockResolvedValue(0)
 
     await server.executeOperation({
       query: CRASHES_QUERY,
-      variables: { limit: 20000 },
+      variables: { limit: 50000 },
     })
 
     expect(mockPrisma.crashData.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 10000 })
+      expect.objectContaining({ take: 40000 })
     )
   })
 

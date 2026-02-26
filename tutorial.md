@@ -6463,14 +6463,16 @@ The `tilted` state is local to `AppShell` — it only drives the button's `varia
 
 ### Why cap the query?
 
-Loading tens of thousands of GeoJSON features into the browser is expensive. We cap the map display at **10,000 crashes** and show a persistent toast when the user's filters exceed that count, prompting them to narrow their search.
+Loading tens of thousands of GeoJSON features into the browser is expensive. We set a hard cap and show a persistent toast when the user's filters exceed it, prompting them to narrow their search.
+
+The cap started at 5,000, was raised to 10,000, and then raised again to **40,000** after confirming acceptable browser performance with the full ~34,000-row Washington dataset. At this limit the toast effectively never fires for the current data, but remains in place as a safety net if the dataset grows.
 
 ### Raising the resolver cap
 
-In `lib/graphql/resolvers.ts`, the `crashes` query already had a hard cap. We raised it from 5,000 to 10,000:
+In `lib/graphql/resolvers.ts`, the `crashes` query has a server-side hard cap:
 
 ```ts
-const cappedLimit = Math.min(limit ?? 1000, 10000)
+const cappedLimit = Math.min(limit ?? 1000, 40000)
 ```
 
 The `totalCount` is always returned (via a parallel `prisma.crashData.count({ where })`), so the client always knows the true total even when results are truncated.
@@ -6480,7 +6482,7 @@ The `totalCount` is always returned (via a parallel `prisma.crashData.count({ wh
 In `components/map/CrashLayer.tsx`, a module-level constant keeps the limit in one place:
 
 ```ts
-const DISPLAY_LIMIT = 10_000
+const DISPLAY_LIMIT = 40_000
 const LIMIT_TOAST_ID = 'crash-limit-warning'
 ```
 

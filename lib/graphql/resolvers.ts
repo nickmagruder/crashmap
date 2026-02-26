@@ -88,7 +88,7 @@ export const resolvers: Resolvers = {
   Query: {
     crashes: async (_, { filter, limit, offset }) => {
       const where = buildWhere(filter)
-      const cappedLimit = Math.min(limit ?? 1000, 10000)
+      const cappedLimit = Math.min(limit ?? 1000, 40000)
       const [items, totalCount] = await Promise.all([
         prisma.crashData.findMany({ where, skip: offset ?? 0, take: cappedLimit }),
         prisma.crashData.count({ where }),

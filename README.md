@@ -8,6 +8,10 @@ This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/a
 
 ## Changelog
 
+### 2026-02-26 — Raise Display Limit to 40,000
+
+- Raised the crash display cap from 10,000 to 40,000 (resolver hard cap, `CrashLayer` `DISPLAY_LIMIT` constant, and CSV export limit); covers the full ~34,000-row dataset without truncation
+
 ### 2026-02-25 — Display Limit & Toast Warning
 
 - Raised the crash display cap from 5,000 to 10,000 (resolver hard cap, `CrashLayer` query variable, and CSV export limit all updated)

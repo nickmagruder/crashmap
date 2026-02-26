@@ -144,7 +144,7 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
       </section>
       <section>
         <p className="text-xs text-muted-foreground/60 mt-0.5">
-          Version 0.6.1 &middot; Updated 2/23/2026
+          Version 0.7.2 &middot; Updated 2/26/2026
         </p>
         <p className="text-xs text-muted-foreground/60 mt-0.5">© Copyright 2026 Nick Magruder</p>
       </section>
