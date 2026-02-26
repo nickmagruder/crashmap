@@ -1,8 +1,7 @@
 'use client'
 
-import { Pin, PinOff, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetTitle, SheetClose } from '@/components/ui/sheet'
 import { ModeToggle } from '@/components/filters/ModeToggle'
 import { SeverityFilter } from '@/components/filters/SeverityFilter'
 import { DateFilter } from '@/components/filters/DateFilter'
@@ -11,10 +10,7 @@ import { ExportButton } from '@/components/export/ExportButton'
 import { useFilterContext } from '@/context/FilterContext'
 
 interface SidebarProps {
-  pinned: boolean
   onClose: () => void
-  onTogglePin: () => void
-  isOpen?: boolean
 }
 
 function FilterContent() {
@@ -35,54 +31,18 @@ function FilterContent() {
   )
 }
 
-export function Sidebar({ pinned, onClose, onTogglePin, isOpen }: SidebarProps) {
-  if (pinned) {
-    return (
-      <div className="hidden md:flex flex-col w-80 flex-shrink-0 border-l bg-background h-full overflow-hidden">
-        <div className="flex items-center gap-1 border-b px-4 py-3">
-          <h2 className="text-base font-semibold flex-1">Filters</h2>
-          <Button variant="ghost" size="icon" onClick={onTogglePin} aria-label="Unpin panel">
-            <PinOff className="size-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close filters">
-            <X className="size-4" />
-          </Button>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <FilterContent />
-        </div>
-      </div>
-    )
-  }
-
+export function Sidebar({ onClose }: SidebarProps) {
   return (
-    <Sheet open={isOpen ?? false} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent
-        side="right"
-        className="w-80 sm:max-w-80 flex flex-col gap-0"
-        showCloseButton={false}
-      >
-        <div className="flex items-center gap-1 border-b px-4 py-3">
-          <SheetTitle className="flex-1">Filters</SheetTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onTogglePin}
-            aria-label="Pin panel"
-            className="hidden md:flex"
-          >
-            <Pin className="size-4" />
-          </Button>
-          <SheetClose asChild>
-            <Button variant="ghost" size="icon" aria-label="Close filters">
-              <X className="size-4" />
-            </Button>
-          </SheetClose>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          <FilterContent />
-        </div>
-      </SheetContent>
-    </Sheet>
+    <div className="hidden md:flex flex-col w-80 flex-shrink-0 border-l bg-background h-full overflow-hidden">
+      <div className="flex items-center gap-1 border-b px-4 py-3">
+        <h2 className="text-base font-semibold flex-1">Filters</h2>
+        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close filters">
+          <X className="size-4" />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        <FilterContent />
+      </div>
+    </div>
   )
 }

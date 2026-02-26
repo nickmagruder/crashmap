@@ -8,6 +8,12 @@ This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/a
 
 ## Changelog
 
+### 2026-02-25 — Simplify Desktop Panels: Pinned-Only Layout
+
+- Removed the "unpinned" (Sheet overlay) variant from both desktop side panels (`Sidebar`, `InfoSidePanel`); panels are now always flex-column siblings that push the map
+- Removed Pin/PinOff buttons and `sidebarPinned`/`infoPanelPinned` state from `AppShell`
+- Reduced `map.resize()` timeout from 300ms to 0ms — the delay was only needed for the Sheet slide animation, which no longer exists; eliminates the blank-bar flash after closing a panel
+
 ### 2026-02-25 — Map Controls: Popup Centering, Metered Zoom, Tilt & Zoom Buttons
 
 - Popup centering: `flyTo` now uses Mapbox `padding` (mobile: top 200px / bottom 70px, desktop: top 150px) so the popup clears the top UI buttons; padding resets to zero when the popup is dismissed
