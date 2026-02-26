@@ -10,7 +10,7 @@ import { GET_CRASHES } from '@/lib/graphql/queries'
 import { useFilterContext, toCrashFilter, type CrashFilterInput } from '@/context/FilterContext'
 import { STANDARD_COLORS, ACCESSIBLE_COLORS } from '@/lib/crashColors'
 
-const DISPLAY_LIMIT = 10_000
+const DISPLAY_LIMIT = 40_000
 const LIMIT_TOAST_ID = 'crash-limit-warning'
 
 type CrashItem = {
