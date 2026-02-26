@@ -5087,75 +5087,42 @@ Three new files:
 
 - `components/info/InfoPanelContent.tsx` — the static content itself (no hooks, no client state)
 - `components/info/InfoOverlay.tsx` — mobile full-screen overlay (same pattern as `FilterOverlay`, `md:hidden`)
-- `components/info/InfoSidePanel.tsx` — desktop panel, two modes: Sheet from left, or pinned column
+- `components/info/InfoSidePanel.tsx` — desktop panel; flex-column sibling that pushes the map
 
 `InfoPanelContent` renders four sections: a dedication paragraph, "The Data" (methodology + link to the WSDOT Crash Data Portal), a map key (colored circles matching the actual Mapbox layer colors and opacities), and a data disclaimer. An "About" `<h2>` with a version/date sub-line sits at the top.
 
-### Pinnable panels
+### Desktop panel layout
 
-"Pinned" means the panel stays permanently open alongside the map rather than floating over it. The key insight is layout: when a panel is pinned it becomes a flex sibling of the map container, pushing the map to one side. When unpinned it reverts to a Sheet (Radix Dialog portal) floating over the map.
+Both desktop panels are permanent flex-column siblings to the map container — they push the map rather than overlaying it. Opening and closing is handled by toggling the panel out of the DOM entirely; there is no Sheet/drawer animation on desktop.
 
-Change `AppShell` to return a flex container instead of a fragment:
+`AppShell` returns a flex container:
 
 ```tsx
 <div className="flex w-full h-full">
-  {/* Left: info panel (pinned) */}
-  {infoPanelOpen && infoPanelPinned && <InfoSidePanel pinned ... />}
+  {/* Left: info panel */}
+  {infoPanelOpen && <InfoSidePanel onClose={() => setInfoPanelOpen(false)} ... />}
 
   {/* Center: map + overlays */}
   <div className="flex-1 relative" style={{ minWidth: 0 }}>
     <MapContainer ref={mapRef} />
     ...
-    {/* Non-pinned sheets (render via portal, so position is unaffected by DOM placement) */}
-    <InfoSidePanel isOpen={infoPanelOpen && !infoPanelPinned} pinned={false} ... />
-    <Sidebar isOpen={sidebarOpen && !sidebarPinned} pinned={false} ... />
   </div>
 
-  {/* Right: filter panel (pinned) */}
-  {sidebarOpen && sidebarPinned && <Sidebar pinned ... />}
+  {/* Right: filter panel */}
+  {sidebarOpen && <Sidebar onClose={() => setSidebarOpen(false)} />}
 </div>
 ```
 
-When `pinned=true`, the component renders a `div` (flex child). When `pinned=false`, it renders a `Sheet` (portal). These two rendering paths are mutually exclusive and controlled entirely by the parent.
-
-Call `map.resize()` whenever any panel open/pin state changes — Mapbox needs to know its canvas has changed size:
+Call `map.resize()` after any panel state change. Use a 0ms timeout — it fires after the DOM reflows so Mapbox sees the correct new canvas size immediately, with no unnecessary delay:
 
 ```tsx
 useEffect(() => {
-  const id = setTimeout(() => mapRef.current?.resize(), 300)
+  const id = setTimeout(() => mapRef.current?.resize(), 0)
   return () => clearTimeout(id)
-}, [sidebarOpen, overlayOpen, infoPanelOpen, infoOverlayOpen, sidebarPinned, infoPanelPinned])
+}, [sidebarOpen, overlayOpen, infoPanelOpen, infoOverlayOpen])
 ```
 
-The 300ms delay matches the shadcn Sheet slide animation so the resize fires after the transition completes.
-
-### Pin/unpin UX
-
-Both panels use a shared header pattern: title + Pin (or PinOff) button + Close button. The shadcn `SheetContent` has a `showCloseButton` prop — pass `showCloseButton={false}` to suppress the built-in X and render your own so the header is identical across both modes:
-
-```tsx
-// Sheet version (non-pinned)
-<SheetContent side="left" showCloseButton={false} className="flex flex-col gap-0">
-  <div className="flex items-center gap-1 border-b px-4 py-3">
-    <SheetTitle className="flex-1">About</SheetTitle>
-    <Button onClick={onTogglePin}><Pin /></Button>  {/* desktop only */}
-    <SheetClose asChild><Button><X /></Button></SheetClose>
-  </div>
-  ...
-</SheetContent>
-
-// Pinned div version
-<div className="hidden md:flex flex-col w-80 border-r bg-background h-full">
-  <div className="flex items-center gap-1 border-b px-4 py-3">
-    <h2 className="flex-1">About</h2>
-    <Button onClick={onTogglePin}><PinOff /></Button>
-    <Button onClick={onClose}><X /></Button>
-  </div>
-  ...
-</div>
-```
-
-Pin state persists across open/close: if a user closes a pinned panel and reopens it via the button, it comes back pinned. Both panels default to open + pinned on desktop.
+Both panels default to open on desktop. The Info/Heart/Sliders buttons reopen their respective panels after the user closes them with the X button.
 
 ### Emoji favicon
 

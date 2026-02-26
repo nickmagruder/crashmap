@@ -38,10 +38,8 @@ const mapFallback = (
 
 export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [sidebarPinned, setSidebarPinned] = useState(true)
   const [overlayOpen, setOverlayOpen] = useState(false)
   const [infoPanelOpen, setInfoPanelOpen] = useState(true)
-  const [infoPanelPinned, setInfoPanelPinned] = useState(true)
   const [infoOverlayOpen, setInfoOverlayOpen] = useState(false)
   const [infoPanelView, setInfoPanelView] = useState<InfoPanelView>('info')
   const [tilted, setTilted] = useState(false)
@@ -49,20 +47,17 @@ export function AppShell() {
   const { filterState, dispatch } = useFilterContext()
 
   // Call resize() after any panel transition so Mapbox recomputes canvas size.
-  // 300ms matches the shadcn Sheet slide animation duration.
   useEffect(() => {
-    const id = setTimeout(() => mapRef.current?.resize(), 300)
+    const id = setTimeout(() => mapRef.current?.resize(), 0)
     return () => clearTimeout(id)
-  }, [sidebarOpen, overlayOpen, infoPanelOpen, infoOverlayOpen, sidebarPinned, infoPanelPinned])
+  }, [sidebarOpen, overlayOpen, infoPanelOpen, infoOverlayOpen])
 
   return (
     <div className="flex w-full h-full">
       {/* Left: info panel (desktop, pinned) */}
-      {infoPanelOpen && infoPanelPinned && (
+      {infoPanelOpen && (
         <InfoSidePanel
-          pinned
           onClose={() => setInfoPanelOpen(false)}
-          onTogglePin={() => setInfoPanelPinned(false)}
           view={infoPanelView}
           onSwitchView={setInfoPanelView}
         />
@@ -247,22 +242,6 @@ export function AppShell() {
         />
 
         <ErrorBoundary fallback={null}>
-          {/* Desktop non-pinned info panel (Sheet from left) */}
-          <InfoSidePanel
-            isOpen={infoPanelOpen && !infoPanelPinned}
-            onClose={() => setInfoPanelOpen(false)}
-            pinned={false}
-            onTogglePin={() => setInfoPanelPinned(true)}
-            view={infoPanelView}
-            onSwitchView={setInfoPanelView}
-          />
-          {/* Desktop non-pinned filter panel (Sheet from right) */}
-          <Sidebar
-            isOpen={sidebarOpen && !sidebarPinned}
-            onClose={() => setSidebarOpen(false)}
-            pinned={false}
-            onTogglePin={() => setSidebarPinned(true)}
-          />
           {/* Mobile overlays */}
           <FilterOverlay isOpen={overlayOpen} onClose={() => setOverlayOpen(false)} />
           <InfoOverlay
@@ -275,13 +254,7 @@ export function AppShell() {
       </div>
 
       {/* Right: filter panel (desktop, pinned) */}
-      {sidebarOpen && sidebarPinned && (
-        <Sidebar
-          pinned
-          onClose={() => setSidebarOpen(false)}
-          onTogglePin={() => setSidebarPinned(false)}
-        />
-      )}
+      {sidebarOpen && <Sidebar onClose={() => setSidebarOpen(false)} />}
     </div>
   )
 }
