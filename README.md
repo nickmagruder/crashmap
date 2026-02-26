@@ -1,12 +1,18 @@
 # CrashMap
 
-**Version:** 0.7.0
+**Version:** 0.7.1
 
 A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
 
 This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Changelog
+
+### 2026-02-25 — Display Limit & Toast Warning
+
+- Raised the crash display cap from 5,000 to 10,000 (resolver hard cap, `CrashLayer` query variable, and CSV export limit all updated)
+- Added a persistent warning toast when `totalCount > 10,000`: "Showing 10,000 of X,XXX crashes — narrow your filters to see all results." (auto-dismisses when filters are narrowed below the limit)
+- Repositioned toasts to top-center on desktop; on mobile (≤600px) Sonner's full-width mode is used with `mobileOffset={{ top: 80 }}` to push toasts below the top button row
 
 ### 2026-02-25 — Simplify Desktop Panels: Pinned-Only Layout
 

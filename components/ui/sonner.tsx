@@ -17,6 +17,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps['theme']}
       className="toaster group"
+      position="top-center"
+      offset={32}
+      // On mobile (≤600px) Sonner switches to full-width mode and uses --mobile-offset-*.
+      // Push top offset down enough to clear the top button row (top-4 + h-9 ≈ 52px).
+      mobileOffset={{ top: 80, right: 16, left: 16, bottom: 16 }}
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,

@@ -1,17 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import {
-  Box,
-  Eye,
-  Heart,
-  Info,
-  Loader2,
-  Minus,
-  Plus,
-  SlidersHorizontal,
-  TriangleAlert,
-} from 'lucide-react'
+import { Box, Eye, Heart, Info, Loader2, Minus, Plus, SlidersHorizontal } from 'lucide-react'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
@@ -24,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { useFilterContext, getActiveFilterLabels } from '@/context/FilterContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { toast } from 'sonner'
 
 const mapFallback = (
   <div className="flex h-full w-full items-center justify-center bg-background">
@@ -52,6 +43,18 @@ export function AppShell() {
     return () => clearTimeout(id)
   }, [sidebarOpen, overlayOpen, infoPanelOpen, infoOverlayOpen])
 
+  // Warn if no dates are selected, since that can be confusing. Dismiss when they do select some.
+  useEffect(() => {
+    if (filterState.dateFilter.type === 'none') {
+      toast.warning('No dates selected — use the filters to select a date range', {
+        id: 'no-dates-selected',
+        duration: Infinity,
+      })
+    } else {
+      toast.dismiss('no-dates-selected')
+    }
+  }, [filterState.dateFilter.type])
+
   return (
     <div className="flex w-full h-full">
       {/* Left: info panel (desktop, pinned) */}
@@ -68,16 +71,6 @@ export function AppShell() {
         <ErrorBoundary fallback={mapFallback}>
           <MapContainer ref={mapRef} />
         </ErrorBoundary>
-
-        {/* Top-center: no-date warning banner */}
-        {filterState.dateFilter.type === 'none' && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-            <div className="rounded-full bg-background/90 border px-4 py-1.5 text-sm font-medium shadow-sm dark:bg-zinc-900/90 dark:border-zinc-700 flex items-center gap-2 text-warning-foreground">
-              <TriangleAlert className="size-4 text-yellow-600 dark:text-yellow-400" />
-              No dates selected — use the filters to select a date range
-            </div>
-          </div>
-        )}
 
         {/* Top-left: info/about toggle + support */}
         <div className="absolute top-4 left-4 z-10 flex gap-2">
