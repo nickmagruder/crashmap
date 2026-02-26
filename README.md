@@ -8,6 +8,14 @@ This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/a
 
 ## Changelog
 
+### 2026-02-25 — Map Controls: Popup Centering, Metered Zoom, Tilt & Zoom Buttons
+
+- Popup centering: `flyTo` now uses Mapbox `padding` (mobile: top 200px / bottom 70px, desktop: top 150px) so the popup clears the top UI buttons; padding resets to zero when the popup is dismissed
+- Metered zoom: clicking a crash flies to exactly halfway between the current zoom and 15.5 (e.g. at zoom 10 → lands at zoom 12.75) rather than always jumping to 15.5
+- Viewport retention: panning or zooming while a popup is open now updates the saved viewport via `handleMoveEnd`, so dismissing the popup returns to wherever the user navigated; `flyingRef` guards programmatic `flyTo` animations from triggering false saves
+- Added tilt-toggle button (Box icon) at bottom-left of the map: toggles between flat view (pitch 0°) and 3D view (pitch 45°) via `map.easeTo()`; button fills (`variant="default"`) when tilted
+- Added zoom in / zoom out buttons (Plus / Minus icons) at bottom-left above the SummaryBar
+
 ### 2026-02-25 — Date Filter: Named Preset Buttons
 
 - Replaced hardcoded year quick-select buttons (2025–2022) with four dynamic presets: **YTD**, **90 Days**, **Last Year**, and **3 Years**

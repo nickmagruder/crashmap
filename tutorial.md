@@ -6404,4 +6404,90 @@ function handleOpenChange(next: boolean) {
 
 Clicking an active preset button toggles it off (dispatches `CLEAR_DATE`), consistent with the old year button behavior.
 
+---
+
+## Phase 7: Map Camera Polish
+
+### Step 1: Popup Centering with Mapbox Padding
+
+When a crash is clicked, the map flies to center on the crash coordinates. But since the popup anchors at the bottom of the crash point and renders upward, it can overlap the UI buttons at the top of the screen — especially on mobile.
+
+The fix is Mapbox's `padding` option in `flyTo`. Padding defines a "safe zone" inset from the viewport edges; the `center` coordinate is placed at the center of the remaining area rather than the full viewport center. Setting `padding: { top: 200 }` shifts the crash point ~100px below the visual center, giving the popup room to extend upward.
+
+```ts
+const isMobile = window.innerWidth < 768
+const padding = isMobile
+  ? { top: 200, bottom: 70, left: 0, right: 0 }
+  : { top: 150, bottom: 0, left: 0, right: 0 }
+
+map.flyTo({ center: coords, zoom: targetZoom, pitch: 45, padding, duration: 800 })
+```
+
+The `bottom: 70` on mobile accounts for the fixed SummaryBar strip at the bottom of the viewport (~44px + buffer). When the popup closes and the viewport is restored, padding must be explicitly reset to `{ top: 0, bottom: 0, left: 0, right: 0 }` — Mapbox retains the padding state across `flyTo` calls.
+
+### Step 2: Metered Zoom
+
+Jumping straight to zoom 15.5 on every crash click is jarring when the user starts from a state-level view (zoom 7–10). A better UX is to fly halfway to the target zoom, so the user lands at a contextually appropriate level and can click again to go deeper if needed.
+
+The implementation: save the pre-click zoom in `savedViewportRef`, then compute the midpoint:
+
+```ts
+const TARGET_ZOOM = 15.5
+const newZoom = (savedViewportRef.current!.zoom + TARGET_ZOOM) / 2
+map.flyTo({ center: coords, zoom: newZoom, ... })
+```
+
+For crash-to-crash clicks (clicking a new crash without closing the popup), `savedViewportRef` is NOT updated — it retains the original pre-popup zoom. This keeps the depth consistent: every crash click from a given starting position lands at the same zoom level, regardless of how many crashes the user has clicked through.
+
+### Step 3: Retaining User Camera Moves During Popup
+
+If the user pans or zooms while a popup is open, the saved viewport should update so that dismissing the popup returns to their new position rather than the original one.
+
+The challenge: Mapbox fires the same `moveend` event for both user gestures and programmatic `flyTo` animations. Naively updating `savedViewportRef` on every `moveend` would overwrite the correct saved position with the zoomed-in popup position.
+
+The fix is a `flyingRef` boolean flag. Set it to `true` immediately before each `flyTo` and clear it after `duration + 100ms`:
+
+```ts
+flyingRef.current = true
+setTimeout(() => { flyingRef.current = false }, 900)
+map.flyTo({ ... duration: 800 ... })
+```
+
+The `onMoveEnd` handler then only saves when `flyingRef.current` is `false`:
+
+```ts
+const handleMoveEnd = useCallback(() => {
+  if (flyingRef.current || !savedViewportRef.current) return
+  const map = internalMapRef.current?.getMap()
+  if (!map) return
+  const center = map.getCenter()
+  savedViewportRef.current = {
+    center: [center.lng, center.lat],
+    zoom: map.getZoom(),
+    bearing: map.getBearing(),
+    pitch: map.getPitch(),
+  }
+}, [])
+```
+
+Both `flyTo` call sites (popup open and popup close) must set the flag — missing either one causes the saved viewport to get corrupted by the animation's `moveend` event.
+
+### Step 4: Tilt Toggle and Zoom Buttons
+
+Standard map controls (zoom in/out, tilt toggle) live in `AppShell` at `absolute bottom-14 left-4 md:bottom-6` — above the fixed mobile SummaryBar. They use the same shadcn `Button` `variant="outline"` styling as all other floating controls.
+
+The tilt button reads the map's actual current pitch at click time (not a stale state variable) so it stays accurate even if a popup animation changed the pitch in the meantime:
+
+```tsx
+onClick={() => {
+  const map = mapRef.current?.getMap()
+  if (!map) return
+  const isTilted = map.getPitch() > 0
+  map.easeTo({ pitch: isTilted ? 0 : 45, duration: 500 })
+  setTilted(!isTilted)
+}}
+```
+
+The `tilted` state is local to `AppShell` — it only drives the button's `variant` (`"default"` when active, `"outline"` when flat). `map.zoomIn()` / `map.zoomOut()` are built-in Mapbox GL JS methods that animate one zoom level at a time with easing.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

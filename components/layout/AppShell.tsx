@@ -1,7 +1,17 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
-import { Eye, Heart, Info, Loader2, SlidersHorizontal, TriangleAlert } from 'lucide-react'
+import {
+  Box,
+  Eye,
+  Heart,
+  Info,
+  Loader2,
+  Minus,
+  Plus,
+  SlidersHorizontal,
+  TriangleAlert,
+} from 'lucide-react'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { MapContainer } from '@/components/map/MapContainer'
 import { Sidebar } from '@/components/sidebar/Sidebar'
@@ -34,6 +44,7 @@ export function AppShell() {
   const [infoPanelPinned, setInfoPanelPinned] = useState(true)
   const [infoOverlayOpen, setInfoOverlayOpen] = useState(false)
   const [infoPanelView, setInfoPanelView] = useState<InfoPanelView>('info')
+  const [tilted, setTilted] = useState(false)
   const mapRef = useRef<MapRef>(null)
   const { filterState, dispatch } = useFilterContext()
 
@@ -189,6 +200,44 @@ export function AppShell() {
               )}
             </Button>
           </div>
+        </div>
+
+        {/* Bottom-left: tilt + zoom controls */}
+        <div className="absolute bottom-14 left-4 z-10 flex flex-col gap-2 md:bottom-6">
+          <Button
+            variant={tilted ? 'default' : 'outline'}
+            size="icon"
+            className={tilted ? '' : 'dark:bg-zinc-900 dark:border-zinc-700'}
+            onClick={() => {
+              const map = mapRef.current?.getMap()
+              if (!map) return
+              const isTilted = map.getPitch() > 0
+              map.easeTo({ pitch: isTilted ? 0 : 45, duration: 1000 })
+              setTilted(!isTilted)
+            }}
+            aria-label={tilted ? 'Reset to flat view' : 'Tilt map to 3D view'}
+            title={tilted ? 'Reset to flat view' : 'Tilt map to 3D view'}
+          >
+            <Box className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="dark:bg-zinc-900 dark:border-zinc-700"
+            onClick={() => mapRef.current?.getMap()?.zoomIn()}
+            aria-label="Zoom in"
+          >
+            <Plus className="size-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="dark:bg-zinc-900 dark:border-zinc-700"
+            onClick={() => mapRef.current?.getMap()?.zoomOut()}
+            aria-label="Zoom out"
+          >
+            <Minus className="size-4" />
+          </Button>
         </div>
 
         <SummaryBar

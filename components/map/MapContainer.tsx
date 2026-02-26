@@ -18,6 +18,7 @@ type SavedViewport = {
 
 const DESKTOP_VIEW = { longitude: -122.336, latitude: 47.6062, zoom: 10.5 }
 const MOBILE_VIEW = { longitude: -122.336, latitude: 47.6062, zoom: 10.25 }
+const TARGET_ZOOM = 15.5
 
 export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
@@ -36,18 +37,38 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
   useImperativeHandle(ref, () => internalMapRef.current!)
 
   const savedViewportRef = useRef<SavedViewport | null>(null)
+  // Tracks programmatic flyTo animations so onMoveEnd ignores them.
+  const flyingRef = useRef(false)
 
   const [selectedCrash, setSelectedCrash] = useState<SelectedCrash | null>(null)
+
+  const handleMoveEnd = useCallback(() => {
+    if (flyingRef.current || !savedViewportRef.current) return
+    const map = internalMapRef.current?.getMap()
+    if (!map) return
+    const center = map.getCenter()
+    savedViewportRef.current = {
+      center: [center.lng, center.lat],
+      zoom: map.getZoom(),
+      bearing: map.getBearing(),
+      pitch: map.getPitch(),
+    }
+  }, [])
 
   const closePopup = useCallback(() => {
     setSelectedCrash(null)
     const saved = savedViewportRef.current
     if (saved && internalMapRef.current) {
+      flyingRef.current = true
+      setTimeout(() => {
+        flyingRef.current = false
+      }, 900)
       internalMapRef.current.getMap()?.flyTo({
         center: saved.center,
         zoom: saved.zoom,
         bearing: saved.bearing,
         pitch: saved.pitch,
+        padding: { top: 0, bottom: 0, left: 0, right: 0 },
         duration: 800,
         essential: true,
       })
@@ -92,10 +113,21 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
         jurisdiction: p.jurisdiction as string | null,
       })
 
+      const isMobile = window.innerWidth < 768
+      const padding = isMobile
+        ? { top: 200, bottom: 70, left: 0, right: 0 }
+        : { top: 150, bottom: 0, left: 0, right: 0 }
+      const newZoom = (savedViewportRef.current!.zoom + TARGET_ZOOM) / 2
+
+      flyingRef.current = true
+      setTimeout(() => {
+        flyingRef.current = false
+      }, 900)
       map?.flyTo({
         center: coords,
-        zoom: 15.5,
+        zoom: newZoom,
         pitch: 45,
+        padding,
         duration: 800,
         essential: true,
       })
@@ -112,6 +144,7 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
       mapStyle={mapStyle}
       interactiveLayerIds={['crashes-none', 'crashes-minor', 'crashes-major', 'crashes-death']}
       onClick={handleMapClick}
+      onMoveEnd={handleMoveEnd}
     >
       <CrashLayer />
       {selectedCrash && <CrashPopup crash={selectedCrash} onClose={closePopup} />}
