@@ -5,9 +5,13 @@ import { useQuery } from '@apollo/client/react'
 import { Source, Layer, useMap } from 'react-map-gl/mapbox'
 import type { LayerProps } from 'react-map-gl/mapbox'
 import type { FeatureCollection, Point } from 'geojson'
+import { toast } from 'sonner'
 import { GET_CRASHES } from '@/lib/graphql/queries'
 import { useFilterContext, toCrashFilter, type CrashFilterInput } from '@/context/FilterContext'
 import { STANDARD_COLORS, ACCESSIBLE_COLORS } from '@/lib/crashColors'
+
+const DISPLAY_LIMIT = 10_000
+const LIMIT_TOAST_ID = 'crash-limit-warning'
 
 type CrashItem = {
   colliRptNum: string
@@ -123,7 +127,7 @@ export function CrashLayer() {
   const skipQuery = noDateFilter || presetWithoutBounds
 
   const { data, previousData, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
-    variables: { filter: queryFilter, limit: 5000 },
+    variables: { filter: queryFilter, limit: DISPLAY_LIMIT },
     notifyOnNetworkStatusChange: true,
     skip: skipQuery,
   })
@@ -145,6 +149,24 @@ export function CrashLayer() {
       dispatch({ type: 'SET_TOTAL_COUNT', payload: data?.crashes.totalCount ?? null })
     }
   }, [data, loading, dispatch])
+
+  // Show a persistent warning toast when the result set is truncated at DISPLAY_LIMIT.
+  // Auto-dismisses when filters are narrowed below the limit or the query is skipped.
+  useEffect(() => {
+    if (!data || skipQuery) {
+      toast.dismiss(LIMIT_TOAST_ID)
+      return
+    }
+    const { totalCount } = data.crashes
+    if (totalCount > DISPLAY_LIMIT) {
+      toast.warning(
+        `Showing ${DISPLAY_LIMIT.toLocaleString()} of ${totalCount.toLocaleString()} crashes — narrow your filters to see all results.`,
+        { id: LIMIT_TOAST_ID, duration: Infinity }
+      )
+    } else {
+      toast.dismiss(LIMIT_TOAST_ID)
+    }
+  }, [data, skipQuery])
 
   useEffect(() => {
     if (!map) return

@@ -18,7 +18,7 @@ export function ModeToggle() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <p className="text-sm font-medium">Mode</p>
       <ToggleGroup type="single" variant="outline" value={value} onValueChange={handleChange}>
         <ToggleGroupItem value="all" aria-label="All modes">

@@ -93,7 +93,7 @@ const initialState: FilterState = {
   mode: null,
   severity: DEFAULT_SEVERITY,
   includeNoInjury: false,
-  dateFilter: { type: 'preset', preset: 'ytd' },
+  dateFilter: { type: 'preset', preset: '90d' },
   state: 'Washington',
   county: null,
   city: null,

@@ -57,11 +57,11 @@ export function encodeFilterParams(filterState: FilterState): URLSearchParams {
     params.set('severity', buckets.join(','))
   }
 
-  // dateFilter — omit when it's the default (ytd preset)
+  // dateFilter — omit when it's the default (90d preset)
   const { dateFilter } = filterState
   if (dateFilter.type === 'none') {
     params.set('date', 'none')
-  } else if (dateFilter.type === 'preset' && dateFilter.preset !== 'ytd') {
+  } else if (dateFilter.type === 'preset' && dateFilter.preset !== '90d') {
     params.set('date', dateFilter.preset)
   } else if (dateFilter.type === 'year') {
     params.set('year', String(dateFilter.year))
@@ -69,7 +69,7 @@ export function encodeFilterParams(filterState: FilterState): URLSearchParams {
     params.set('dateFrom', dateFilter.startDate)
     params.set('dateTo', dateFilter.endDate)
   }
-  // preset === 'ytd' → omit (default)
+  // preset === '90d' → omit (default)
 
   // state — omit when it matches the default ('Washington')
   if (filterState.state !== DEFAULT_STATE) {
@@ -124,7 +124,7 @@ export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
   }
 
   // dateFilter
-  let dateFilter: DateFilter = { type: 'preset', preset: 'ytd' }
+  let dateFilter: DateFilter = { type: 'preset', preset: '90d' }
   const rawDate = params.get('date')
   const rawYear = params.get('year')
   const rawDateFrom = params.get('dateFrom')

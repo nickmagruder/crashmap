@@ -42,7 +42,7 @@ export function ExportButton({ variant = 'icon' }: ExportButtonProps) {
 
   async function handleExport() {
     const { data } = await fetchCrashes({
-      variables: { filter: toCrashFilter(filterState), limit: 5000 },
+      variables: { filter: toCrashFilter(filterState), limit: 10000 },
     })
     if (!data) return
 

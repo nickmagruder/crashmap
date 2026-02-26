@@ -6457,4 +6457,71 @@ onClick={() => {
 
 The `tilted` state is local to `AppShell` — it only drives the button's `variant` (`"default"` when active, `"outline"` when flat). `map.zoomIn()` / `map.zoomOut()` are built-in Mapbox GL JS methods that animate one zoom level at a time with easing.
 
+---
+
+## Step: Display Limit & Warning Toast
+
+### Why cap the query?
+
+Loading tens of thousands of GeoJSON features into the browser is expensive. We cap the map display at **10,000 crashes** and show a persistent toast when the user's filters exceed that count, prompting them to narrow their search.
+
+### Raising the resolver cap
+
+In `lib/graphql/resolvers.ts`, the `crashes` query already had a hard cap. We raised it from 5,000 to 10,000:
+
+```ts
+const cappedLimit = Math.min(limit ?? 1000, 10000)
+```
+
+The `totalCount` is always returned (via a parallel `prisma.crashData.count({ where })`), so the client always knows the true total even when results are truncated.
+
+### Frontend query limit
+
+In `components/map/CrashLayer.tsx`, a module-level constant keeps the limit in one place:
+
+```ts
+const DISPLAY_LIMIT = 10_000
+const LIMIT_TOAST_ID = 'crash-limit-warning'
+```
+
+The query uses it directly: `variables: { filter: queryFilter, limit: DISPLAY_LIMIT }`.
+
+### Toast logic
+
+A `useEffect` watches `data` and `skipQuery`. When fresh data arrives and `totalCount > DISPLAY_LIMIT`, it fires a persistent Sonner toast with a stable ID so it upserts rather than stacking:
+
+```ts
+useEffect(() => {
+  if (!data || skipQuery) {
+    toast.dismiss(LIMIT_TOAST_ID)
+    return
+  }
+  const { totalCount } = data.crashes
+  if (totalCount > DISPLAY_LIMIT) {
+    toast.warning(
+      `Showing ${DISPLAY_LIMIT.toLocaleString()} of ${totalCount.toLocaleString()} crashes — narrow your filters to see all results.`,
+      { id: LIMIT_TOAST_ID, duration: Infinity }
+    )
+  } else {
+    toast.dismiss(LIMIT_TOAST_ID)
+  }
+}, [data, skipQuery])
+```
+
+`duration: Infinity` keeps it visible until the user either dismisses it manually or narrows their filters below the limit (which triggers `toast.dismiss`).
+
+### Toast positioning — a Sonner v2 gotcha
+
+Sonner v2 has two separate CSS variable systems: `--offset-*` for desktop and `--mobile-offset-*` for screens ≤600px. The `offset` prop only sets `--offset-*` — it has **no effect on mobile**. To control the mobile position, use the dedicated `mobileOffset` prop:
+
+```tsx
+<Sonner
+  position="top-center"
+  offset={32}
+  mobileOffset={{ top: 80, right: 16, left: 16, bottom: 16 }}
+/>
+```
+
+On mobile, Sonner's built-in `@media (max-width:600px)` stylesheet forces the toaster to be full-width and uses `--mobile-offset-top` for the vertical position. `top: 80` clears the app's `top-4` + `h-9` button row (≈52px) with comfortable breathing room.
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._
