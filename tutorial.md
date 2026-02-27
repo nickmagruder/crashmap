@@ -708,7 +708,7 @@ This makes the CI gate mandatory — no merges to `main` without a green build.
 
 ## Phase 2: API Layer: Functional GraphQL API with core queries
 
-### Step 17: Install Apollo Server
+### Step 1: Install Apollo Server
 
 Phase 2 focuses on the GraphQL API. We're using [Apollo Server](https://www.apollographql.com/docs/apollo-server/) integrated into a Next.js App Router route handler.
 
@@ -720,7 +720,7 @@ Apollo Server is the most widely-used GraphQL server for JavaScript, with first-
 
 **Packages:**
 
-- `@apollo/server` — the Apollo Server v4 core
+- `@apollo/server` — the Apollo Server core
 - `graphql` — the GraphQL.js peer dependency (required by Apollo Server)
 - `@as-integrations/next` — bridges Apollo Server with Next.js App Router route handlers
 
@@ -728,7 +728,7 @@ Apollo Server is the most widely-used GraphQL server for JavaScript, with first-
 npm install @apollo/server graphql @as-integrations/next
 ```
 
-### Step 18: Create the GraphQL Route Handler
+### Step 2: Create the GraphQL Route Handler
 
 Apollo Server needs a single route handler at `app/api/graphql/route.ts`. This file creates an `ApolloServer` instance, wraps it with `startServerAndCreateNextHandler`, and exports the result as both `GET` and `POST` handlers so the GraphQL endpoint supports both HTTP methods.
 
@@ -791,17 +791,13 @@ Expected result:
 }
 ```
 
-### Step 19: Prisma Singleton and the Prisma 7 Driver Adapter
+### Step 3: Prisma Singleton and the Prisma 7 Driver Adapter
 
 Before writing resolvers, we need a `PrismaClient` instance. In Next.js, the dev server uses hot module replacement — if you create a new `PrismaClient` on every hot reload you'll exhaust the database connection pool. The solution is a module-level singleton stored on `globalThis`.
 
 **Prisma 7 gotcha — driver adapter required:**
 
-The new `provider = "prisma-client"` generator in Prisma 7 no longer reads `DATABASE_URL` from the environment automatically. Instead, it requires an explicit driver adapter passed to the constructor. For a PostgreSQL connection, that's `@prisma/adapter-pg`:
-
-```bash
-npm install @prisma/adapter-pg
-```
+The new `provider = "prisma-client"` generator in Prisma 7 no longer reads `DATABASE_URL` from the environment automatically. Instead, it requires an explicit driver adapter passed to the constructor. For a PostgreSQL connection, that's `@prisma/adapter-pg` — already installed in Phase 1 Step 6.
 
 **`lib/prisma.ts`:**
 
@@ -812,7 +808,7 @@ import { PrismaPg } from '@prisma/adapter-pg'
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
 
 function createPrismaClient() {
-  const adapter = new PrismaPg(process.env.DATABASE_URL!)
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
   return new PrismaClient({ adapter })
 }
 
@@ -835,7 +831,148 @@ A few things to note:
 
 This ensures the generated client is created after `npm ci` in CI, since `lib/generated/prisma/` is gitignored.
 
-### Step 20: Implement GraphQL Resolvers
+### Step 4: Define the Full GraphQL Schema
+
+With a working hello-world endpoint confirmed, replace the inline schema with the real one. Move the type definitions to a dedicated file — `lib/graphql/typeDefs.ts` — and update the route handler to import from it.
+
+**Why a separate file?**
+
+Keeping the schema in `route.ts` works for hello-world, but it quickly becomes unmanageable. A dedicated `typeDefs.ts` file keeps the schema readable on its own, allows `graphql-codegen` to import it directly (Step 6), and lets `resolvers.ts` import shared types.
+
+**`lib/graphql/typeDefs.ts`:**
+
+```typescript
+export const typeDefs = `#graphql
+  # ── Core crash record ───────────────────────────────────────────────────────
+
+  type Crash {
+    colliRptNum: ID!
+    jurisdiction: String
+    state: String
+    region: String
+    county: String
+    city: String
+    date: String        # Original FullDate text (ISO 8601)
+    crashDate: String   # Proper DATE column (YYYY-MM-DD)
+    time: String
+    severity: String    # Mapped display bucket: Death | Major Injury | Minor Injury | None
+    injuryType: String  # Raw MostSevereInjuryType value from the database
+    ageGroup: String
+    involvedPersons: Int
+    latitude: Float
+    longitude: Float
+    mode: String        # "Bicyclist" or "Pedestrian"
+  }
+
+  # ── Filters ──────────────────────────────────────────────────────────────────
+
+  input BBoxInput {
+    minLat: Float!
+    minLng: Float!
+    maxLat: Float!
+    maxLng: Float!
+  }
+
+  input CrashFilter {
+    severity: [String]          # Multi-select: ["Death", "Major Injury", ...]
+    mode: String                # "Bicyclist" | "Pedestrian"
+    state: String
+    county: String
+    city: String
+    dateFrom: String            # "YYYY-MM-DD" — used with dateTo for custom ranges
+    dateTo: String              # "YYYY-MM-DD"
+    year: Int                   # Shortcut: sets dateFrom/dateTo to full calendar year
+    bbox: BBoxInput             # Viewport-based spatial filter
+    includeNoInjury: Boolean    # Default false — opt-in to show None/Unknown severity
+  }
+
+  # ── Query return types ────────────────────────────────────────────────────────
+
+  type CrashResult {
+    items: [Crash!]!
+    totalCount: Int!
+  }
+
+  type ModeStat {
+    mode: String!
+    count: Int!
+  }
+
+  type SeverityStat {
+    severity: String!
+    count: Int!
+  }
+
+  type CountyStat {
+    county: String!
+    count: Int!
+  }
+
+  type CrashStats {
+    totalCrashes: Int!
+    totalFatal: Int!
+    byMode: [ModeStat!]!
+    bySeverity: [SeverityStat!]!
+    byCounty: [CountyStat!]!
+  }
+
+  # FilterOptions fields carry their own arguments to support cascading dropdowns:
+  # counties(state) returns only counties within the given state, etc.
+  type FilterOptions {
+    states: [String!]!
+    counties(state: String): [String!]!
+    cities(state: String, county: String): [String!]!
+    years: [Int!]!
+    severities: [String!]!
+    modes: [String!]!
+  }
+
+  # ── Queries ───────────────────────────────────────────────────────────────────
+
+  type Query {
+    crashes(filter: CrashFilter, limit: Int = 1000, offset: Int = 0): CrashResult!
+    crash(colliRptNum: ID!): Crash
+    crashStats(filter: CrashFilter): CrashStats!
+    filterOptions: FilterOptions!
+  }
+`
+```
+
+A few design notes:
+
+- **`injuryType`** exposes the raw `MostSevereInjuryType` DB value alongside the bucketed `severity`. This lets the popup show the exact original value while the map layers and filters use the bucketed version.
+- **`FilterOptions` field arguments** (`counties(state: String)`) are field-level arguments, not query-level. Apollo resolves them when the field itself is requested, passing the argument to the field resolver.
+- **`includeNoInjury`** on `CrashFilter` is a separate boolean rather than a severity bucket value — it opts into showing `None`/`Unknown` injuries, which are hidden by default.
+
+**Update `app/api/graphql/route.ts` to import from separate files:**
+
+Replace the inline hello-world `typeDefs` and `resolvers` with imports:
+
+```typescript
+import { ApolloServer } from '@apollo/server'
+import { startServerAndCreateNextHandler } from '@as-integrations/next'
+import { NextRequest } from 'next/server'
+import { typeDefs } from '@/lib/graphql/typeDefs'
+import { resolvers } from '@/lib/graphql/resolvers'
+
+const server = new ApolloServer({ typeDefs, resolvers })
+
+const handler = startServerAndCreateNextHandler<NextRequest>(server)
+
+export async function GET(request: NextRequest) {
+  return handler(request)
+}
+
+export async function POST(request: NextRequest) {
+  return handler(request)
+}
+```
+
+The `resolvers` import is a forward reference at this point — create the file as an empty stub (`export const resolvers = {}`) so TypeScript doesn't complain while you build out the schema. You'll replace it in the next step.
+
+---
+
+### Step 5: Implement GraphQL Resolvers
 
 With the schema defined and Prisma set up, we can implement the resolvers in `lib/graphql/resolvers.ts`. All resolvers delegate to Prisma — no raw SQL except for the materialized view queries in `FilterOptions`.
 
@@ -893,13 +1030,21 @@ The GraphQL `Crash` type uses shorter field names (`state`, `county`, `severity`
 
 ```typescript
 Crash: {
-  state: (p) => p.stateOrProvinceName,
-  county: (p) => p.countyName,
-  severity: (p) => rawToBucket(p.mostSevereInjuryType),
-  crashDate: (p) => p.crashDate?.toISOString().slice(0, 10) ?? null,
-  // ... etc
+  state: (parent) => parent.stateOrProvinceName,
+  region: (parent) => parent.regionName,
+  county: (parent) => parent.countyName,
+  city: (parent) => parent.cityName,
+  date: (parent) => parent.fullDate,
+  time: (parent) => parent.fullTime,
+  severity: (parent) => rawToBucket(parent.mostSevereInjuryType),
+  injuryType: (parent) => parent.mostSevereInjuryType,
+  crashDate: (parent) => parent.crashDate?.toISOString().slice(0, 10) ?? null,
 }
 ```
+
+Only fields where the GraphQL name differs from the Prisma field name require explicit resolvers. Fields that match by name exactly — `colliRptNum`, `jurisdiction`, `ageGroup`, `involvedPersons`, `latitude`, `longitude`, `mode` — resolve automatically without any resolver entry.
+
+The `injuryType` resolver exposes the raw DB value (`"Dead at Scene"`, `"Suspected Serious Injury"`, etc.) alongside the bucketed `severity`. The popup uses `injuryType` to show the precise original value while the map layers and filters use `severity`.
 
 The `crashDate` resolver formats Prisma's `Date` object as a `YYYY-MM-DD` string. `.toISOString()` returns UTC midnight, so `.slice(0, 10)` reliably extracts the date portion.
 
@@ -926,7 +1071,35 @@ FilterOptions: {
         `
     return rows.map((r) => r.county)
   },
-  // ... cities, years similarly
+
+  // cities has three branches: both state+county, state only, or no filters.
+  // This is more complex than counties because the cascading dropdown supports
+  // filtering by county independently of state (they are decoupled in the UI).
+  cities: async (_, { state, county }) => {
+    const rows =
+      state && county
+        ? await prisma.$queryRaw<{ city: string }[]>`
+            SELECT DISTINCT city FROM filter_metadata
+            WHERE state = ${state} AND county = ${county} AND city IS NOT NULL ORDER BY city
+          `
+        : state
+          ? await prisma.$queryRaw<{ city: string }[]>`
+              SELECT DISTINCT city FROM filter_metadata
+              WHERE state = ${state} AND city IS NOT NULL ORDER BY city
+            `
+          : await prisma.$queryRaw<{ city: string }[]>`
+              SELECT DISTINCT city FROM filter_metadata WHERE city IS NOT NULL ORDER BY city
+            `
+    return rows.map((r) => r.city)
+  },
+
+  years: async () => {
+    const rows = await prisma.$queryRaw<{ year: number }[]>`
+      SELECT year FROM available_years ORDER BY year DESC
+    `
+    return rows.map((r) => Number(r.year))
+  },
+
   severities: () => ['Death', 'Major Injury', 'Minor Injury', 'None'],
   modes: () => ['Bicyclist', 'Pedestrian'],
 }
@@ -936,27 +1109,30 @@ Prisma's tagged template `$queryRaw` automatically parameterizes interpolated va
 
 ---
 
-## Step N: GraphQL Codegen — End-to-End TypeScript Types
+### Step 6: GraphQL Codegen — End-to-End TypeScript Types
 
 With the schema and resolvers in place, the next step is **automatic TypeScript type generation**. `graphql-codegen` reads your GraphQL schema and produces a `types.ts` file with resolver signatures, input types, and return types — keeping TypeScript in sync with your schema automatically.
 
 ### Install packages
 
 ```bash
-npm install --save-dev @graphql-codegen/cli @graphql-codegen/typescript @graphql-codegen/typescript-resolvers
+npm install --save-dev @graphql-codegen/cli @graphql-codegen/typescript @graphql-codegen/typescript-resolvers @graphql-codegen/add
 ```
 
 - `@graphql-codegen/cli` — the codegen runner
 - `@graphql-codegen/typescript` — generates base TypeScript types (scalars, inputs, object types)
 - `@graphql-codegen/typescript-resolvers` — generates a `Resolvers` type covering every resolver function signature
+- `@graphql-codegen/add` — injects arbitrary content (used to prepend `/* eslint-disable */` to the generated file)
 
 ### Add the `codegen` script
 
 In `package.json`:
 
 ```json
-"codegen": "graphql-codegen --config codegen.ts"
+"codegen": "graphql-codegen --config codegen.ts && prettier --write lib/graphql/__generated__/types.ts"
 ```
+
+The `prettier --write` post-process is important: without it, the generated file won't match the project's Prettier format, and lint-staged will flag it on every commit. Piping Prettier through the codegen script ensures the output is always commit-ready.
 
 Run it manually after any schema change: `npm run codegen`.
 
@@ -970,7 +1146,7 @@ const config: CodegenConfig = {
   schema: './lib/graphql/typeDefs.ts',
   generates: {
     'lib/graphql/__generated__/types.ts': {
-      plugins: ['typescript', 'typescript-resolvers'],
+      plugins: [{ add: { content: '/* eslint-disable */' } }, 'typescript', 'typescript-resolvers'],
       config: {
         mappers: {
           // Crash field resolvers receive the Prisma CrashData model as parent.
@@ -1039,7 +1215,7 @@ The `Crash` mapper imports `CrashData` from `lib/generated/prisma/client`. Since
 
 ---
 
-## Step N+1: Query Depth Limiting
+### Step 7: Query Depth Limiting
 
 GraphQL's composable selection sets are powerful for clients, but they also mean a malicious (or accidentally complex) query could ask for deeply nested fields and trigger expensive resolver chains. Depth limiting rejects such queries at the validation layer — before any resolver runs.
 
@@ -1107,7 +1283,7 @@ Apollo Server runs all validation rules (including its own built-in rules) befor
 
 ---
 
-## Step N+2: Offset-Based Pagination and Server-Side Limit Cap
+### Step 8: Offset-Based Pagination and Server-Side Limit Cap
 
 The `crashes` query already supports offset-based pagination — it was baked into the schema from the start:
 
@@ -1139,22 +1315,24 @@ One gap: the `limit` argument has a default but no enforced maximum. A caller co
 We add a simple cap in the resolver before passing `limit` to Prisma:
 
 ```typescript
-const cappedLimit = Math.min(limit ?? 1000, 5000)
+const cappedLimit = Math.min(limit ?? 1000, 40000)
 ```
 
-`Math.min(limit ?? 1000, 5000)` handles three cases:
+`Math.min(limit ?? 1000, 40000)` handles three cases:
 
 - Caller omits `limit` → defaults to 1000 (the schema default)
-- Caller passes a reasonable value → used as-is (up to 5000)
-- Caller passes an excessive value → silently capped at 5000
+- Caller passes a reasonable value → used as-is (up to 40,000)
+- Caller passes an excessive value → silently capped at 40,000
 
 No error is thrown — the cap is transparent. This is appropriate for a public read-only API where the caller just wants data; a hard error on an oversized `limit` would be unnecessarily strict.
 
-For the CrashMap use case, the map loads the full filtered dataset client-side so Mapbox can render and filter it. With 1,315 rows today and a ceiling of 5,000, a single request at full scale fits comfortably within the cap.
+For the CrashMap use case, the map loads the full filtered dataset client-side so Mapbox can render and filter it. With a few thousand rows at launch and a ceiling of 40,000, a single request at full scale fits comfortably within the cap.
+
+> **Note:** The initial implementation set this cap at 5,000. It was raised to 40,000 in Phase 5 to match the display limit imposed by a Sonner warning toast shown to users when results exceed that threshold.
 
 ---
 
-## Step N+3: Resolver Integration Tests with Vitest
+### Step 9: Resolver Integration Tests with Vitest
 
 With a working GraphQL API, we need tests to verify our resolver logic stays correct as the codebase evolves. We'll use [Vitest](https://vitest.dev/) — a modern test runner with native TypeScript support, built-in mocking, and zero-config setup.
 
@@ -1215,7 +1393,7 @@ Our resolvers import `prisma` from `@/lib/prisma` at the module level. Rather th
 
 - Severity bucket mapping (`rawToBucket`, `bucketsToRawValues`)
 - Filter-to-where-clause building (`buildWhere`)
-- Pagination capping (limit at 5000)
+- Pagination capping (limit at 40,000)
 - Crash field resolver transformations (severity mapping, date formatting, field name mapping)
 - Full GraphQL query execution via Apollo Server's `executeOperation()`
 
@@ -1304,7 +1482,7 @@ expect(result.body.singleResult.data?.crashes.totalCount).toBe(1)
 
 #### Test coverage (19 tests)
 
-**`crashes` query** — 6 tests: items + totalCount returned, field resolvers map correctly, limit capped at 5000, default limit 1000, offset passed, severity filter forwarded to Prisma
+**`crashes` query** — 6 tests: items + totalCount returned, field resolvers map correctly, limit capped at 40,000, default limit 1000, offset passed, severity filter forwarded to Prisma
 
 **`crash` query** — 2 tests: found (returns crash), not found (returns null)
 
@@ -1323,7 +1501,84 @@ npm run test:watch  # watch mode for development
 
 The full suite runs in under 2 seconds — fast enough for watch mode during development and CI.
 
-With the test suite in place, adding a `Test` step to the CI workflow is straightforward — `npm run test` runs `vitest run`, which exits with a non-zero code on any failure. Because Prisma is fully mocked, CI requires no database connection. The final CI step order is: Lint → Format check → Type check → Test → Build.
+With the test suite in place, adding a `Test` step to the CI workflow is straightforward — `npm run test` runs `vitest run`, which exits with a non-zero code on any failure. Because Prisma is fully mocked, CI requires no database connection.
+
+---
+
+### Step 10: Update the CI Pipeline
+
+Phase 2 introduced two new checks that belong in CI: the test suite (Step 9) and codegen drift detection (Step 6). Update `.github/workflows/ci.yml` to add both after the existing type check step.
+
+**Add the `Test` step:**
+
+```yaml
+- name: Test
+  run: npm run test
+```
+
+**Add the `Codegen drift check` step:**
+
+```yaml
+- name: Codegen drift check
+  run: |
+    npm run codegen
+    git diff --exit-code lib/graphql/__generated__/types.ts
+```
+
+This step re-runs codegen in CI and verifies the output matches what was committed. If a developer changes the schema in `typeDefs.ts` without running `npm run codegen` first, this step catches the mismatch and fails the build. Because `npm run codegen` also runs Prettier on the output, the drift check confirms both content and formatting are in sync.
+
+**Final step order after Phase 2:**
+
+```text
+Lint → Format check → Type check → Test → Codegen drift check → Build
+```
+
+The updated `ci.yml` jobs section (showing only the `check` job steps):
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+
+  - uses: actions/setup-node@v4
+    with:
+      node-version: 20
+      cache: 'npm'
+
+  - name: Install dependencies
+    run: npm ci
+
+  - name: Cache Next.js build
+    uses: actions/cache@v4
+    with:
+      path: .next/cache
+      key: "${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}"
+      restore-keys: |
+        ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
+  - name: Lint
+    run: npm run lint
+
+  - name: Format check
+    run: npm run format:check
+
+  - name: Type check
+    run: npm run typecheck
+
+  - name: Test
+    run: npm run test
+
+  - name: Codegen drift check
+    run: |
+      npm run codegen
+      git diff --exit-code lib/graphql/__generated__/types.ts
+
+  - name: Build
+    run: npm run build
+```
+
+> **Note:** The Build step will gain a `SENTRY_AUTH_TOKEN` env variable when Sentry is added in Phase 5 — leave it out for now. The `deploy` and `lighthouse` jobs added in later phases also don't belong here yet.
+
+**Deliverables for Phase 2:** Fully tested GraphQL API — all queries verified via `executeOperation()`, type-safe via codegen, depth-limited, rate-limited, and continuously validated by CI on every push.
 
 ---
 
