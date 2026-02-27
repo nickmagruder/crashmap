@@ -1586,7 +1586,7 @@ steps:
 
 ## Phase 3: Frontend Core: Basic UI Configuration, Skeleton Layout and Deployment
 
-### Step N+4: Set Up Apollo Client
+### Step 1: Set Up Apollo Client
 
 With a working GraphQL API, we now need a way to query it from the browser. The map and filter panel are both highly interactive client-side components — when a user changes a filter, the app needs to re-query the server and update the map in real time. That's inherently client-side reactive behavior that can't be handled by React Server Components alone.
 
@@ -1725,7 +1725,7 @@ npm run build       # should complete successfully
 
 ---
 
-### Step N+5: Smoke-Test Deployment to Render
+### Step 2: Smoke-Test Deployment to Render
 
 Before building the interactive frontend, it's worth deploying the app now and confirming the production environment works end-to-end. Catching a deployment problem early (Prisma adapter misconfiguration, missing env var, wrong Node version) is much easier than untangling it after weeks of frontend work.
 
@@ -1750,6 +1750,8 @@ services:
   - type: web
     name: crashmap
     runtime: node
+    branch: main
+    autoDeploy: false
     buildCommand: >-
       npm ci && npm run build &&
       cp -r public .next/standalone/public &&
@@ -1767,6 +1769,11 @@ services:
 
 `sync: false` on env vars means they are declared here for documentation purposes but must be set manually in the Render dashboard — they are never committed to the repo.
 
+- **`branch: main`** — Render deploys from the `main` branch only; other branches do not trigger production deploys.
+- **`autoDeploy: false`** — disables Render's built-in auto-deploy on push. We trigger deploys from GitHub Actions after CI passes instead (configured in Step 10 of Phase 2). This prevents a broken commit from reaching production even if it passes Render's checks.
+
+> **Phase 5 additions:** In Phase 5, a `crashmap-staging` service (tracking the `staging` branch with `autoDeploy: true`) and a `healthCheckPath: /api/health` field are added to both services. These are left out here to keep the initial deployment simple.
+
 The build command has three parts:
 
 1. `npm ci` — clean install from `package-lock.json` (also runs `postinstall: prisma generate`)
@@ -1779,7 +1786,7 @@ Always commit a `.env.example` alongside a gitignored `.env`. It documents exact
 
 ```bash
 # PostgreSQL connection string — set in Render dashboard, never commit the real value
-DATABASE_URL="postgresql://user:password@host/database"
+DATABASE_URL="postgresql://user:password@host/database?sslmode=require"
 
 # Mapbox public access token — get from mapbox.com/account/access-tokens
 NEXT_PUBLIC_MAPBOX_TOKEN="pk.eyJ1IjoiLi4uIn0..."
@@ -1790,7 +1797,9 @@ NEXT_PUBLIC_MAPBOX_TOKEN="pk.eyJ1IjoiLi4uIn0..."
 NEXT_PUBLIC_APP_URL="https://crashmap.io"
 ```
 
-> **Why `NEXT_PUBLIC_APP_URL`?** The RSC Apollo Client needs an absolute URL to call `/api/graphql` — server-side `fetch` has no concept of a relative origin. See Step N+4.
+> **Why `?sslmode=require`?** Render's PostgreSQL requires SSL connections. Without it, Prisma will refuse to connect in production. For local dev, include it in `.env` as well — Render's external connection string already includes SSL.
+>
+> **Why `NEXT_PUBLIC_APP_URL`?** The RSC Apollo Client needs an absolute URL to call `/api/graphql` — server-side `fetch` has no concept of a relative origin. See Step 1.
 
 #### Verify the build locally
 
@@ -1836,7 +1845,7 @@ A response with actual state names confirms the full stack is working in product
 
 ---
 
-### Step N+6: Install shadcn/ui Components
+### Step 3: Install shadcn/ui Components
 
 With the deployment confirmed and Apollo Client wired up, we can now install the UI component library that powers the filters, sidebar, and other interactive elements.
 
@@ -1907,9 +1916,9 @@ The components are ready to use anywhere in the app via `@/components/ui/button`
 
 ---
 
-### Step N+7: Install Map Dependencies
+### Step 4: Install Map Dependencies
 
-With the GraphQL API complete and Apollo Client wired up, Phase 3 begins: building the interactive map UI. The first step is installing the mapping libraries.
+With Apollo Client wired up and the app deployed to Render, the next major Phase 3 milestone is building the interactive map UI. The first step is installing the mapping libraries.
 
 **Why react-map-gl?**
 
@@ -1971,7 +1980,7 @@ import Map from 'react-map-gl' // ← don't use this with mapbox-gl v3
 npx tsc --noEmit   # no output = clean
 ```
 
-### Step N+8: Secure the Mapbox Access Token
+### Step 5: Secure the Mapbox Access Token
 
 The `NEXT_PUBLIC_MAPBOX_TOKEN` env var is referenced in `MapContainer` but it needs to be provisioned in two places: locally for development and on Render for production.
 
@@ -2027,7 +2036,7 @@ The `NEXT_PUBLIC_MAPBOX_TOKEN` value is now available to `MapContainer` at `proc
 
 ---
 
-### Step N+9: Build the Map Page
+### Step 6: Build the Map Page
 
 With the Mapbox token wired up, we can now build the two pieces that put the map on screen: the `MapContainer` component and the root page layout.
 
@@ -2101,7 +2110,7 @@ Open `http://localhost:3000`. You should see a full-viewport Mapbox map centered
 
 ---
 
-### Step N+10: Build the Desktop Sidebar
+### Step 7: Build the Desktop Sidebar
 
 With the map on screen, the next piece of UI is the filter sidebar. On desktop (≥768px), filters live in a right-side panel that slides in over the map. On mobile, filters will be a separate full-screen overlay (a later step). For now, we scaffold the desktop sidebar so the layout is in place before any filter controls exist.
 
@@ -2219,9 +2228,11 @@ npm run dev
 
 On desktop: a `≡` (sliders) button appears in the top-right. Click it to open the filter panel; click the X or the dark overlay to close. On mobile: the button is hidden and the sidebar cannot be opened (mobile filter UI is the next step).
 
+> **Phase 5 note:** This Sheet-based sidebar was later replaced with a plain flex-column `div` panel that pins side-by-side with the map (no slide animation, no overlay). The `AppShell` layout also evolved from React fragments with absolute positioning to a `flex` row: `InfoSidePanel | map area (flex-1) | Sidebar`. When that change was made, `position: relative` moved off `page.tsx` and onto AppShell's inner map `div`, and the `map.resize()` timeout dropped from 300ms to 0ms (no animation to wait for). The Sheet component is no longer imported by `Sidebar.tsx` in the current codebase.
+
 ---
 
-### Step N+11: Build the Mobile Filter Overlay
+### Step 8: Build the Mobile Filter Overlay
 
 On desktop, filters slide in via the `Sheet` sidebar. On mobile (<768px), a sheet panel is awkward — the viewport is too narrow for a side panel and too tall for a bottom drawer at this stage. Instead, we use a **full-screen overlay**: a fixed panel that covers the entire viewport with a header and scrollable content area.
 
@@ -2350,7 +2361,7 @@ npm run dev
 
 Resize the browser to a mobile width (<768px). The `SlidersHorizontal` button should be visible in the top-right. Tapping it covers the entire viewport with the filter overlay (white background, "Filters" header, X close button). Tapping X returns to the map. At desktop width, the button switches to opening the Sheet sidebar instead.
 
-### Step N+12: Build the SummaryBar Component
+### Step 9: Build the SummaryBar Component
 
 With the map, sidebar, and mobile overlay in place, the next persistent UI element is the **SummaryBar** — a floating pill at the bottom of the viewport that shows the current crash count and any active filter badges. It's always visible, on both mobile and desktop.
 
@@ -2433,54 +2444,7 @@ npm run dev
 
 A floating pill labeled `"— crashes"` should appear centered at the bottom of the viewport. Resize to both mobile and desktop widths to confirm it stays centered and doesn't overlap the toggle button or other controls.
 
-### Step N+13: Set Mobile Default Zoom to Seattle
-
-Out of the box, `MapContainer` opens to a view of all of Washington state (zoom 7) — good for desktop where you want to see the full dataset at a glance, but too zoomed out for a phone where the initial view should feel immediately useful.
-
-The fix is straightforward: detect the viewport width at render time and pick one of two `initialViewState` objects.
-
-#### Why read `window.innerWidth` directly?
-
-`MapContainer` is already a `'use client'` component. Client components are never server-rendered in isolation — by the time this function runs in the browser, `window` is always defined. More importantly, `initialViewState` is only consumed **once on mount** by Mapbox; it is not reactive. There is no re-render to cause hydration drift, and no `useEffect` or `useState` is needed.
-
-#### Update `components/map/MapContainer.tsx`
-
-Define the two view states as module-level constants (keeping them out of the render function avoids re-creating plain objects on every render) and select between them:
-
-```tsx
-'use client'
-
-import Map from 'react-map-gl/mapbox'
-
-const DESKTOP_VIEW = { longitude: -120.5, latitude: 47.5, zoom: 7 }
-const MOBILE_VIEW = { longitude: -122.3321, latitude: 47.6062, zoom: 11 }
-
-export function MapContainer() {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
-  const initialViewState = isMobile ? MOBILE_VIEW : DESKTOP_VIEW
-
-  return (
-    <Map
-      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-      initialViewState={initialViewState}
-      style={{ width: '100%', height: '100%' }}
-      mapStyle="mapbox://styles/mapbox/light-v11"
-    />
-  )
-}
-```
-
-The `typeof window !== 'undefined'` guard is defensive boilerplate — it is not technically needed in a client component but communicates intent clearly and prevents any future accidental SSR.
-
-The 768px breakpoint matches the `md` Tailwind breakpoint used throughout the project (`md:hidden`, `hidden md:block`) for consistent mobile/desktop splitting.
-
-#### Test the mobile default zoom
-
-Open the app at a mobile viewport width (<768px, e.g. iPhone in Chrome DevTools). The map should open centered on Seattle at street level rather than the full Washington state view. At desktop width, the view is unchanged.
-
----
-
-### Step N+13: Wire map.resize() to Sidebar and Overlay Transitions
+### Step 10: Wire map.resize() to Sidebar and Overlay Transitions
 
 Whenever the sidebar or filter overlay opens or closes, the Mapbox canvas needs to be told about the size change. Without this, Mapbox holds onto its old canvas dimensions and the map can appear offset or mis-sized until the user interacts with it.
 
@@ -2494,6 +2458,8 @@ The solution involves two changes:
 Mapbox GL JS renders into an HTML canvas. The canvas size is computed once on initialization and again whenever you explicitly call `map.resize()`. CSS changes to the surrounding layout (even animated ones) don't trigger Mapbox's internal resize logic — you have to call it manually.
 
 The Sheet sidebar animates open/closed with a CSS transition (~300ms). Calling `resize()` immediately when state changes means Mapbox recomputes size before the animation finishes, which can cause a momentary glitch. A short `setTimeout` deferred past the animation duration fixes this.
+
+> **Phase 5 note:** When the Sheet sidebar was replaced with a pinnable flex-column panel (which has no CSS animation), the timeout was reduced to `0` — just enough to defer past the synchronous state update. The pattern is the same; only the delay changes.
 
 #### Convert `MapContainer` to `forwardRef`
 
@@ -2572,7 +2538,57 @@ npm run dev
 
 Open the sidebar on desktop. As the Sheet slides in, the map should fill the remaining space correctly with no visual glitch. Close the sidebar — same behavior. On mobile, open and close the filter overlay; the map canvas should remain correctly sized throughout.
 
-### Step N+14: Light/Dark Mode with next-themes
+---
+
+### Step 11: Set Mobile Default Zoom to Seattle
+
+Out of the box, `MapContainer` opens to a view of all of Washington state (zoom 7) — good for desktop where you want to see the full dataset at a glance, but too zoomed out for a phone where the initial view should feel immediately useful.
+
+The fix is straightforward: detect the viewport width at render time and pick one of two `initialViewState` objects.
+
+#### Why read `window.innerWidth` directly?
+
+`MapContainer` is already a `'use client'` component. Client components are never server-rendered in isolation — by the time this function runs in the browser, `window` is always defined. More importantly, `initialViewState` is only consumed **once on mount** by Mapbox; it is not reactive. There is no re-render to cause hydration drift, and no `useEffect` or `useState` is needed.
+
+#### Update `components/map/MapContainer.tsx`
+
+Define the two view states as module-level constants (keeping them out of the render function avoids re-creating plain objects on every render) and select between them:
+
+```tsx
+'use client'
+
+import { forwardRef } from 'react'
+import Map from 'react-map-gl/mapbox'
+import type { MapRef } from 'react-map-gl/mapbox'
+
+const DESKTOP_VIEW = { longitude: -120.5, latitude: 47.5, zoom: 7 }
+const MOBILE_VIEW = { longitude: -122.3321, latitude: 47.6062, zoom: 11 }
+
+export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const initialViewState = isMobile ? MOBILE_VIEW : DESKTOP_VIEW
+
+  return (
+    <Map
+      ref={ref}
+      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+      initialViewState={initialViewState}
+      style={{ width: '100%', height: '100%' }}
+      mapStyle="mapbox://styles/mapbox/light-v11"
+    />
+  )
+})
+```
+
+The `typeof window !== 'undefined'` guard is defensive boilerplate — it is not technically needed in a client component but communicates intent clearly and prevents any future accidental SSR.
+
+The 768px breakpoint matches the `md` Tailwind breakpoint used throughout the project (`md:hidden`, `hidden md:block`) for consistent mobile/desktop splitting.
+
+#### Test the mobile default zoom
+
+Open the app at a mobile viewport width (<768px, e.g. iPhone in Chrome DevTools). The map should open centered on Seattle at street level rather than the full Washington state view. At desktop width, the view is unchanged.
+
+### Step 12: Light/Dark Mode with next-themes
 
 With the map, sidebar, and mobile overlay all functional, the final Phase 3 UI milestone is **light/dark mode**. The shadcn/ui setup already includes a complete `.dark` CSS variable set in `globals.css` — we just need a library to toggle the `dark` class on `<html>` and persist the choice across page loads.
 
@@ -2654,17 +2670,18 @@ import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme()
   return (
     <Button
       variant="outline"
       size="icon"
+      className={className}
       onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       aria-label="Toggle theme"
     >
-      <Sun className="size-4 dark:hidden" />
-      <Moon className="size-4 hidden dark:block" />
+      <Sun className="size-4 dark:hidden" suppressHydrationWarning />
+      <Moon className="size-4 hidden dark:block" suppressHydrationWarning />
     </Button>
   )
 }
@@ -2673,6 +2690,11 @@ export function ThemeToggle() {
 `resolvedTheme` is the actual applied theme — `'light'` or `'dark'` — never `undefined` after the client hydrates. Using it in `onClick` means the button always toggles to the opposite of whatever is currently applied, even when `defaultTheme="system"`.
 
 The Sun icon has `dark:hidden` (visible in light mode, hidden in dark). The Moon icon has `hidden dark:block` (hidden in light mode, visible in dark). Both classes are driven by the `dark` class on `<html>`, so the icons swap instantly with the theme — no React re-render needed for the icon itself.
+
+Two implementation details worth noting:
+
+- **`className` prop** — forwarded to the `Button` so callers can pass additional Tailwind classes (e.g., dark-mode border overrides like `dark:bg-zinc-900 dark:border-zinc-700`). This becomes useful in Phase 5 when buttons throughout `AppShell` receive consistent dark-mode styling.
+- **`suppressHydrationWarning`** — extensions like Dark Reader inject inline style attributes onto SVG icons, causing React hydration mismatches. Adding `suppressHydrationWarning` to the `<svg>` (which Lucide renders) tells React to skip the attribute check for that element.
 
 #### Wire `ThemeToggle` into `AppShell`
 
