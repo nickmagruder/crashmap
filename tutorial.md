@@ -6526,4 +6526,324 @@ Sonner v2 has two separate CSS variable systems: `--offset-*` for desktop and `-
 
 On mobile, Sonner's built-in `@media (max-width:600px)` stylesheet forces the toaster to be full-width and uses `--mobile-offset-top` for the vertical position. `top: 80` clears the app's `top-4` + `h-9` button row (≈52px) with comfortable breathing room.
 
+---
+
+## Phase 8: Data Ingestion Pipeline
+
+So far CrashMap has been querying the same data that was loaded manually into the database before development started. For the app to stay current, we need a repeatable way to pull new crash data from the source and insert it into the database. This phase covers building that pipeline and running the initial full backfill.
+
+### Step 1: Understanding the Data Source
+
+Washington State crash data is published through the WSDOT collision data portal. The portal exposes a public REST API that returns data as a single-line, double-encoded JSON string — it's not directly usable by a standard HTTP client without pre-processing.
+
+The endpoint pattern is:
+
+```text
+GET https://remoteapps.wsdot.wa.gov/highwaysafety/collision/data/portal/public/
+    CrashDataPortalService.svc/REST/GetPublicPortalData
+    ?rptCategory=Pedestrians%20and%20Pedacyclists
+    &rptName=Pedestrians%20by%20Injury%20Type
+    &reportStartDate=20250101
+    &reportEndDate=20251231
+```
+
+Two report names exist — one per mode:
+
+- `"Pedestrians by Injury Type"` for pedestrian crashes
+- `"Bicyclists by Injury Type"` for bicyclist crashes
+
+The `Mode` field is **not included in the response** — the operator selects it before fetching. The pipeline stamps every record with the selected mode during SQL generation.
+
+The response is a double-encoded JSON string wrapped in outer quotes:
+
+```text
+"\"[{\\\"ColliRptNum\\\":\\\"3838031\\\",\\\"Jurisdiction\\\":\\\"City Street\\\", ...}]\""
+```
+
+After decoding, each record looks like:
+
+```json
+{
+  "ColliRptNum": "3838031",
+  "Jurisdiction": "City Street",
+  "CountyName": "King",
+  "CityName": "Seattle",
+  "FullDate": "2025-02-21T00:00:00",
+  "FullTime": "11:06 AM",
+  "MostSevereInjuryType": "Suspected Minor Injury",
+  "AgeGroup": "",
+  "InvolvedPersons": 4,
+  "CrashStatePlaneX": 1192299.06,
+  "CrashStatePlaneY": 837515.73,
+  "Latitude": 47.615677169795,
+  "Longitude": -122.316864546986
+}
+```
+
+### Step 2: Pipeline Architecture
+
+Rather than scraping the portal's web UI, we call the API directly from a Flask backend and generate a `.sql` file the operator runs manually against the Render database. This keeps the pipeline stateless — no database credentials touch the pipeline at all.
+
+The design philosophy:
+
+- **Stateless** — output is a portable `.sql` file; no DB connection in the pipeline
+- **Server-side fetching** — the backend calls WSDOT directly; no browser copy-paste
+- **Non-destructive** — all inserts use `ON CONFLICT DO NOTHING`; re-importing is always safe
+- **Minimal dependencies** — SQL generation uses only Python's standard library; only `requests` is added
+
+The full flow:
+
+```text
+WSDOT REST API
+      │  HTTP GET (from Flask backend)
+      ▼
+┌─────────────────────────────┐
+│   CrashMap Data Pipeline    │
+│                             │
+│   React Frontend (Vite)     │  ← date range + mode UI
+│      + Flask Backend        │  ← fetches WSDOT, generates SQL
+└──────────────┬──────────────┘
+               │ .sql file download
+               ▼
+    Operator runs via psql
+               │
+               ▼
+┌──────────────────────────────┐
+│  CrashMap PostgreSQL + PostGIS│
+│  crashdata table (Render)    │
+└──────────────────────────────┘
+               │
+               ▼
+    REFRESH MATERIALIZED VIEW
+               │
+               ▼
+    CrashMap app (crashmap.io)
+    reflects new records
+```
+
+The pipeline lives in a separate repo ([esri-exporter](https://github.com/nickmagruder/esri-exporter)), originally built as a general ESRI/WSDOT data exporter and refactored into a purpose-built CrashMap data pipeline.
+
+### Step 3: The Flask Backend
+
+The backend is a single `app.py` file. The core is a `generate_sql()` function that maps WSDOT fields to CrashMap's schema and produces batched `INSERT` statements.
+
+**Primary endpoint — `POST /api/fetch-and-generate-sql`:**
+
+```python
+@app.route('/api/fetch-and-generate-sql', methods=['POST'])
+def fetch_and_generate_sql():
+    data = request.get_json()
+    mode = data.get('mode')
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    batch_size = int(data.get('batch_size', 500))
+
+    # Build WSDOT URL
+    rpt_name = 'Pedestrians by Injury Type' if mode == 'Pedestrian' else 'Bicyclists by Injury Type'
+    url = (
+        'https://remoteapps.wsdot.wa.gov/highwaysafety/collision/data/portal/public/'
+        'CrashDataPortalService.svc/REST/GetPublicPortalData'
+        f'?rptCategory=Pedestrians%20and%20Pedacyclists'
+        f'&rptName={requests.utils.quote(rpt_name)}'
+        f'&locationType=&locationName=&jurisdiction='
+        f'&reportStartDate={start_date}&reportEndDate={end_date}'
+    )
+
+    response = requests.get(url, timeout=120)
+    records = fix_malformed_json(response.text)
+    sql = generate_sql(records, mode, batch_size)
+
+    return Response(
+        sql,
+        mimetype='text/plain',
+        headers={'Content-Disposition': f'attachment; filename="crashmap_{mode.lower()}_{start_date}_{end_date}.sql"'}
+    )
+```
+
+**`generate_sql()` — field mapping and SQL generation:**
+
+The function maps WSDOT source fields to CrashMap's PascalCase quoted column names. Key transformations:
+
+| WSDOT Field          | CrashMap Column         | Notes                                             |
+| -------------------- | ----------------------- | ------------------------------------------------- |
+| `ColliRptNum`        | `"ColliRptNum"`         | Primary key                                       |
+| _(not in WSDOT)_     | `"StateOrProvinceName"` | Hardcoded `'Washington'`                          |
+| `RegionName`         | `"RegionName"`          | `'` placeholder → `NULL`                          |
+| `FullDate`           | `"FullDate"`            | ISO 8601 text, direct map                         |
+| `FullDate` (parsed)  | `"CrashDate"`           | Date portion only: `2025-02-21`                   |
+| `AgeGroup`           | `"AgeGroup"`            | Empty string → `NULL`                             |
+| _(UI-selected)_      | `"Mode"`                | Stamped per export                                |
+| `CrashStatePlaneX/Y` | _(dropped)_             | Not used; CrashMap uses Lat/Long + PostGIS        |
+| _(generated by DB)_  | `"geom"`                | **Not inserted** — PostGIS generates from Lat/Lng |
+
+The `"geom"` column is a PostgreSQL generated column defined as:
+
+```sql
+GENERATED ALWAYS AS (ST_SetSRID(ST_MakePoint("Longitude", "Latitude"), 4326)) STORED
+```
+
+**Never include `"geom"` in INSERT statements** — PostgreSQL raises `ERROR: cannot insert a non-DEFAULT value into column "geom"` if you try.
+
+The generated SQL looks like this:
+
+```sql
+-- CrashMap Data Import
+-- Mode: Pedestrian
+-- Generated: 2026-02-24
+-- Records: 7
+
+INSERT INTO crashdata (
+  "ColliRptNum", "Jurisdiction", "StateOrProvinceName", "RegionName",
+  "CountyName", "CityName", "FullDate", "CrashDate", "FullTime",
+  "MostSevereInjuryType", "AgeGroup", "InvolvedPersons",
+  "Latitude", "Longitude", "Mode"
+) VALUES
+  ('3838031', 'City Street', 'Washington', NULL, 'King', 'Seattle',
+   '2025-02-21T00:00:00', '2025-02-21', '11:06 AM', 'Suspected Minor Injury',
+   NULL, 4, 47.615677169795, -122.316864546986, 'Pedestrian')
+ON CONFLICT ("ColliRptNum") DO NOTHING;
+```
+
+Records are batched 500 rows per INSERT to avoid hitting PostgreSQL's parameter limit.
+
+**Fallback endpoint — `POST /api/generate-sql`:**
+
+For cases where direct WSDOT API access is unavailable (network restrictions, testing), a fallback endpoint accepts the raw JSON pasted or uploaded from the browser DevTools Network tab. The same `generate_sql()` function handles both paths.
+
+### Step 4: The React Frontend
+
+The frontend is a minimal Vite + React + TypeScript app. A single `form.component.tsx` component handles the entire UI: Mode dropdown, Start/End date inputs, and a single button that fires the fetch-and-download request.
+
+TanStack Query's `useMutation` manages the async lifecycle:
+
+```tsx
+const mutation = useMutation({
+  mutationFn: async (params: FetchParams) => {
+    const res = await fetch('/api/fetch-and-generate-sql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+    if (!res.ok) throw new Error(await res.text())
+    return res.blob()
+  },
+  onSuccess: (blob, params) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `crashmap_${params.mode.toLowerCase()}_${params.start_date}_${params.end_date}.sql`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+})
+```
+
+Vite's dev proxy forwards `/api/*` requests to the Flask backend running on port 5000, so the frontend and backend can run independently in development.
+
+### Step 5: Prepare the Database for the Backfill
+
+Before the initial bulk import, two unused columns need to be removed from the `crashdata` table. The original schema (introspected from the WSDOT source format) included `CrashStatePlaneX` and `CrashStatePlaneY` — Washington State Plane coordinates. CrashMap uses only `Latitude`, `Longitude`, and the PostGIS `geom` column, so these can be dropped.
+
+Run in pgAdmin (or any SQL client connected to the Render database):
+
+```sql
+ALTER TABLE crashdata
+  DROP COLUMN "CrashStatePlaneX",
+  DROP COLUMN "CrashStatePlaneY";
+```
+
+Then clear the existing data for a clean full-backfill:
+
+```sql
+TRUNCATE TABLE crashdata;
+```
+
+`TRUNCATE` is faster than `DELETE FROM` for a full clear and preserves the table structure, constraints, and indexes.
+
+**Update the Prisma schema to match.** If you don't remove these from `prisma/schema.prisma`, every query will fail with "column does not exist":
+
+In `prisma/schema.prisma`, remove these two lines from the `CrashData` model:
+
+```prisma
+crashStatePlaneX     Float?   @map("CrashStatePlaneX") @db.Real
+crashStatePlaneY     Float?   @map("CrashStatePlaneY") @db.Real
+```
+
+Regenerate the client:
+
+```bash
+npx prisma generate
+```
+
+Push to `main` to trigger a Render redeploy. No `prisma migrate` is needed — the DB change was applied manually.
+
+### Step 6: Run the Initial Backfill
+
+With the database prepared and the pipeline deployed, run the 10-year backfill. The WSDOT API goes back approximately 10 years.
+
+**Always import Pedestrian data first, then Bicyclist.** Some crashes appear in both reports (e.g., a car hits a cyclist who was walking their bike). Both records have the same `ColliRptNum`. The pipeline uses `ON CONFLICT DO NOTHING`, so the first import wins. Pedestrian is the canonical record for shared crashes.
+
+For each year (or multi-year range):
+
+1. Open the pipeline app
+2. Set Mode = `Pedestrian`, set date range (e.g., `20150101` – `20151231`)
+3. Click **Fetch from WSDOT & Download SQL** — the `.sql` file downloads automatically
+4. Run it: `psql "$DATABASE_URL" -f crashmap_pedestrian_20150101_20151231.sql`
+5. Repeat with Mode = `Bicyclist` for the same date range
+
+After all years are imported, refresh the materialized views:
+
+```sql
+REFRESH MATERIALIZED VIEW filter_metadata;
+REFRESH MATERIALIZED VIEW available_years;
+```
+
+**Initial backfill results (2015–2026):**
+
+| Mode         | Total records |
+| ------------ | ------------- |
+| Pedestrian   | 22,419        |
+| Bicyclist    | 13,213        |
+| **Combined** | **35,632**    |
+
+### Step 7: Validate the Import
+
+Run these checks after any import to confirm it completed correctly:
+
+```sql
+-- Record counts by mode and year
+SELECT "Mode", EXTRACT(YEAR FROM "CrashDate") AS year, COUNT(*)
+FROM crashdata
+GROUP BY "Mode", year
+ORDER BY year DESC, "Mode";
+
+-- Null checks on required fields (all should return 0)
+SELECT COUNT(*) FROM crashdata WHERE "ColliRptNum" IS NULL;
+SELECT COUNT(*) FROM crashdata WHERE "Latitude" IS NULL OR "Longitude" IS NULL;
+SELECT COUNT(*) FROM crashdata WHERE "CrashDate" IS NULL;
+SELECT COUNT(*) FROM crashdata WHERE "Mode" IS NULL;
+
+-- PostGIS geometry check (should return 0)
+SELECT COUNT(*) FROM crashdata WHERE geom IS NULL;
+```
+
+Then open CrashMap and confirm:
+
+- New records appear as dots on the map
+- Year filter includes newly imported years
+- County and city filters include newly imported locations
+
+### What We Have
+
+At the end of Phase 8, CrashMap has a complete data ingestion pipeline:
+
+- A Flask + React/Vite app ([esri-exporter](https://github.com/nickmagruder/esri-exporter)) that calls the WSDOT API directly, converts the double-encoded JSON response to batched SQL, and streams a `.sql` file download — no database credentials in the pipeline
+- A clean 16-column `crashdata` schema with the unused `CrashStatePlaneX/Y` columns removed
+- 35,632 crash records spanning 2015–2026 loaded into the production database
+- A repeatable monthly import workflow documented in `data-pipeline.md`
+
+For the full operator workflow (routine monthly imports, troubleshooting, validation checklist), see [data-pipeline.md](data-pipeline.md).
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

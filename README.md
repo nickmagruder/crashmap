@@ -2,9 +2,272 @@
 
 **Version:** 0.7.1
 
-A public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians. Built with Next.js, Apollo GraphQL, Prisma, PostgreSQL/PostGIS, and Mapbox GL JS. The data is self-collected from state DOT websites and stored in a single PostgreSQL table. CrashMap follows a **classic three-tier architecture** (Client → Server → Data) deployed as a single Next.js application on Render.
+**CrashMap** ([crashmap.io](https://crashmap.io)) is a public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians in Washington State. Crash data is self-collected from state DOT sources and displayed on an interactive, filterable map — making it easy to explore where and how crashes happen in your community.
 
-This project was bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+---
+
+## Overview
+
+Every year, bicyclists and pedestrians are injured or killed in preventable crashes. CrashMap puts that data on the map — literally. By visualizing crash records with severity, mode, date, and location filters, CrashMap helps advocates, planners, journalists, and concerned residents understand crash patterns and make the case for safer streets.
+
+The application is built as a **classic three-tier architecture** (Client → GraphQL API → PostgreSQL database), deployed as a single Next.js application on [Render](https://render.com/). All crash data is open and publicly accessible — no account required.
+
+---
+
+## Data
+
+Crash data is sourced from the [WSDOT Crash Data Portal](https://www.wsdot.wa.gov/mapsdata/crash/crashdatadownload.htm) via the ESRI feature API. The [esri-exporter](https://github.com/nickmagruder/esri-exporter) companion tool handles fetching records, converting them to SQL, and generating import files for the database.
+
+For the full import workflow (fetch → generate → import → refresh → validate), see the [Data Pipeline Guide](data-pipeline.md).
+
+---
+
+## Features
+
+### Interactive Map
+
+- Crash locations rendered as color-coded dots using [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/), with severity visible at a glance
+- Click any crash dot to view a detailed popup: date, time, injury type, mode, city/county, jurisdiction, involved persons, and collision report number
+- Popup includes links to **Apple Maps** and **Google Street View** for the crash location
+- Copy the collision report number to clipboard directly from the popup
+- **3D tilt view** (pitch 45°) and zoom controls built into the map
+- **Satellite imagery** toggle for aerial context
+
+### Severity Color Scale
+
+Crashes are rendered in four layers so higher-severity dots always appear on top:
+
+| Severity       | Color      | Meaning                               |
+| -------------- | ---------- | ------------------------------------- |
+| Death          | Dark red   | Fatal crash                           |
+| Major Injury   | Orange     | Suspected serious injury              |
+| Minor Injury   | Yellow     | Suspected minor or possible injury    |
+| None / Unknown | Pale green | No apparent injury or unknown outcome |
+
+An **accessible color palette** (Paul Tol Muted scheme — teal, tan, rose, indigo) is available via the Eye icon for users with color vision differences.
+
+### Filters
+
+All filters combine with AND logic and update the map in real time:
+
+| Filter       | Options                                                |
+| ------------ | ------------------------------------------------------ |
+| **Mode**     | All / Bicyclist / Pedestrian                           |
+| **Severity** | Death, Major Injury, Minor Injury, None/Unknown        |
+| **Date**     | YTD, 90 Days, Last Year, 3 Years, or custom date range |
+| **Location** | County and City (independent, not cascading)           |
+
+### Smart Map Behavior
+
+- **Auto-zoom**: Selecting a county or city automatically animates the map to fit the matching crashes
+- **Update as map moves**: Toggle on to continuously query crashes within the current viewport as you pan and zoom
+- **Metered zoom**: Clicking a crash zooms to exactly halfway between your current zoom and street level — never jarring
+
+### URL-Based State
+
+Every filter combination is encoded in the URL, so you can **share a filtered view** just by copying the address bar. Opening a shared link loads the exact same filters.
+
+### Data Export
+
+Export the currently filtered crash records as a **CSV file** for use in spreadsheets or GIS tools. The filename includes your active filters (e.g., `crashmap-washington-king-2025-2026-02-20.csv`).
+
+### Light / Dark Mode
+
+The map and UI automatically match your system preference, with a manual toggle. The Mapbox basemap swaps between `light-v11` and `dark-v11` to match.
+
+---
+
+## Tech Stack
+
+| Layer            | Technology                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| Frontend         | [Next.js](https://nextjs.org/) (App Router) + React + TypeScript                              |
+| UI Components    | [shadcn/ui](https://ui.shadcn.com/) (Radix UI + Tailwind CSS)                                 |
+| Map              | [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/) via `react-map-gl`                      |
+| State Management | React Context (`useReducer`)                                                                  |
+| API              | [Apollo Server](https://www.apollographql.com/docs/apollo-server/) at `/api/graphql`          |
+| GraphQL Client   | [Apollo Client](https://www.apollographql.com/docs/react/) with InMemoryCache                 |
+| ORM              | [Prisma 7](https://www.prisma.io/) (`prisma-client` generator + `@prisma/adapter-pg`)         |
+| Database         | PostgreSQL + PostGIS on [Render](https://render.com/)                                         |
+| Hosting          | Render (Professional web service + Basic PostgreSQL)                                          |
+| Type Safety      | `graphql-codegen` for end-to-end GraphQL types                                                |
+| Monitoring       | [Sentry](https://sentry.io/) + [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci) |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js 20+**
+- **npm**
+- A **PostgreSQL** database (the schema is introspected — no migrations needed)
+- A **Mapbox** account and public access token ([sign up free](https://account.mapbox.com/))
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/nickmagruder/crashmap.git
+cd crashmap
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+This also runs `prisma generate` automatically via the `postinstall` script, generating the Prisma client from your schema.
+
+### 3. Configure Environment Variables
+
+Copy the example env file and fill in your values:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable                   | Description                                                         |
+| -------------------------- | ------------------------------------------------------------------- |
+| `DATABASE_URL`             | PostgreSQL connection string (append `?sslmode=require` for Render) |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | Your Mapbox public access token                                     |
+| `NEXT_PUBLIC_APP_URL`      | The public URL of your app (e.g., `http://localhost:3000`)          |
+
+> **Note:** Never commit `.env.local` — it is gitignored. See `.env.example` for the full list of required variables.
+
+### 4. Set Up the Database
+
+CrashMap uses `prisma db pull` to introspect an existing database — **do not run `prisma migrate dev`**. Your database must have the `crashdata` table and PostGIS extension already in place.
+
+To pull the current schema:
+
+```bash
+npx prisma db pull
+npx prisma generate
+```
+
+### 5. Start the Development Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser. The GraphQL API is available at [http://localhost:3000/api/graphql](http://localhost:3000/api/graphql) with the Apollo Sandbox Explorer.
+
+---
+
+## Development Commands
+
+| Command                | Description                             |
+| ---------------------- | --------------------------------------- |
+| `npm run dev`          | Start the Next.js development server    |
+| `npm run build`        | Production build                        |
+| `npm run start`        | Start the production server             |
+| `npm run lint`         | Run ESLint                              |
+| `npm run format`       | Format all files with Prettier          |
+| `npm run format:check` | Check formatting without writing        |
+| `npm run typecheck`    | TypeScript type check (`tsc --noEmit`)  |
+| `npm run test`         | Run unit and integration tests (Vitest) |
+| `npm run test:watch`   | Run tests in watch mode                 |
+| `npm run codegen`      | Regenerate GraphQL TypeScript types     |
+
+The full CI pipeline runs: **Lint → Format check → Typecheck → Tests → Codegen drift check → Build → Deploy** (on `main`).
+
+---
+
+## Project Structure
+
+```text
+crashmap/
+├── app/
+│   ├── api/graphql/        # Apollo Server GraphQL endpoint
+│   ├── api/health/         # Health check endpoint (GET /api/health)
+│   ├── layout.tsx          # Root layout with providers
+│   └── page.tsx            # Root page (renders AppShell)
+├── components/
+│   ├── export/             # CSV export button
+│   ├── filters/            # Date, severity, mode, and location filter components
+│   ├── info/               # Info and Support side panels
+│   ├── layout/             # AppShell — the top-level layout orchestrator
+│   ├── map/                # MapContainer, CrashLayer, CrashPopup
+│   ├── overlay/            # Mobile full-screen filter overlay
+│   ├── sidebar/            # Desktop filter sidebar
+│   ├── summary/            # SummaryBar (active filter badges + export)
+│   └── ui/                 # shadcn/ui components (project-owned)
+├── context/
+│   └── FilterContext.tsx   # Global filter state (useReducer)
+├── lib/
+│   ├── crashColors.ts      # Shared severity color constants
+│   ├── csv-export.ts       # CSV generation and download utilities
+│   ├── filterUrlState.ts   # URL encode/decode for shareable filter links
+│   ├── graphql/
+│   │   ├── typeDefs.ts     # GraphQL schema (SDL)
+│   │   ├── resolvers.ts    # Prisma-backed resolvers
+│   │   ├── queries.ts      # Apollo Client query documents
+│   │   └── __generated__/  # Codegen output (committed)
+│   ├── prisma.ts           # PrismaClient singleton
+│   └── rate-limit.ts       # In-memory sliding-window rate limiter
+├── prisma/
+│   └── schema.prisma       # Introspected schema (do not migrate)
+├── ARCHITECTURE.md         # Full architecture reference
+├── CLAUDE.md               # Project context for Claude Code sessions
+└── tutorial.md             # Step-by-step build tutorial (blog post draft)
+```
+
+---
+
+## API
+
+The GraphQL API is available at `/api/graphql`. Key queries:
+
+| Query                            | Description                                                      |
+| -------------------------------- | ---------------------------------------------------------------- |
+| `crashes(filter, limit, offset)` | Paginated crash records with full filter support                 |
+| `crashStats(filter)`             | Aggregate count of matching crashes                              |
+| `filterOptions`                  | Available counties, cities, and date bounds for filter dropdowns |
+
+The API is rate-limited to **60 requests per minute per IP** and enforces a query depth limit of 5.
+
+---
+
+## Deployment
+
+CrashMap is deployed on [Render](https://render.com/) using `output: 'standalone'` in Next.js.
+
+- **Production** (`main` branch): deploys automatically after CI passes via a Render deploy hook
+- **Staging** (`staging` branch): auto-deploys on every push
+
+Build command:
+
+```bash
+npm ci && npm run build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static
+```
+
+Start command:
+
+```bash
+node .next/standalone/server.js
+```
+
+The health check endpoint (`GET /api/health`) returns `{"status":"ok"}` and is used by Render's Health & Alerts monitoring.
+
+---
+
+## Security
+
+- **Rate limiting:** 60 req/min per IP (in-memory sliding window)
+- **GraphQL depth limit:** Maximum query depth of 5
+- **CSP headers:** Scoped to Next.js, Mapbox, Sentry, and self-hosted fonts
+- **CORS:** Restricted to `crashmap.io`, `crashmap.onrender.com`, and `localhost:3000`
+- **No auth required** for public read-only crash data queries
+
+---
+
+## Contributing
+
+This project is developed in the open. To report issues or suggest features, please open an [issue on GitHub](https://github.com/nickmagruder/crashmap/issues).
+
+---
 
 ## Changelog
 
