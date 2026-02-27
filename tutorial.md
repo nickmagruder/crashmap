@@ -8,7 +8,7 @@
 
 ---
 
-## Phase 1: Foundation
+## Phase 1: Foundation: Project scaffolding and data model
 
 ### Step 1: Create the Next.js Project
 
@@ -25,7 +25,7 @@ This gives us a Next.js App Router project with TypeScript and Tailwind CSS pre-
 [shadcn/ui](https://ui.shadcn.com/) provides a set of beautifully designed, accessible UI components built on Radix UI and styled with Tailwind CSS. Unlike traditional component libraries, shadcn/ui copies components directly into your project so you have full ownership and can customize them freely.
 
 ```bash
-npx shadcn-ui@latest init
+npx shadcn@latest init
 ```
 
 This creates a `components.json` configuration file and sets up the `lib/utils.ts` helper. We'll add specific components (Button, Select, Sheet, etc.) as we need them later.
@@ -50,6 +50,8 @@ CREATE TABLE public.crashdata
     "MostSevereInjuryType" text,          -- Death, Serious Injury, Minor Injury, None/Unknown
     "AgeGroup" text,
     "InvolvedPersons" smallint,
+    "CrashStatePlaneX" real,              -- State Plane X coordinate (dropped in Phase 7)
+    "CrashStatePlaneY" real,              -- State Plane Y coordinate (dropped in Phase 7)
     "Latitude" double precision,
     "Longitude" double precision,
     "Mode" text,                          -- "Bicyclist" or "Pedestrian"
@@ -110,7 +112,7 @@ Going forward, all date-range queries use `CrashDate` (e.g., `WHERE "CrashDate" 
 
 ```bash
 npm install prisma --save-dev
-npm install @prisma/client
+npm install @prisma/client @prisma/adapter-pg
 ```
 
 ### Step 7: Configure Environment Variables
@@ -152,12 +154,24 @@ We updated `.gitignore` with entries specific to our stack:
 
 # prisma
 prisma/migrations/
+/lib/generated/prisma
 ```
 
 - `.env*` with `!.env.example` ensures all env files with secrets are ignored, but the placeholder template is committed
 - `prisma/migrations/` is ignored because we use `prisma db pull` (introspection) rather than `prisma migrate` since our table already exists with data
+- `/lib/generated/prisma` ignores the generated Prisma client output directory — it's always regenerated from the schema and should never be committed
 
-### Step 9: Initialize Prisma
+### Step 9: Add `.gitattributes` for Consistent Line Endings
+
+On Windows, Git's default `core.autocrlf=true` setting converts line endings from LF to CRLF on checkout. This causes Prettier's `format:check` to fail in CI (which runs on Linux and expects LF). A `.gitattributes` file overrides this at the repository level:
+
+```text
+* text=auto eol=lf
+```
+
+Create `.gitattributes` in the project root with this single line. Now Git will always check out text files with LF endings regardless of the developer's OS, and Prettier will be happy on both Windows and Linux.
+
+### Step 10: Initialize Prisma
 
 With Prisma installed and the database URL configured, initialize Prisma in the project:
 
@@ -176,7 +190,7 @@ Since `prisma.config.ts` uses `import "dotenv/config"`, install `dotenv`:
 npm install dotenv --save-dev
 ```
 
-### Step 10: Introspect the Existing Database
+### Step 11: Introspect the Existing Database
 
 Because our `crashdata` table already exists with data on Render, we use `prisma db pull` to generate the Prisma model from the live database rather than writing it by hand or using `prisma migrate`:
 
@@ -200,7 +214,7 @@ model crashdata {
 
 You'll also see a `spatial_ref_sys` model — this is a PostGIS system table that was included automatically. We keep it in the schema but won't use it directly.
 
-### Step 11: Refine the Prisma Model
+### Step 12: Refine the Prisma Model
 
 The auto-generated model uses the raw PascalCase database column names as field names. We refine it to use idiomatic camelCase TypeScript names, with `@map` decorators linking each field back to its actual column name, and `@@map` linking the model to the table name:
 
@@ -217,6 +231,8 @@ model CrashData {
   mostSevereInjuryType String?   @map("MostSevereInjuryType")
   ageGroup             String?   @map("AgeGroup")
   involvedPersons      Int?      @map("InvolvedPersons") @db.SmallInt
+  crashStatePlaneX     Float?    @map("CrashStatePlaneX") @db.Real  // dropped in Phase 7
+  crashStatePlaneY     Float?    @map("CrashStatePlaneY") @db.Real  // dropped in Phase 7
   latitude             Float?    @map("Latitude")
   longitude            Float?    @map("Longitude")
   mode                 String?   @map("Mode")
@@ -229,7 +245,9 @@ model CrashData {
 
 This gives you clean TypeScript property names (e.g., `crash.stateOrProvinceName`) while Prisma handles the translation to the actual PascalCase column names in SQL.
 
-### Step 12: Generate the Prisma Client
+> **Note:** The `CrashStatePlaneX` and `CrashStatePlaneY` columns were present in the original WSDOT export but were dropped from the database during Phase 7's data cleanup (they duplicate the Latitude/Longitude data in a different projection). They're shown here for historical accuracy — remove them when you reach Phase 7.
+
+### Step 13: Generate the Prisma Client
 
 With the schema refined, generate the TypeScript client:
 
@@ -239,19 +257,43 @@ npx prisma generate
 
 This creates a fully typed client in `lib/generated/prisma/` (as specified by the `output` field in the schema's `generator` block). The generated client is gitignored since it can always be regenerated from the schema.
 
-You can now import and use the Prisma client in your API resolvers with full TypeScript autocompletion:
+#### Add a `postinstall` script
 
-```typescript
-import { PrismaClient } from '../lib/generated/prisma'
+To ensure the client is always regenerated after `npm install` (critical for CI and fresh clones), add this to `package.json`:
 
-const prisma = new PrismaClient()
-
-const crashes = await prisma.crashData.findMany({
-  where: { mode: 'Bicyclist' },
-})
+```json
+"scripts": {
+  "postinstall": "prisma generate"
+}
 ```
 
-### Step 13: Add the `geom` Column and Database Indexes
+#### Create the Prisma singleton
+
+Prisma 7 uses a WASM-based client that **requires a driver adapter** — `new PrismaClient()` with no arguments will not type-check. Create `lib/prisma.ts` with a `globalThis` singleton pattern to prevent connection pool exhaustion during Next.js hot reloads:
+
+```typescript
+import { PrismaClient } from '@/lib/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+// Singleton pattern prevents exhausting connection pool during Next.js hot reloads in dev.
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined }
+
+function createPrismaClient() {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  return new PrismaClient({ adapter })
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+Two things to note:
+
+- **Import path:** `@/lib/generated/prisma/client` — the `/client` suffix is required; there is no bare `index.ts` export
+- **Driver adapter:** `PrismaPg` bridges Prisma 7's WASM runtime to `pg`'s connection pool; the adapter takes a `connectionString` (not a pool object)
+
+### Step 14: Add the `geom` Column and Database Indexes
 
 With PostGIS enabled and Prisma configured, the next step is to add a generated geometry column and create indexes for all the query patterns the app will use.
 
@@ -330,7 +372,7 @@ Regenerate the Prisma client:
 npx prisma generate
 ```
 
-### Step 14: Validate the Data
+### Step 15: Validate the Data
 
 Before building the API or UI, it's worth running a few sanity checks on the data to catch any surprises early.
 
@@ -418,7 +460,7 @@ WHERE "Latitude" NOT BETWEEN 24 AND 50
 
 All 1,315 rows passed every check. The data is clean and ready for the API layer.
 
-### Step 15: Create Materialized Views for Filter Dropdowns
+### Step 16: Create Materialized Views for Filter Dropdowns
 
 The cascading filter dropdowns (State → County → City) and the year quick-select buttons need a list of valid values. We could query the full `crashdata` table on every page load, but a **materialized view** is a better approach: PostgreSQL computes the result once and stores it as a physical table that can be indexed and queried instantly.
 
@@ -481,7 +523,7 @@ REFRESH MATERIALIZED VIEW available_years;
 
 This will be part of the data import workflow when new state data is added.
 
-### Step 16: Set Up ESLint, Prettier, and Husky
+### Step 17: Set Up ESLint, Prettier, and Husky
 
 With the database foundation complete, we set up code quality tooling before writing any application code.
 
@@ -580,7 +622,7 @@ npm run format:check  # All matched files use Prettier code style!
 
 From this point on, every `git commit` automatically runs ESLint and Prettier on staged files. Commits with lint errors will be blocked.
 
-### Step 17: GitHub Actions CI Pipeline
+### Step 18: GitHub Actions CI Pipeline
 
 Pre-commit hooks are a local safety net but can be bypassed with `git commit --no-verify`. A CI pipeline on GitHub is the real enforcement gate — it runs on every push and blocks merges to `main` if any check fails.
 
@@ -597,11 +639,9 @@ Pre-commit hooks are a local safety net but can be bypassed with `git commit --n
 ```yaml
 name: CI
 
-on:
+'on':
   push:
     branches: ['**']
-  pull_request:
-    branches: [main]
 
 jobs:
   check:
@@ -649,7 +689,10 @@ A few design notes:
 - **Steps run in order** — lint and format are fast and fail early; build is slowest and runs last
 - **Test step runs before build** — catches logic errors without paying the full Next.js compilation cost. Because Prisma is fully mocked in the test suite, no `DATABASE_URL` secret is needed in CI
 - **`npm run build`** is the most important check pre-commit hooks don't cover — it catches broken imports and Next.js-specific errors
-- **Triggers on all branches** so you get feedback on feature branches, not just PRs
+- **Triggers on all pushes** so you get CI feedback on every branch
+- **`'on':` in single quotes** — YAML 1.1 (used by GitHub Actions) treats `on` as a boolean keyword; quoting it avoids the ambiguity
+
+> **Note:** The CI pipeline grows as the project does. In later phases we'll add a codegen drift check, a Render deploy hook, and a Lighthouse CI job. The foundation above is intentionally minimal.
 
 #### Enable branch protection on GitHub
 
@@ -663,7 +706,7 @@ This makes the CI gate mandatory — no merges to `main` without a green build.
 
 ---
 
-## Phase 2: API Layer
+## Phase 2: API Layer: Functional GraphQL API with core queries
 
 ### Step 17: Install Apollo Server
 
@@ -1286,7 +1329,7 @@ With the test suite in place, adding a `Test` step to the CI workflow is straigh
 
 ---
 
-## Phase 3: Frontend Core
+## Phase 3: Frontend Core: Basic UI Configuration, Skeleton Layout and Deployment
 
 ### Step N+4: Set Up Apollo Client
 
@@ -3081,7 +3124,7 @@ This pattern is useful any time you need theme-responsive colors inside componen
 
 ---
 
-## Phase 4: Interactive Filters
+## Phase 4: Interactive Map with Filters
 
 With the map rendering live crash data and the filter state context in place, the next phase is building the actual filter controls. Each filter gets its own shared component in `components/filters/` so it can be dropped into both the desktop sidebar and the mobile overlay without duplicating logic.
 
@@ -3915,7 +3958,7 @@ This means the SummaryBar always shows exactly one mode badge — either `All mo
 
 ---
 
-## Phase 5: Security & Polish
+## Phase 5: Security, Polish & Deployment
 
 ### Step 1: Rate Limiting the GraphQL API
 
@@ -4280,7 +4323,7 @@ A few principles guided the choices here:
 
 ---
 
-## Phase 5: Security, Polish & Deployment
+## Phase 5: Security, Polish & Deployment Continued
 
 ### Step 4: Error Boundaries
 
@@ -6373,7 +6416,7 @@ Clicking an active preset button toggles it off (dispatches `CLEAR_DATE`), consi
 
 ---
 
-## Phase 7: Map Camera Polish
+## Phase 6: Continued
 
 ### Step 1: Popup Centering with Mapbox Padding
 
@@ -6528,7 +6571,7 @@ On mobile, Sonner's built-in `@media (max-width:600px)` stylesheet forces the to
 
 ---
 
-## Phase 8: Data Ingestion Pipeline
+## Phase 7: Data Ingestion Pipeline
 
 So far CrashMap has been querying the same data that was loaded manually into the database before development started. For the app to stay current, we need a repeatable way to pull new crash data from the source and insert it into the database. This phase covers building that pipeline and running the initial full backfill.
 
