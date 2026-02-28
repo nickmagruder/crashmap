@@ -6145,12 +6145,12 @@ const mapStyle = filterState.satellite
 
 When satellite is on, Mapbox switches the basemap immediately — no page reload needed. Dark/light mode continues to work normally when satellite is off.
 
-#### Reduce dot opacity on satellite
+#### Increase dot opacity on satellite
 
-Crash dots are semi-transparent by design, but against aerial imagery the colors can wash out. Move the layer definitions inside the `CrashLayer` component (so they can reference live state) and subtract 10% opacity when satellite is on:
+Crash dots are semi-transparent by design, but against aerial imagery they can be hard to pick out. Move the layer definitions inside the `CrashLayer` component (so they can reference live state) and increase opacity by 15% when satellite is on:
 
 ```ts
-const opacityOffset = filterState.satellite ? 0.1 : 0
+const opacityOffset = filterState.satellite ? 0.15 : 0
 
 const deathLayer: LayerProps = {
   paint: {
@@ -6160,7 +6160,7 @@ const deathLayer: LayerProps = {
 }
 ```
 
-This small nudge (e.g. Death: 0.85 → 0.75) keeps the dots visible and readable against the busier satellite background.
+This nudge (e.g. Death: 0.85 → 1.0) makes each dot bolder and easier to distinguish against the satellite background.
 
 ### Step 2: Add Map Links to the Crash Popup
 
@@ -6231,11 +6231,11 @@ import type { SelectedCrash } from './CrashPopup'
 
 ---
 
-## Step N: Monitoring — Sentry (Error Tracking) + Lighthouse CI (Web Vitals)
+### Step 4: Monitoring — Sentry (Error Tracking) + Lighthouse CI (Web Vitals)
 
 With the app deployed and publicly accessible, adding observability gives you visibility into real-world errors and performance without waiting for user reports.
 
-### Part 1: Sentry — Error Tracking
+#### Part 1: Sentry — Error Tracking
 
 **Install the SDK:**
 
@@ -6325,7 +6325,7 @@ The wizard will:
 
 > **Note on sub-route redirects:** `FilterUrlSync` uses `router.replace` to sync filter state to the URL. If it replaces with just `?params` (no path), Next.js keeps the current route. But if params are empty (all defaults), the original code replaced to `'/'` literally — which sends you back to the homepage from any sub-route like `/sentry-example-page`. Fix: use `usePathname()` and replace to `${pathname}?${search}` or `pathname` instead.
 
-### Part 2: Lighthouse CI — Web Vitals
+#### Part 2: Lighthouse CI — Web Vitals
 
 Lighthouse CI runs Google's Lighthouse audit against your deployed app and uploads the report to a temporary public URL after every merge to `main`.
 
@@ -6382,11 +6382,11 @@ The job depends on `deploy`, so it only runs after a successful Render deploymen
 
 No `assert` block means Lighthouse never fails CI — it's purely observational. For a map-heavy WebGL app you'd expect Performance scores in the 60–80 range depending on device/connection; Accessibility and Best Practices should be 90+.
 
-## Health Check Endpoint
+### Step 5: Health Check Endpoint
 
 Render uses a health check endpoint to determine when your app is ready to serve traffic after a deploy and to detect when the running service has gone unhealthy. Without one, Render falls back to TCP checks (just verifying the port is open), which can declare a service healthy before Next.js has finished initializing.
 
-### Create the endpoint
+#### Create the endpoint
 
 Add `app/api/health/route.ts`:
 
@@ -6400,7 +6400,7 @@ export function GET() {
 
 `force-dynamic` tells Next.js not to statically cache this route. Without it, the build would pre-render the response and every request would receive the cached output — defeating the purpose of a live health check.
 
-### Declare it in render.yaml
+#### Declare it in render.yaml
 
 Add `healthCheckPath: /api/health` to both services:
 
@@ -6417,7 +6417,7 @@ services:
     # ...
 ```
 
-### Set it in the Render dashboard
+#### Set it in the Render dashboard
 
 The `render.yaml` declaration covers new service creation, but for existing services you also need to set it manually:
 
@@ -6432,19 +6432,19 @@ Render polls the health check path every 10 seconds. If it returns a non-2xx sta
 
 ---
 
-## Adding a Support Panel
+### Step 6: Adding a Support Panel
 
-### Why
+#### Why
 
 A free public app still has hosting costs. Adding a visible but non-intrusive way for users to support the project is worthwhile — and it belongs in the UI, not buried in a README.
 
-### Approach: Multi-View Left Panel
+#### Approach: Multi-View Left Panel
 
 Rather than adding a third panel type, we reuse the existing left info panel and add a `view` prop (`'info' | 'support'`). A new Heart button in the top-left map controls opens the panel in `'support'` view; the original Info button opens it in `'info'` view. Both views share the same panel shell (header, pin/close buttons, scroll area) — only the content component swaps.
 
 View switching is managed in `AppShell` via `infoPanelView` state and an `onSwitchView` callback passed down to the content components. The content components render a "← Back to Info" or "❤️ Support this App" link that calls the callback, switching the view in-place without closing the panel.
 
-### Key files
+#### Key files
 
 - `components/info/PanelCredit.tsx` — Shared author credit block (name + tagline), used at the top of both content views.
 - `components/info/SupportPanelContent.tsx` — Support view content: blurb, donate links, contact link.
@@ -6452,11 +6452,13 @@ View switching is managed in `AppShell` via `infoPanelView` state and an `onSwit
 - `components/info/InfoOverlay.tsx` — Same extension for the mobile overlay.
 - `components/layout/AppShell.tsx` — Adds `infoPanelView` state; Heart button sets view to `'support'` and opens the panel; Info button sets it to `'info'`.
 
-### Dark-mode button fix
+#### Dark-mode button fix
 
 The top map buttons use `variant="outline"` which picks up `border-input` in dark mode — `oklch(1 0 0 / 15%)`, a semi-transparent white that looks washed out over the map. Fix: add `className="dark:bg-zinc-900 dark:border-zinc-700"` to each button for a solid, clearly-defined appearance. `ThemeToggle` needed a one-line `className` prop added to pass the class through to the underlying `Button`.
 
-### Accessible color scale
+---
+
+### Step 7: Accessible Color Scale
 
 Map dots rely on color to communicate severity — which is a problem for the ~8% of males with red-green color blindness who can't distinguish the standard dark-red / orange / yellow / green scale. We add a toggle that swaps to the **Paul Tol Muted** palette, a scheme specifically engineered to be distinguishable under all forms of color vision deficiency (protanopia, deuteranopia, tritanopia).
 
@@ -6490,11 +6492,13 @@ export const ACCESSIBLE_COLORS: Record<SeverityBucket, string> = {
 
 The result: users can enable the accessible palette from either the map toolbar or the filter panel, and the map dots, severity checkboxes, and info panel legend all update instantly in sync.
 
+> **Note:** `CrashPopup.tsx` retains its own hardcoded `SEVERITY_COLORS` map and does not yet read `filterState.accessibleColors` — the color dot inside the popup won't switch palettes when accessible mode is active. This is a known gap to address in a future iteration.
+
 ---
 
-## Date Filter Overhaul
+### Step 8: Date Filter Overhaul
 
-### Step: Establishing a React file structure convention
+#### Establishing a React file structure convention
 
 As components grew more complex, we adopted a consistent internal ordering for all React files. Every component now layers its contents in this order — no section labels or comments needed:
 
@@ -6508,7 +6512,7 @@ As components grew more complex, we adopted a consistent internal ordering for a
 
 This makes it easy to scan any file and immediately find what you're looking for.
 
-### Step: Overhauling the date range picker
+#### Overhauling the date range picker
 
 The original `DateFilter` used a basic `react-day-picker` Calendar with `mode="range"` and committed the range as soon as both dates were clicked. Several UX problems accumulated over time:
 
@@ -6542,7 +6546,7 @@ With `month` controlled externally, react-day-picker stops auto-navigating. The 
 
 The `doCommit()` helper returns a boolean so `handleApply` can keep the popover open on validation failure.
 
-### Step: Data bounds in FilterContext
+#### Data bounds in FilterContext
 
 To validate user-entered dates, we need to know the actual date range of data in the database. We added `minDate` and `maxDate` to the existing `FilterOptions` GraphQL type:
 
@@ -6567,7 +6571,7 @@ minDate: async () => {
 
 On the client side, `dataBounds: { minDate: string; maxDate: string } | null` was added to `FilterState` (initialized to `null`). A `useQuery(GET_FILTER_OPTIONS)` call in `DateFilter` dispatches `SET_DATE_BOUNDS` when the data arrives. Since Apollo caches the result, this runs once per app load.
 
-### Step: Toast validation errors
+#### Toast validation errors
 
 We installed [Sonner](https://sonner.emilkowal.ski/) via `npx shadcn@latest add sonner` and added `<Toaster />` to `app/layout.tsx`.
 
@@ -6592,13 +6596,13 @@ Text inputs also fire a format error toast when the user types exactly 10 charac
 
 ---
 
-## Date Filter — shadcn Range Calendar Refactor
+### Step 9: Date Filter — shadcn Range Calendar Refactor
 
-### Overview
+#### Overview
 
 The custom date picker (text inputs, year-nav arrows, Apply button, deferred-commit) was replaced with the standard shadcn Range Calendar. This reduced `DateFilter.tsx` from 247 to ~155 lines and eliminated several classes of state-sync bugs.
 
-### Step 1: Replace the custom picker with the default shadcn Calendar
+#### Part 1: Replace the custom picker with the default shadcn Calendar
 
 The existing `<Calendar>` component already supports `mode="range"` — no new package needed. Remove the text inputs, year-nav arrows, and Apply button. Let immediate commit replace the deferred-commit pattern:
 
@@ -6617,7 +6621,7 @@ The existing `<Calendar>` component already supports `mode="range"` — no new p
 
 `captionLayout="dropdown"` replaces the custom year-nav arrows with DayPicker's built-in month/year dropdowns. `startMonth`/`endMonth` bound the dropdown to actual data dates.
 
-### Step 2: Fix DayPicker v9 single-click behavior
+#### Part 2: Fix DayPicker v9 single-click behavior
 
 DayPicker v9 changed range mode: a single click immediately sets `from === to` (a zero-length range), which would trigger `doCommit` on the first click and close the popover. Intercept this case and treat it as start-only:
 
@@ -6639,7 +6643,7 @@ function handleRangeSelect(range: DateRange | undefined) {
 }
 ```
 
-### Step 3: Control the month state to fix dropdown navigation
+#### Part 3: Control the month state to fix dropdown navigation
 
 Without controlled month state, using a year/month dropdown fires DayPicker's internal navigation in a way that can corrupt the pending range selection. Add `month`/`setMonth` state and wire it to `onMonthChange`:
 
@@ -6657,7 +6661,7 @@ function handleOpenChange(next: boolean) {
 }
 ```
 
-### Step 4: Skip the query when no date filter is active
+#### Part 4: Skip the query when no date filter is active
 
 When `dateFilter.type === 'none'`, skip the GraphQL query and force `displayData` to `undefined` so the map clears immediately (rather than showing stale `previousData`):
 
@@ -6673,7 +6677,7 @@ const { data, previousData, error, loading } = useQuery<GetCrashesQuery>(GET_CRA
 const displayData = noDateFilter ? undefined : (data ?? previousData)
 ```
 
-### Step 5: Add a persistent warning banner
+#### Part 5: Add a persistent warning banner
 
 Rather than a transient toast, render a conditional banner absolutely positioned at the top-center of the map in `AppShell.tsx`:
 
@@ -6694,15 +6698,15 @@ Rather than a transient toast, render a conditional banner absolutely positioned
 
 ---
 
-## Date Filter — Named Preset Buttons
+### Step 10: Date Filter — Named Preset Buttons
 
 Instead of hardcoded year buttons (2025, 2024, …), the date filter now uses four dynamic named presets that always reflect the actual available data.
 
-### Why presets instead of years?
+#### Why presets instead of years?
 
 Year buttons have two problems: they go stale (2025 becomes less useful once 2026 data exists), and they require a manual update with every new data import. Named presets like "YTD" or "90 Days" are always relevant and anchor to `dataBounds.maxDate` — the latest date actually in the database — so they never return empty results for dates after the last import.
 
-### Step 1: Add `DatePreset` type and utility to `FilterContext`
+#### Part 1: Add `DatePreset` type and utility to `FilterContext`
 
 Add the type and a shared utility that computes concrete date ranges from a preset name + data bounds:
 
@@ -6775,23 +6779,23 @@ const dateVars = (() => {
 
 If `dataBounds` hasn't loaded yet when a preset is active, `toCrashFilter` returns no date variables — but the query will be skipped at the call site anyway (see Step 3).
 
-Change the default filter to `ytd`:
+Change the default filter to `90d`:
 
 ```ts
 const initialState: FilterState = {
   ...
-  dateFilter: { type: 'preset', preset: 'ytd' },
+  dateFilter: { type: 'preset', preset: '90d' },
   ...
 }
 ```
 
-### Step 2: Update URL encode/decode for presets
+#### Part 2: Update URL encode/decode for presets
 
 Presets are stored by name in the URL so the active button stays highlighted on page reload:
 
 ```ts
-// Encode: ?date=90d, ?date=last-year, ?date=3y; ytd is the default so omit it
-if (dateFilter.type === 'preset' && dateFilter.preset !== 'ytd') {
+// Encode: ?date=ytd, ?date=last-year, ?date=3y; 90d is the default so omit it
+if (dateFilter.type === 'preset' && dateFilter.preset !== '90d') {
   params.set('date', dateFilter.preset)
 }
 
@@ -6804,7 +6808,7 @@ if (rawDate !== null && VALID_PRESETS.has(rawDate)) {
 
 Old `?year=2025` URLs still decode to `{ type: 'year', year: 2025 }` for backward compatibility — the data will still load; the button just won't highlight (year buttons no longer exist in the UI).
 
-### Step 3: Skip the query until `dataBounds` loads
+#### Part 3: Skip the query until `dataBounds` loads
 
 Presets need `dataBounds.maxDate` before they can compute a query range. Add a second skip condition in `CrashLayer`:
 
@@ -6820,16 +6824,16 @@ const displayData = skipQuery ? undefined : (data ?? previousData)
 
 This prevents the map from firing an unbounded query on initial render before the filter options query returns. In practice, `dataBounds` resolves quickly since `GET_FILTER_OPTIONS` is already fetched on app load for the cascading dropdowns.
 
-### Step 4: Update `DateFilter.tsx`
+#### Part 4: Update `DateFilter.tsx`
 
 Replace the year buttons loop with a preset buttons loop, and update the popover trigger label to show the computed date range when a preset is active:
 
 ```tsx
 const QUICK_PRESETS: { id: DatePreset; label: string }[] = [
   { id: 'ytd', label: 'YTD' },
-  { id: '90d', label: '90 Days' },
+  { id: '90d', label: '90d' },
   { id: 'last-year', label: 'Last Year' },
-  { id: '3y', label: '3 Years' },
+  { id: '3y', label: '3yrs' },
 ]
 
 // Resolve preset range for display (also used for calendarSelected seeding)
@@ -6874,9 +6878,7 @@ Clicking an active preset button toggles it off (dispatches `CLEAR_DATE`), consi
 
 ---
 
-## Phase 6: Continued
-
-### Step 1: Popup Centering with Mapbox Padding
+### Step 11: Popup Centering with Mapbox Padding
 
 When a crash is clicked, the map flies to center on the crash coordinates. But since the popup anchors at the bottom of the crash point and renders upward, it can overlap the UI buttons at the top of the screen — especially on mobile.
 
@@ -6893,7 +6895,7 @@ map.flyTo({ center: coords, zoom: targetZoom, pitch: 45, padding, duration: 800 
 
 The `bottom: 70` on mobile accounts for the fixed SummaryBar strip at the bottom of the viewport (~44px + buffer). When the popup closes and the viewport is restored, padding must be explicitly reset to `{ top: 0, bottom: 0, left: 0, right: 0 }` — Mapbox retains the padding state across `flyTo` calls.
 
-### Step 2: Metered Zoom
+### Step 12: Metered Zoom
 
 Jumping straight to zoom 15.5 on every crash click is jarring when the user starts from a state-level view (zoom 7–10). A better UX is to fly halfway to the target zoom, so the user lands at a contextually appropriate level and can click again to go deeper if needed.
 
@@ -6907,7 +6909,7 @@ map.flyTo({ center: coords, zoom: newZoom, ... })
 
 For crash-to-crash clicks (clicking a new crash without closing the popup), `savedViewportRef` is NOT updated — it retains the original pre-popup zoom. This keeps the depth consistent: every crash click from a given starting position lands at the same zoom level, regardless of how many crashes the user has clicked through.
 
-### Step 3: Retaining User Camera Moves During Popup
+### Step 13: Retaining User Camera Moves During Popup
 
 If the user pans or zooms while a popup is open, the saved viewport should update so that dismissing the popup returns to their new position rather than the original one.
 
@@ -6940,7 +6942,7 @@ const handleMoveEnd = useCallback(() => {
 
 Both `flyTo` call sites (popup open and popup close) must set the flag — missing either one causes the saved viewport to get corrupted by the animation's `moveend` event.
 
-### Step 4: Tilt Toggle and Zoom Buttons
+### Step 14: Tilt Toggle and Zoom Buttons
 
 Standard map controls (zoom in/out, tilt toggle) live in `AppShell` at `absolute bottom-14 left-4 md:bottom-6` — above the fixed mobile SummaryBar. They use the same shadcn `Button` `variant="outline"` styling as all other floating controls.
 
@@ -6960,15 +6962,15 @@ The `tilted` state is local to `AppShell` — it only drives the button's `varia
 
 ---
 
-## Display Limit & Warning Toast
+### Step 15: Display Limit & Warning Toast
 
-### Why cap the query?
+#### Why cap the query?
 
 Loading tens of thousands of GeoJSON features into the browser is expensive. We set a hard cap and show a persistent toast when the user's filters exceed it, prompting them to narrow their search.
 
 The cap started at 5,000, was raised to 10,000, and then raised again to **40,000** after confirming acceptable browser performance with the full ~34,000-row Washington dataset. At this limit the toast effectively never fires for the current data, but remains in place as a safety net if the dataset grows.
 
-### Raising the resolver cap
+#### Raising the resolver cap
 
 In `lib/graphql/resolvers.ts`, the `crashes` query has a server-side hard cap:
 
@@ -6978,7 +6980,7 @@ const cappedLimit = Math.min(limit ?? 1000, 40000)
 
 The `totalCount` is always returned (via a parallel `prisma.crashData.count({ where })`), so the client always knows the true total even when results are truncated.
 
-### Frontend query limit
+#### Frontend query limit
 
 In `components/map/CrashLayer.tsx`, a module-level constant keeps the limit in one place:
 
@@ -6989,7 +6991,7 @@ const LIMIT_TOAST_ID = 'crash-limit-warning'
 
 The query uses it directly: `variables: { filter: queryFilter, limit: DISPLAY_LIMIT }`.
 
-### Toast logic
+#### Toast logic
 
 A `useEffect` watches `data` and `skipQuery`. When fresh data arrives and `totalCount > DISPLAY_LIMIT`, it fires a persistent Sonner toast with a stable ID so it upserts rather than stacking:
 
@@ -7013,7 +7015,7 @@ useEffect(() => {
 
 `duration: Infinity` keeps it visible until the user either dismisses it manually or narrows their filters below the limit (which triggers `toast.dismiss`).
 
-### Toast positioning — a Sonner v2 gotcha
+#### Toast positioning — a Sonner v2 gotcha
 
 Sonner v2 has two separate CSS variable systems: `--offset-*` for desktop and `--mobile-offset-*` for screens ≤600px. The `offset` prop only sets `--offset-*` — it has **no effect on mobile**. To control the mobile position, use the dedicated `mobileOffset` prop:
 
