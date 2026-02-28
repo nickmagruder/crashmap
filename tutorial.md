@@ -3409,9 +3409,8 @@ The filter controls we'll build, in order:
 
 1. **Mode toggle** — Bicyclist / Pedestrian / All
 2. **Severity checkboxes** — Death, Major Injury, Minor Injury; opt-in None/Unknown
-3. **Year quick-select** — four buttons for the most recent years
-4. **Date range picker** — custom start/end date via Calendar popover
-5. **Geographic cascading dropdowns** — State → County → City
+3. **Date filter** — named preset buttons (YTD, 90 Days, Last Year, 3 Years) plus a custom date range picker
+4. **Geographic filter** — County and City dropdowns (Washington-only dataset, both decoupled) plus Map Controls (viewport mode, satellite view)
 
 Each step in this phase follows the same pattern:
 
@@ -3474,7 +3473,7 @@ export function ModeToggle() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <p className="text-sm font-medium">Mode</p>
       <ToggleGroup type="single" variant="outline" value={value} onValueChange={handleChange}>
         <ToggleGroupItem value="all" aria-label="All modes">
@@ -3537,7 +3536,7 @@ Selecting a mode in the UI triggers this chain:
 3. `CrashLayer` passes this to the `GET_CRASHES` query variables
 4. Apollo re-executes the query; the resolver's `buildWhere()` adds `where: { mode: { equals: "Bicyclist" } }`
 5. PostgreSQL returns only bicyclist crashes; the map re-renders with the filtered GeoJSON
-6. `getActiveFilterLabels(filterState)` returns `["Bicyclists"]`; `SummaryBar` renders it as a badge
+6. `getActiveFilterLabels(filterState)` returns `["🚲"]`; `SummaryBar` renders it as a badge
 
 ### Step 2: Severity Filter
 
@@ -3572,42 +3571,59 @@ const effectiveSeverity = [
 ]
 ```
 
-#### Color Indicators
+#### Centralizing Crash Colors in `lib/crashColors.ts`
 
-Each checkbox row includes a small colored dot that matches the circle color on the map, giving users an immediate visual connection between the filter and what they'll see:
+Before building the `SeverityFilter` component, we need to create a shared color palette file. Three components need to know severity colors — `CrashLayer` (for the Mapbox circle paint), `SeverityFilter` (for the legend dots), and `InfoPanelContent` (for the map key in the info panel). Defining the colors in one place ensures they always stay in sync.
+
+Create `lib/crashColors.ts`:
 
 ```ts
-const SEVERITY_COLORS: Record<SeverityBucket | 'None', string> = {
-  Death: '#B71C1C',
-  'Major Injury': '#E65100',
-  'Minor Injury': '#F9A825',
+import type { SeverityBucket } from '@/context/FilterContext'
+
+type ColorMap = Record<SeverityBucket, string>
+
+/**
+ * Standard severity color palette.
+ * Rendered bottom-to-top: None → Minor → Major → Death.
+ */
+export const STANDARD_COLORS: ColorMap = {
   None: '#C5E1A5',
+  'Minor Injury': '#FDD835',
+  'Major Injury': '#F57C00',
+  Death: '#B71C1C',
+}
+
+/**
+ * Accessible severity color palette — Paul Tol Muted scheme.
+ * Distinguishable under all forms of color vision deficiency
+ * (protanopia, deuteranopia, tritanopia).
+ */
+export const ACCESSIBLE_COLORS: ColorMap = {
+  None: '#44AA99',
+  'Minor Injury': '#DDCC77',
+  'Major Injury': '#CC6677',
+  Death: '#332288',
 }
 ```
 
-These are the same values defined in `CrashLayer.tsx` for the Mapbox `match` expression — if the map colors ever change, both places need updating.
+Two palettes: `STANDARD_COLORS` for the default view, and `ACCESSIBLE_COLORS` (Paul Tol Muted scheme) for when the user has enabled the accessible colors toggle. Exporting both from one file means that any component can import the pair and select based on `filterState.accessibleColors`.
 
 #### Building SeverityFilter
 
-Create `components/filters/SeverityFilter.tsx`:
+Create `components/filters/SeverityFilter.tsx`. Each checkbox row includes a colored dot that matches the map circle for that severity bucket, giving users an immediate visual connection:
 
 ```tsx
 'use client'
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { useFilterContext, type SeverityBucket } from '@/context/FilterContext'
-
-const SEVERITY_COLORS: Record<SeverityBucket | 'None', string> = {
-  Death: '#B71C1C',
-  'Major Injury': '#E65100',
-  'Minor Injury': '#F9A825',
-  None: '#C5E1A5',
-}
+import { STANDARD_COLORS, ACCESSIBLE_COLORS } from '@/lib/crashColors'
 
 const BUCKETS: SeverityBucket[] = ['Death', 'Major Injury', 'Minor Injury']
 
 export function SeverityFilter() {
   const { filterState, dispatch } = useFilterContext()
+  const colors = filterState.accessibleColors ? ACCESSIBLE_COLORS : STANDARD_COLORS
 
   function toggleBucket(bucket: SeverityBucket, checked: boolean) {
     const next = checked
@@ -3630,7 +3646,7 @@ export function SeverityFilter() {
             />
             <span
               className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: SEVERITY_COLORS[bucket] }}
+              style={{ backgroundColor: colors[bucket] }}
               aria-hidden="true"
             />
             <label htmlFor={`severity-${bucket}`} className="cursor-pointer text-sm leading-none">
@@ -3649,7 +3665,7 @@ export function SeverityFilter() {
           />
           <span
             className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: SEVERITY_COLORS['None'] }}
+            style={{ backgroundColor: colors['None'] }}
             aria-hidden="true"
           />
           <label htmlFor="severity-none" className="cursor-pointer text-sm leading-none">
@@ -3663,6 +3679,8 @@ export function SeverityFilter() {
 ```
 
 A few design decisions worth noting:
+
+**Importing colors from `lib/crashColors.ts`.** Rather than hardcoding color values inline, `SeverityFilter` imports `STANDARD_COLORS` and `ACCESSIBLE_COLORS` from the shared palette file. The active palette is selected at render time based on `filterState.accessibleColors`. `CrashLayer` and `InfoPanelContent` import from the same file, so changing a color in one place updates all three.
 
 **`checked === true` guard.** The Radix `Checkbox` `onCheckedChange` callback receives `boolean | 'indeterminate'`. The `=== true` comparison handles this cleanly without a cast or conditional branch.
 
@@ -3683,97 +3701,221 @@ Drop `<SeverityFilter />` below `<ModeToggle />` in both surfaces. The `space-y-
 
 ---
 
-### Step N: Date Filter — Year Quick-Select and Custom Range Picker
+### Step 3: Date Filter — Named Preset Buttons and Custom Range Picker
 
-The date filter lets users narrow crashes to a specific year with one click, or pick an arbitrary start/end date with a calendar. Both modes write to the same `dateFilter` slot in `FilterContext`, so selecting one always clears the other.
+The date filter lets users narrow crashes by date in two ways: one-click named preset buttons (YTD, 90 Days, Last Year, 3 Years), or a custom start/end date via a calendar popover. Both modes write to the same `dateFilter` slot in `FilterContext`.
 
-#### Year Quick-Select Buttons
+#### Why Named Presets Instead of Year Buttons?
 
-`FilterContext` already has everything we need: `SET_DATE_YEAR`, `CLEAR_DATE`, and the `DateFilter` discriminated union type. The component just needs to compute the four most recent years and toggle state on click.
+An initial design used four buttons for the most recent calendar years (2024, 2023, ...). This was replaced with named, time-relative presets because:
 
-A key design choice: compute years at runtime from `new Date().getFullYear()` rather than hardcoding them. This means the buttons stay current year-over-year without any code change.
+- **Year buttons go stale.** A hardcoded "2024" button becomes misleading once the dataset has 2026 data.
+- **Presets stay meaningful.** "YTD" always means "this year so far"; "Last Year" always means the previous full calendar year — no hardcoding, no maintenance.
+- **Flexible anchoring.** Preset ranges are computed relative to `dataBounds.maxDate` (the most recent crash in the database), so they never extend beyond available data.
 
-```tsx
-const CURRENT_YEAR = new Date().getFullYear()
-const QUICK_YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3, CURRENT_YEAR - 4]
+The four presets defined in `FilterContext`:
+
+```ts
+export type DatePreset = 'ytd' | '90d' | 'last-year' | '3y'
+
+export const PRESET_LABELS: Record<DatePreset, string> = {
+  ytd: 'YTD',
+  '90d': '90 Days',
+  'last-year': 'Last Year',
+  '3y': '3 Years',
+}
 ```
 
-Clicking the active year acts as a toggle — it deselects by dispatching `CLEAR_DATE`. Clicking any other year dispatches `SET_DATE_YEAR`. The active button uses the `default` variant; inactive buttons use `outline`.
+#### Loading Data Bounds
+
+Before the preset buttons can show meaningful date ranges, `DateFilter` needs to know the actual min/max dates in the database. We reuse the existing `GET_FILTER_OPTIONS` query — but now we also select `minDate` and `maxDate` fields that were added to `FilterOptions` in Phase 2:
+
+```ts
+// lib/graphql/queries.ts — updated type
+export type GetFilterOptionsQuery = {
+  filterOptions: {
+    states: string[]
+    years: number[]
+    minDate: string | null
+    maxDate: string | null
+  }
+}
+
+// Updated query document
+export const GET_FILTER_OPTIONS = gql`
+  query GetFilterOptions {
+    filterOptions {
+      states
+      years
+      minDate
+      maxDate
+    }
+  }
+`
+```
+
+`DateFilter` fires this query on mount and stores the result in context via `SET_DATE_BOUNDS`:
 
 ```tsx
-function handleYearClick(year: number) {
-  if (selectedYear === year) {
+const { data: boundsData } = useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
+
+useEffect(() => {
+  const { minDate, maxDate } = boundsData?.filterOptions ?? {}
+  if (minDate && maxDate) {
+    dispatch({ type: 'SET_DATE_BOUNDS', payload: { minDate, maxDate } })
+  }
+}, [boundsData, dispatch])
+```
+
+`dataBounds` in `FilterContext` is `null` until this resolves. `CrashLayer` skips the GraphQL query when `dateFilter.type === 'preset'` and `dataBounds === null` to avoid an unbounded initial query before we know the data range.
+
+#### Preset Buttons with Toggle Behavior
+
+The preset buttons use a `QUICK_PRESETS` array and dispatch `SET_DATE_PRESET`. Clicking an already-active preset toggles it off with `CLEAR_DATE`:
+
+```tsx
+const QUICK_PRESETS: { id: DatePreset; label: string }[] = [
+  { id: 'ytd', label: 'YTD' },
+  { id: '90d', label: '90d' },
+  { id: 'last-year', label: 'Last Year' },
+  { id: '3y', label: '3yrs' },
+]
+
+function handlePresetClick(preset: DatePreset) {
+  if (selectedPreset === preset) {
     dispatch({ type: 'CLEAR_DATE' })
   } else {
-    dispatch({ type: 'SET_DATE_YEAR', payload: year })
+    dispatch({ type: 'SET_DATE_PRESET', payload: preset })
   }
 }
 ```
 
-#### Custom Range Picker — Popover + Calendar
+The active preset button uses `variant="default"`; inactive buttons use `variant="outline"`.
 
-For arbitrary date ranges we use the shadcn `Popover` with a `Calendar` inside. The Calendar from `react-day-picker` has a built-in `mode="range"` that handles the two-click selection pattern natively — you don't need to manage which end is being picked.
+#### Calendar Popover with DayPicker v9 Quirk
 
-The tricky part is knowing when to commit. The `onSelect` callback fires after every click, with an incomplete `DateRange` (only `from` set) after the first click and a complete one (both `from` and `to`) after the second. We only dispatch to context when both are present, then close the popover:
+For arbitrary date ranges we use the shadcn `Popover` with a `Calendar` inside. The calendar uses `mode="range"` and `captionLayout="dropdown"` for month/year navigation. We bind `month`/`onMonthChange` as controlled state so that opening the popover always lands on the start of the active range rather than jumping to today.
+
+**DayPicker v9 quirk.** In react-day-picker v9, the first click sets both `from` and `to` to the same date (changed from v8, which left `to` undefined). Without a workaround, the second click would register as a range-end on the same date as the range-start. Fix: intercept in `onSelect` and treat `from === to` as a start-only selection:
 
 ```tsx
 function handleRangeSelect(range: DateRange | undefined) {
+  // DayPicker v9 sets from === to on the first click; treat that as start-only
+  if (range?.from && range?.to && range.from.getTime() === range.to.getTime()) {
+    setPendingRange({ from: range.from, to: undefined })
+    return
+  }
   setPendingRange(range)
   if (range?.from && range?.to) {
-    dispatch({
-      type: 'SET_DATE_RANGE',
-      payload: {
-        startDate: format(range.from, 'yyyy-MM-dd'),
-        endDate: format(range.to, 'yyyy-MM-dd'),
-      },
-    })
-    setOpen(false)
+    const committed = doCommit(range.from, range.to)
+    if (committed) {
+      setPendingRange(undefined)
+      setOpen(false)
+    }
   }
 }
 ```
 
 `pendingRange` is local state that tracks the in-progress selection. It lets the calendar render the intermediate state (one end highlighted) while keeping context clean until both ends are chosen. When the popover closes without completing a range, `pendingRange` resets to `undefined`.
 
-#### Hydrating the Calendar from Stored Context
+#### Validating Against Data Bounds
 
-When the user reopens the popover after a range is committed, the calendar should reflect the current selection. The stored dates in context are ISO strings (`"2024-01-15"`), but the Calendar needs `Date` objects. We use `parseISO` from `date-fns` rather than `new Date(string)` to avoid timezone-midnight issues — `new Date("2024-01-15")` creates a UTC midnight date that can display as Jan 14 in negative-offset timezones:
+Before committing, `doCommit` runs `validateRange` which checks that the selected range falls within `dataBounds`. If not, it fires a `toast.error` and returns without dispatching:
 
 ```tsx
-const calendarSelected: DateRange | undefined =
-  pendingRange ??
-  (selectedRange
-    ? { from: parseISO(selectedRange.startDate), to: parseISO(selectedRange.endDate) }
-    : undefined)
+function validateRange(from: Date, to: Date): string | null {
+  if (isBefore(to, from)) return 'Start date must be before end date'
+  if (dataBounds) {
+    const min = parseISO(dataBounds.minDate)
+    const max = parseISO(dataBounds.maxDate)
+    if (isBefore(from, min))
+      return `Data starts ${format(min, DATE_DISPLAY_FORMAT)} — no earlier records available`
+    if (isAfter(to, max))
+      return `Data ends ${format(max, DATE_DISPLAY_FORMAT)} — no later records available`
+  }
+  return null
+}
+
+function doCommit(from: Date, to: Date): boolean {
+  const error = validateRange(from, to)
+  if (error) {
+    toast.error(error)
+    return false
+  }
+  dispatch({
+    type: 'SET_DATE_RANGE',
+    payload: {
+      startDate: format(from, 'yyyy-MM-dd'),
+      endDate: format(to, 'yyyy-MM-dd'),
+    },
+  })
+  return true
+}
 ```
 
-`pendingRange` takes priority over the committed range so that in-progress clicks update the calendar immediately.
+#### Seeding the Calendar Month on Open
 
-#### "Clear dates" Footer
+When the popover opens, we seed the controlled `month` state to the start of the active range. This prevents the calendar from jumping to today when the user has a range selected:
 
-A "Clear dates" button inside the popover appears only when a range is committed. It dispatches `CLEAR_DATE`, resets `pendingRange`, and closes the popover — a single action that restores the filter to its default state.
+```tsx
+function handleOpenChange(next: boolean) {
+  if (next) {
+    if (activePresetRange) {
+      setMonth(parseISO(activePresetRange.startDate))
+    } else if (selectedRange) {
+      setMonth(parseISO(selectedRange.startDate))
+    }
+  }
+  if (!next) setPendingRange(undefined)
+  setOpen(next)
+}
+```
+
+`activePresetRange` is computed by calling `presetToDateRange(selectedPreset, dataBounds)` when both are non-null. This resolves the stored preset identifier to a concrete date range for display purposes, without changing the stored state from `{ type: 'preset', preset: '...' }`.
+
+#### Calendar Bounds
+
+The calendar's navigable range is bounded by `dataBounds` using DayPicker v9's `startMonth`/`endMonth` props (note: not `fromYear`/`toYear` — those are v8 names):
+
+```tsx
+<Calendar
+  mode="range"
+  selected={calendarSelected}
+  onSelect={handleRangeSelect}
+  captionLayout="dropdown"
+  month={month}
+  onMonthChange={handleMonthChange}
+  startMonth={dataBounds ? parseISO(dataBounds.minDate) : undefined}
+  endMonth={dataBounds ? parseISO(dataBounds.maxDate) : undefined}
+/>
+```
+
+#### Clear Button
+
+A "Clear" button inside the popover appears when `canClear` is true (a range or preset is active, or a pending selection is in progress). It dispatches `CLEAR_DATE` and resets local state:
+
+```tsx
+function handleClear() {
+  dispatch({ type: 'CLEAR_DATE' })
+  setPendingRange(undefined)
+}
+```
 
 #### Wiring DateFilter to Both Surfaces
 
-Add `<DateFilter />` between `<ModeToggle />` and `<SeverityFilter />` in both `Sidebar` and `FilterOverlay`. The section heading is "Date" (not "Year") since it now covers two distinct input modes.
+Add `<DateFilter />` between `<ModeToggle />` and `<SeverityFilter />` in both `Sidebar` and `FilterOverlay`. The section heading is "Date" since it covers both preset and custom range modes.
 
 ---
 
-## Step N: Geographic Cascading Dropdowns (State → County → City)
+### Step 4: Geographic Filter — County, City, and Map Controls
 
-The last filter dimension is geography. Users can narrow the map to a specific state, then a county within that state, then a city within that county. Each level is populated from the `filterOptions` GraphQL query — the same query that powers the years list — using the `filter_metadata` materialized view we created in Phase 1.
+The last filter section combines location filters with map display controls. Since the dataset is Washington-only, there is no state selector — county and city both load all Washington options up front. The section also houses "Update search as map moves" and "Satellite view" toggles, which were built around the same time and fit naturally here.
 
-### Adding the Query Documents
+#### Adding the County and City Query Documents
 
-Add three new query documents to `lib/graphql/queries.ts`. The first fetches states and years on component mount. The second and third fetch counties and cities lazily — they're only sent when the user has already selected a parent level.
+Add two query documents and their TypeScript result types to `lib/graphql/queries.ts`:
 
 ```ts
-export type GetFilterOptionsQuery = {
-  filterOptions: {
-    states: string[]
-    years: number[]
-  }
-}
-
 export type GetCountiesQuery = {
   filterOptions: {
     counties: string[]
@@ -3785,15 +3927,6 @@ export type GetCitiesQuery = {
     cities: string[]
   }
 }
-
-export const GET_FILTER_OPTIONS = gql`
-  query GetFilterOptions {
-    filterOptions {
-      states
-      years
-    }
-  }
-`
 
 export const GET_COUNTIES = gql`
   query GetCounties($state: String) {
@@ -3812,11 +3945,7 @@ export const GET_CITIES = gql`
 `
 ```
 
-Exporting the TypeScript result types alongside the query documents lets us pass them as type parameters to `useQuery<T>()` without repeating the shape at each call site.
-
-### The GraphQL Schema Supports Field-Level Arguments
-
-The `FilterOptions` type in our schema has field-level arguments for cascading:
+The `FilterOptions` type in the GraphQL schema has field-level arguments:
 
 ```graphql
 type FilterOptions {
@@ -3827,16 +3956,17 @@ type FilterOptions {
 }
 ```
 
-This means `GET_COUNTIES` and `GET_CITIES` are both `filterOptions` queries — just selecting different fields with different arguments. Apollo Client caches them separately by query name and variable hash, so they don't collide with `GET_FILTER_OPTIONS` or with each other.
+Both `GET_COUNTIES` and `GET_CITIES` are `filterOptions` queries — they just select different fields with different arguments. Apollo Client caches them separately by query name and variable hash.
 
-### The GeographicFilter Component
+#### The GeographicFilter Component
 
-Create `components/filters/GeographicFilter.tsx`. It fires three queries and wires their results to three shadcn `Select` dropdowns:
+Create `components/filters/GeographicFilter.tsx`. Since all data is Washington-only, we hardcode `WASHINGTON = 'Washington'` and pass it to both queries unconditionally — no state selector, no skipping:
 
 ```tsx
 'use client'
 
 import { useQuery } from '@apollo/client/react'
+import { Loader2 } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -3844,50 +3974,87 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useFilterContext } from '@/context/FilterContext'
 import {
-  GET_FILTER_OPTIONS,
   GET_COUNTIES,
   GET_CITIES,
-  type GetFilterOptionsQuery,
   type GetCountiesQuery,
   type GetCitiesQuery,
 } from '@/lib/graphql/queries'
 
 const ALL = '__all__'
+const WASHINGTON = 'Washington'
 
 export function GeographicFilter() {
   const { filterState, dispatch } = useFilterContext()
 
-  const { data: optionsData } = useQuery<GetFilterOptionsQuery>(GET_FILTER_OPTIONS)
-  const { data: countiesData } = useQuery<GetCountiesQuery>(GET_COUNTIES, {
-    variables: { state: filterState.state },
-    skip: !filterState.state,
-  })
-  const { data: citiesData } = useQuery<GetCitiesQuery>(GET_CITIES, {
-    variables: { state: filterState.state, county: filterState.county },
-    skip: !filterState.county,
+  const { data: countiesData, loading: countiesLoading } = useQuery<GetCountiesQuery>(
+    GET_COUNTIES,
+    { variables: { state: WASHINGTON } }
+  )
+
+  const { data: citiesData, loading: citiesLoading } = useQuery<GetCitiesQuery>(GET_CITIES, {
+    variables: { state: WASHINGTON },
   })
 
-  const states = optionsData?.filterOptions?.states ?? []
   const counties = countiesData?.filterOptions?.counties ?? []
   const cities = citiesData?.filterOptions?.cities ?? []
+  const isDisabled = filterState.updateWithMovement
 
-  // ...
+  // ...handlers...
 }
 ```
 
 A few design decisions worth noting:
 
-**Sentinel value instead of empty string.** shadcn's `Select` component passes the selected item's `value` string to `onValueChange`. An empty string `""` is falsy and causes issues with the controlled-value logic. Instead, we use `'__all__'` as a sentinel to represent "no selection", then map it to `null` when dispatching to context.
+**Sentinel value instead of empty string.** shadcn's `Select` passes the selected item's `value` string to `onValueChange`. We use `'__all__'` as a sentinel for "no selection" and map it to `null` when dispatching, rather than passing an empty string which has falsy issues.
 
-**`skip` for lazy queries.** Apollo Client's `skip` option prevents a query from running until its preconditions are met. `GET_COUNTIES` skips until a state is selected; `GET_CITIES` skips until a county is selected. This avoids unnecessary network requests on initial load and keeps the query variables well-defined.
+**County and city are fully decoupled.** The original design had `SET_COUNTY` reset the city, but this was changed so users can independently select any county and any city without either resetting the other. The `FilterContext` reducer reflects this: `SET_COUNTY` only updates `county`, and `SET_CITY` only updates `city`. Both lists load all Washington options simultaneously.
 
-**Disabling downstream selects.** The county select is `disabled` when no state is selected or the counties list is empty (still loading). The city select follows the same pattern. This gives users clear affordances about the cascade — you must pick a state before counties become available.
+**Both queries run always.** Unlike the original cascading design, neither query uses `skip`. Loading all counties and all cities for Washington on mount is fast (the lists are small) and makes the selects available immediately.
 
-**Cascading resets are free.** The `FilterContext` reducer already handles cascading: `SET_STATE` clears county and city; `SET_COUNTY` clears city. No extra logic needed in the component — dispatching to context is enough.
+**Skeleton on initial load.** When both queries are still loading and have no data yet, the component renders `Skeleton` placeholders rather than empty selects. Once either query resolves, the real UI renders with a `Loader2` spinner in the heading while the other query is still in flight.
 
-### Wiring to Both Surfaces
+**Disabling selects when "Update with movement" is on.** When `filterState.updateWithMovement` is true, the query uses the viewport bounding box instead of geo text filters. In that mode, county/city selects are `disabled` to avoid confusing the user — the location is the map viewport, not the selected county or city.
+
+#### Map Controls Section
+
+Below the location selects, `GeographicFilter` renders a "Map Controls" section with `Switch` toggles for display modes. These dispatch to `FilterContext` but don't affect the GraphQL query directly — they change how the map renders or how the query's geographic scope is determined:
+
+```tsx
+<div className="space-y-2">
+  <p className="text-sm font-medium">Map Controls</p>
+  <div className="flex items-center gap-2">
+    <Switch
+      id="update-with-movement"
+      checked={filterState.updateWithMovement}
+      onCheckedChange={(checked) =>
+        dispatch({ type: 'SET_UPDATE_WITH_MOVEMENT', payload: checked })
+      }
+    />
+    <Label htmlFor="update-with-movement" className="text-sm cursor-pointer">
+      Update search as map moves
+    </Label>
+  </div>
+  <div className="flex items-center gap-2">
+    <Switch
+      id="satellite-view"
+      checked={filterState.satellite}
+      onCheckedChange={(checked) => dispatch({ type: 'SET_SATELLITE', payload: checked })}
+    />
+    <Label htmlFor="satellite-view" className="text-sm cursor-pointer">
+      Satellite view
+    </Label>
+  </div>
+</div>
+```
+
+When "Update search as map moves" is enabled, `CrashLayer` switches from text-based geo filters to a viewport bounding box (`bbox`) filter, recalculated on every `moveend` event. This allows users to pan freely and have results update in real time.
+
+#### Wiring to Both Surfaces
 
 Add `<GeographicFilter />` at the bottom of the filter list in both `Sidebar` and `FilterOverlay`:
 
@@ -3902,22 +4069,24 @@ import { GeographicFilter } from '@/components/filters/GeographicFilter'
 <GeographicFilter />
 ```
 
-Both surfaces read from the same `FilterContext`, so selecting a state in the mobile overlay and then opening the desktop sidebar will show the same selection — and vice versa. Apollo Client deduplicates network requests, so `GET_FILTER_OPTIONS` only hits the server once regardless of how many `GeographicFilter` instances are mounted.
+Apollo Client deduplicates network requests — `GET_COUNTIES` and `GET_CITIES` are only sent once regardless of how many `GeographicFilter` instances are mounted (desktop sidebar and mobile overlay both mount it).
 
 ---
 
-## Phase 4 (continued): Connecting Filters to the GraphQL Query
+### Step 5: Connecting Filters to the GraphQL Query and Loading State
 
-### How the Wiring Already Works
+#### How the Wiring Already Works
 
 At this point you might wonder: do we need to do anything special to make filter changes trigger a new network request? The answer is no — Apollo Client handles it automatically.
 
 `CrashLayer` reads from `FilterContext` and passes the converted filter to `useQuery`:
 
 ```tsx
+const DISPLAY_LIMIT = 40_000
+
 const { filterState, dispatch } = useFilterContext()
 const { data, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
-  variables: { filter: toCrashFilter(filterState), limit: 5000 },
+  variables: { filter: toCrashFilter(filterState), limit: DISPLAY_LIMIT },
 })
 ```
 
@@ -3925,7 +4094,7 @@ Apollo Client performs a **deep equality comparison** on `variables` before each
 
 The `totalCount` returned by the query feeds back into context via `SET_TOTAL_COUNT`, which `AppShell` reads to populate `SummaryBar`. All of this was already wired when `FilterContext` was first introduced. The only thing genuinely missing was **loading feedback** — the user had no way to know a refetch was happening.
 
-### Adding a Loading Indicator
+#### Adding a Loading Indicator
 
 When filter variables change, Apollo's default behavior (`notifyOnNetworkStatusChange: false`) is to silently re-execute the query and update `data` when it completes. The component doesn't re-render during the wait. This means the SummaryBar shows the old count right up until the new result arrives — fine for fast responses, but confusing on slow connections.
 
@@ -3934,7 +4103,7 @@ We fix this by opting into network status notifications:
 ```tsx
 // CrashLayer.tsx
 const { data, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
-  variables: { filter: toCrashFilter(filterState), limit: 5000 },
+  variables: { filter: toCrashFilter(filterState), limit: DISPLAY_LIMIT },
   notifyOnNetworkStatusChange: true, // re-render during refetch
 })
 ```
@@ -3981,42 +4150,50 @@ useEffect(() => {
 
 The second `useEffect` is a small but important detail: if we dispatched `SET_TOTAL_COUNT` unconditionally, the count would stay correct (Apollo keeps old `data` during refetch). But making it conditional on `!loading` is explicit and makes the intent clear.
 
-Finally, `SummaryBar` accepts an `isLoading` prop and pulses the count text:
+Finally, `SummaryBar` accepts an `isLoading` prop and shows a `Loader2` spinner when a refetch is in flight. Note that crash count is **not** displayed in `SummaryBar` — it was moved to the filter panels (sidebar header and overlay header) so it stays visible while the filter controls are open:
 
 ```tsx
 // SummaryBar.tsx
 interface SummaryBarProps {
-  crashCount?: number | null
   activeFilters?: string[]
   isLoading?: boolean
+  actions?: React.ReactNode
 }
 
-export function SummaryBar({
-  crashCount = null,
-  activeFilters = [],
-  isLoading = false,
-}: SummaryBarProps) {
-  const countLabel = crashCount === null ? '—' : crashCount.toLocaleString()
+export function SummaryBar({ activeFilters = [], isLoading = false, actions }: SummaryBarProps) {
   return (
     <div className="...">
-      <span
-        className={`text-sm font-medium tabular-nums whitespace-nowrap${isLoading ? ' animate-pulse' : ''}`}
-      >
-        {countLabel} crashes
-      </span>
-      {/* ...badges... */}
+      {isLoading && <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden="true" />}
+
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {activeFilters.map((filter) => (
+            <Badge key={filter} variant="secondary" className="text-xs">
+              {filter}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Actions (e.g. export button) — desktop only */}
+      {actions && (
+        <div className="hidden md:flex items-center gap-1 ml-auto">
+          <div className="h-4 w-px bg-border" aria-hidden="true" />
+          {actions}
+        </div>
+      )}
     </div>
   )
 }
 ```
 
-`animate-pulse` is a Tailwind utility that fades the element's opacity in and out. It's subtle enough not to be distracting but immediately communicates "something is loading". `AppShell` passes `filterState.isLoading` to `SummaryBar`.
+The `Loader2` spinner from Lucide React gives a clear, standard loading affordance. The `actions` slot is reserved for the CSV export button (added in Phase 5) and is hidden on mobile. `AppShell` passes `filterState.isLoading` and `getActiveFilterLabels(filterState)` as props to `SummaryBar`.
 
 ---
 
-## Debugging: Browser Extension Hydration Mismatches
+### Step 6: Debugging — Browser Extension Hydration Mismatches
 
-### The Problem
+#### The Problem
 
 After the loading state was added, the browser console showed this warning:
 
@@ -4040,7 +4217,7 @@ The sequence of events:
 
 This is not a bug in the app's code. It would only appear for users with Dark Reader installed.
 
-### The Fix
+#### The Fix
 
 `suppressHydrationWarning` tells React to skip attribute comparison on a specific element:
 
@@ -4065,15 +4242,13 @@ Apply it to any Lucide icon (or other SVG-rendering component) that shows up in 
 
 ---
 
----
+### Step 7: Auto-Zoom on Geographic Filter Change
 
-## Phase 4 (continued): Auto-Zoom on Geographic Filter Change
-
-### Why Auto-Zoom?
+#### Why Auto-Zoom?
 
 Once geographic filters are wired to the query, users can select a state, county, or city and the crash data on the map updates — but the viewport doesn't move. The user has to manually pan and zoom to find their results, which defeats the purpose of a geographic filter. The map should follow the data.
 
-### Design Decisions
+#### Design Decisions
 
 Before writing any code, it's worth being precise about **when** auto-zoom should fire:
 
@@ -4083,7 +4258,7 @@ Before writing any code, it's worth being precise about **when** auto-zoom shoul
 
 This means we can't simply react to `data` changing. Every filter change causes a refetch and a `data` update, but we only want to zoom for geographic ones.
 
-### The Two-Ref Pattern
+#### The Two-Ref Pattern
 
 The complication is that **geographic filter changes and data arrival happen at different React render cycles**:
 
@@ -4101,21 +4276,24 @@ const prevGeoRef = useRef<{ state: string | null; county: string | null; city: s
 })
 const zoomPendingRef = useRef(false)
 
-// Effect 1: fired when state/county/city changes — just sets the flag
+// Effect 1: fired when state/county/city changes — just sets the flag.
+// Skip auto-zoom when updateWithMovement is on (map position is user-driven).
 useEffect(() => {
+  if (filterState.updateWithMovement) return
   const { state, county, city } = filterState
   const prev = prevGeoRef.current
   const changed = state !== prev.state || county !== prev.county || city !== prev.city
   if (!changed) return
   prevGeoRef.current = { state, county, city }
   zoomPendingRef.current = !!(state || county || city)
-}, [filterState.state, filterState.county, filterState.city]) // eslint-disable-line react-hooks/exhaustive-deps
+}, [filterState.state, filterState.county, filterState.city, filterState.updateWithMovement]) // eslint-disable-line react-hooks/exhaustive-deps
 
-// Effect 2: fired when data arrives — executes zoom if flag is set
+// Effect 2: fired when data arrives — executes zoom if flag is set.
+// Uses displayData (not data) so it works correctly when previousData is in use.
 useEffect(() => {
-  if (loading || !zoomPendingRef.current || !map || !data?.crashes?.items?.length) return
+  if (loading || !zoomPendingRef.current || !map || !displayData?.crashes?.items?.length) return
 
-  const points = data.crashes.items.filter((c) => c.latitude != null && c.longitude != null)
+  const points = displayData.crashes.items.filter((c) => c.latitude != null && c.longitude != null)
   if (points.length === 0) return
 
   zoomPendingRef.current = false
@@ -4143,14 +4321,14 @@ useEffect(() => {
     ],
     { padding: 80, duration: 800, maxZoom: 14 }
   )
-}, [data, loading, map])
+}, [displayData, loading, map])
 ```
 
-Effect 1's dependency array lists the three geo filter fields individually (not the whole `filterState` object) so it only runs when geographic values change. The `eslint-disable` comment is needed because the rule sees `filterState` accessed inside the callback and expects the whole object in deps, but accessing the three subproperties inside the deps array is the correct pattern here.
+Effect 1's dependency array lists the three geo filter fields plus `filterState.updateWithMovement` individually so it only runs when those specific values change. The `eslint-disable` comment is needed because the rule sees `filterState` accessed inside the callback and expects the whole object in deps, but accessing the four subproperties inside the deps array is the correct pattern here.
 
-Effect 2 uses `useRef` for `zoomPendingRef` rather than `useState` — we don't want setting the flag to trigger a re-render, we just want to store state across render cycles.
+Effect 2 uses `displayData` rather than `data` because `CrashLayer` uses `data ?? previousData` to keep the previous result visible while a refetch is in flight. Using raw `data` would cause Effect 2 to miss the zoom when the result comes from the cache. Effect 2 also uses `useRef` for `zoomPendingRef` rather than `useState` — we don't want setting the flag to trigger a re-render, we just want to store state across render cycles.
 
-### Where This Lives
+#### Where This Lives
 
 Both effects go inside `CrashLayer.tsx`, which already has access to `useMap()` (for `map`) and `useFilterContext()` (for `filterState`). No prop drilling, no new context fields, no API changes.
 
@@ -4167,19 +4345,19 @@ export function CrashLayer() {
 }
 ```
 
-### Calculating Bounds Client-Side vs. Server-Side
+#### Calculating Bounds Client-Side vs. Server-Side
 
 An alternative approach would be to add a `crashBounds(filter)` GraphQL query that returns `{ minLat, minLng, maxLat, maxLng }` computed by the database. The database's min/max aggregation would scale to millions of rows trivially.
 
 We chose client-side bounds instead because:
 
-- The crash data (up to 5000 rows) is **already loaded** by the existing `GET_CRASHES` query
-- Client-side min/max over 5000 points is instantaneous
+- The crash data (up to 40,000 rows) is **already loaded** by the existing `GET_CRASHES` query
+- Client-side min/max over 40,000 points is instantaneous
 - No new API surface, no schema changes, no extra network round-trip
 
-If the dataset grows to hundreds of thousands of rows (and the query limit is raised accordingly), revisit this — the DB approach would then be more efficient.
+If the dataset grows beyond the display limit and the limit is raised accordingly, revisit this — the DB approach would then be more efficient.
 
-### Edge Cases
+#### Edge Cases
 
 | Situation                             | Behavior                                                                                     |
 | ------------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -4191,9 +4369,9 @@ If the dataset grows to hundreds of thousands of rows (and the query limit is ra
 
 ---
 
-## Phase 4 (continued): Default Filter State
+### Step 8: Default Filter State
 
-### Starting With Focused Data
+#### Starting With Focused Data
 
 When a user first opens CrashMap, presenting no crashes at all (empty map, filters cleared) is a poor experience. The application has a specific dataset — Washington state bicyclist and pedestrian crash data — so defaulting to that context makes more sense than requiring the user to select filters before anything appears.
 
@@ -4204,12 +4382,16 @@ const initialState: FilterState = {
   mode: null, // All modes
   severity: DEFAULT_SEVERITY, // Death, Major, Minor
   includeNoInjury: false,
-  dateFilter: { type: 'year', year: 2025 }, // Most recent full year
+  dateFilter: { type: 'preset', preset: '90d' }, // Last 90 days, anchored to dataBounds.maxDate
   state: 'Washington', // Dataset scope
   county: null,
   city: null,
+  updateWithMovement: false,
+  satellite: false,
+  accessibleColors: false,
   totalCount: null,
   isLoading: false,
+  dataBounds: null, // populated after GET_FILTER_OPTIONS resolves
 }
 ```
 
@@ -4217,21 +4399,24 @@ Because `RESET` dispatches `return initialState`, resetting filters also returns
 
 The auto-zoom effect in `CrashLayer` also fires on initial load because `prevGeoRef` initializes to `{ state: null, ... }` while the initial filter state has `state: 'Washington'` — so Effect 1 sees a change, sets the pending flag, and Effect 2 zooms to Washington bounds once the first query resolves.
 
-### Always Showing the Active Mode in SummaryBar
+#### Always Showing the Active Mode in SummaryBar
 
-The SummaryBar displays filter badges so users know what they're looking at. Originally, no badge appeared when mode was `null` (All modes) since "All" was treated as the non-active default. But once Washington and 2025 became the default, the philosophy shifted: show the complete active filter state, not just non-default selections.
+The SummaryBar displays filter badges so users know what they're looking at. Originally, no badge appeared when mode was `null` (All modes) since "All" was treated as the non-active default. But once Washington became the default, the philosophy shifted: always show the active filter state, not just non-default selections.
 
-The fix is a one-line change in `getActiveFilterLabels`:
+The mode badge uses emojis rather than text — they're more compact in the summary bar and immediately recognizable:
 
 ```ts
-// Before: badge only when a specific mode is selected
-if (filterState.mode) labels.push(filterState.mode + 's')
-
-// After: badge always, using 'All modes' as the label for null
-labels.push(filterState.mode ? filterState.mode + 's' : 'All modes')
+// getActiveFilterLabels — mode badge (always shown)
+if (filterState.mode === 'Bicyclist') {
+  labels.push('🚲')
+} else if (filterState.mode === 'Pedestrian') {
+  labels.push('🚶🏽‍♀️')
+} else {
+  labels.push('🚲 🚶🏽‍♀️') // All modes
+}
 ```
 
-This means the SummaryBar always shows exactly one mode badge — either `All modes`, `Bicyclists`, or `Pedestrians` — making the current filter state unambiguous at a glance.
+The SummaryBar always shows exactly one mode badge — either `🚲 🚶🏽‍♀️`, `🚲`, or `🚶🏽‍♀️` — making the current filter state unambiguous at a glance.
 
 ---
 
