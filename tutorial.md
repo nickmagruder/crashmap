@@ -4552,11 +4552,11 @@ The first 60 return `200`. Request 61 onward returns `429` with a `Retry-After` 
 
 ---
 
-## Phase 5: Security Headers and CORS
+### Step 2: Security Headers and CORS
 
 With rate limiting in place, the next layer of protection is HTTP security headers and CORS. These don't stop determined attackers making direct HTTP requests, but they do close off whole classes of browser-based vulnerabilities: clickjacking, MIME sniffing, cross-origin data theft, and injection via third-party scripts.
 
-### Step 1: Understand what the app touches
+#### Understand what the app touches
 
 Before writing a Content Security Policy you need to inventory every external origin the browser connects to. For CrashMap:
 
@@ -4571,7 +4571,7 @@ Before writing a Content Security Policy you need to inventory every external or
 | Tailwind / Mapbox inline styles     | `'unsafe-inline'`                                           |
 | Next.js HMR (dev only)              | `'unsafe-eval'` (eval-based hot reloading)                  |
 
-### Step 2: Add security headers in `next.config.ts`
+#### Add security headers in `next.config.ts`
 
 Next.js exposes an async `headers()` function in `next.config.ts` that applies HTTP response headers to matched routes. This runs server-side at request time, so the browser receives these headers on every page load and API response.
 
@@ -4620,7 +4620,7 @@ const nextConfig: NextConfig = {
 - **`script-src 'unsafe-eval'` (dev only)** — Next.js HMR uses `eval()` for fast module reloading. We detect `NODE_ENV === 'development'` in `next.config.ts` at startup so the production build never gets this directive.
 - **`style-src 'unsafe-inline'`** — Mapbox GL and Tailwind both inject inline styles. No way around this without nonces on every style element.
 - **`img-src blob: https://*.mapbox.com`** — Mapbox loads tile images and sprites from its CDN. `blob:` covers canvas snapshot operations.
-- **`connect-src https://*.mapbox.com https://events.mapbox.com`** — all Mapbox API requests (tiles, geocoding, telemetry). The wildcard subdomain covers `api.mapbox.com`, `events.mapbox.com` is separate.
+- **`connect-src https://*.mapbox.com https://events.mapbox.com`** — all Mapbox API requests (tiles, geocoding, telemetry). The wildcard subdomain covers `api.mapbox.com`, `events.mapbox.com` is separate. When Sentry error tracking is added later, you will also need `https://*.ingest.sentry.io https://*.ingest.us.sentry.io` here.
 - **`worker-src blob:`** — Mapbox GL spawns its WebWorker from a blob URL. Without this the map silently fails to render in browsers that enforce CSP for workers.
 - **`font-src 'self'`** — `next/font/google` downloads Geist at build time and serves it from `_next/static/`. The browser never fetches from `fonts.googleapis.com`.
 - **`object-src 'none'`** — disables Flash and other plugins (belt-and-suspenders; they're gone from modern browsers anyway).
@@ -4634,7 +4634,7 @@ const nextConfig: NextConfig = {
 - **`Referrer-Policy: strict-origin-when-cross-origin`** — sends the full URL as the `Referer` header for same-origin requests (useful for analytics) but only the origin for cross-origin ones (avoids leaking path/query params to third parties).
 - **`Permissions-Policy`** — opts out of browser APIs the app doesn't use. CrashMap doesn't need camera, microphone, or geolocation access.
 
-### Step 3: Add CORS to the GraphQL route
+#### Add CORS to the GraphQL route
 
 CORS headers tell browsers whether cross-origin JavaScript on _other_ websites is allowed to read responses from our API. Since CrashMap's data is public and there's no authentication, this doesn't prevent direct scraping — someone can always make `curl` requests. What it does prevent is other websites embedding our API and silently consuming our rate limit on behalf of their users' browsers.
 
@@ -4696,7 +4696,7 @@ export async function POST(request: NextRequest) {
 
 Note that `Access-Control-Allow-Origin` must be a single origin value (not a list) when `Access-Control-Allow-Credentials` is involved. Since we don't use credentials, we could use `*` — but reflecting the requesting origin from an allowlist gives us more control.
 
-### Step 4: Verify
+#### Verify
 
 Run `npm run build` to confirm TypeScript and the build both pass. Then start the dev server and open the browser DevTools Network tab — every HTML and API response should now carry the security headers. You can verify CSP enforcement by temporarily adding an inline script that tries to call `eval()` and observing the console error.
 
@@ -4712,13 +4712,13 @@ The response should include `Access-Control-Allow-Origin: https://crashmap.io` a
 
 ---
 
-## Phase 5: Polish — Loading States
+### Step 3: Loading States
 
 When users change a filter, the app fires a new GraphQL query and the map silently waits for fresh data. That gap — between action and response — is where loading states live. Without them the UI feels frozen or unresponsive.
 
 CrashMap already had the infrastructure for loading states: `FilterContext` holds an `isLoading` boolean (dispatched by `CrashLayer` whenever the Apollo query's `loading` flag changes), and `SummaryBar` already accepted an `isLoading` prop with an `animate-pulse` class on the crash count. We extended this foundation with three focused changes.
 
-### Step 1: Filter Button Spinner (AppShell)
+#### Filter Button Spinner
 
 The filter button in the top-right corner is the most contextually appropriate place for a loading indicator — it's right where the user just interacted. We import `Loader2` from `lucide-react` alongside the existing `SlidersHorizontal` and conditionally swap the icon:
 
@@ -4734,7 +4734,7 @@ The filter button in the top-right corner is the most contextually appropriate p
 
 This applies to both the desktop sidebar button and the mobile overlay button. The button itself stays clickable during loading — no `disabled` state — so users can still open the filter panel while a fetch runs.
 
-### Step 2: SummaryBar Spinner
+#### SummaryBar Spinner
 
 The SummaryBar at the bottom of the screen shows the crash count. We add an explicit spinner icon to the left of the count while loading, alongside the existing pulse:
 
@@ -4747,7 +4747,7 @@ The SummaryBar at the bottom of the screen shows the crash count. We add an expl
 
 The `aria-hidden="true"` on the spinner keeps screen readers from announcing "spinning" repeatedly; the `aria-live="polite"` on the SummaryBar container already handles announcing the count update when it arrives.
 
-### Step 3: Geographic Dropdown Spinner (GeographicFilter)
+#### Geographic Dropdown Spinner
 
 The cascading county/city dropdowns fire their own Apollo queries when a parent selection changes. The dropdowns were already disabled during loading (since the data arrays are empty until the query resolves), but there was no visual cue explaining _why_. We capture the `loading` flag from each query and display a small spinner next to the "Location" label:
 
@@ -4774,7 +4774,7 @@ const { data: citiesData, loading: citiesLoading } = useQuery<GetCitiesQuery>(GE
 
 The spinner is muted (`text-muted-foreground`) so it doesn't compete with the filter labels; `aria-label="Loading"` gives screen readers a description since there's no visible text.
 
-### Design Principles
+#### Design Principles
 
 A few principles guided the choices here:
 
@@ -4784,8 +4784,6 @@ A few principles guided the choices here:
 - **Minimal noise** — Three small additions (spinner on button, spinner in bar, spinner by label) cover all the meaningful interaction points without cluttering the UI.
 
 ---
-
-## Phase 5: Security, Polish & Deployment Continued
 
 ### Step 4: Error Boundaries
 
@@ -4902,7 +4900,7 @@ const mapFallback = (
 
 ---
 
-## Step: Skeleton Screens
+### Step 5: Skeleton Screens
 
 Spinners communicate "something is happening." Skeletons communicate "something will appear _here_, in approximately this shape." For CrashMap there are two places where users see a blank or placeholder state on initial load:
 
@@ -4911,7 +4909,7 @@ Spinners communicate "something is happening." Skeletons communicate "something 
 
 Both are good candidates for skeleton screens.
 
-### Step 1: Install the shadcn Skeleton component
+#### Install the shadcn Skeleton component
 
 shadcn provides a simple `Skeleton` component out of the box:
 
@@ -4939,7 +4937,7 @@ export { Skeleton }
 
 It's just a `div` with `bg-accent animate-pulse rounded-md`. The `bg-accent` color sits between your background and foreground, giving a neutral shimmer that works in both light and dark mode without any extra configuration. Size it with `h-*` and `w-*` utility classes to match the element it's replacing.
 
-### Step 2: Skeleton for the geographic filter
+#### Skeleton for the geographic filter
 
 `GeographicFilter` makes a `GET_FILTER_OPTIONS` query on mount to populate the State dropdown. During that initial fetch the three `<Select>` dropdowns exist in the DOM but are empty and disabled — an awkward "not ready yet" state. A skeleton is a cleaner signal.
 
@@ -4971,7 +4969,7 @@ if (optionsLoading) {
 
 `h-9` matches shadcn's default `<SelectTrigger>` height, so the skeleton has the same footprint as the dropdowns it's replacing. Three stacked skeletons map to State, County, and City. Once `optionsLoading` flips to false, the component renders the real dropdowns as before.
 
-### Step 3: Skeleton for the crash count
+#### Skeleton for the crash count
 
 `SummaryBar` receives a `crashCount` prop that starts as `null` and transitions to a number once the first crash query resolves. The existing code renders a `—` dash for `null`:
 
@@ -4997,7 +4995,7 @@ Replace the dash with an inline skeleton:
 
 The existing `Loader2` spinner and `animate-pulse` on the count text handle subsequent filter-triggered refetches, where there _is_ already a count to show — the skeleton only covers the cold-start case.
 
-### Why separate the two loading patterns
+#### Why separate the two loading patterns
 
 | Pattern         | When to use                                                                       |
 | --------------- | --------------------------------------------------------------------------------- |
@@ -5008,11 +5006,11 @@ Using skeletons for refetches would cause the content to disappear and reappear 
 
 ---
 
-## Phase 5: Shareable Filter URLs
+### Step 6: Shareable Filter URLs
 
 One of the most useful features for a data visualization app is the ability to share a specific view via URL. Right now, all filter state lives in React Context — navigating to the same URL always shows the default filters. We want `?severity=Death&mode=Pedestrian&state=Ohio&county=Franklin` to restore that exact configuration on load.
 
-### The Core Challenge
+#### The Core Challenge
 
 Filter state is managed by a `useReducer` in `FilterContext`. The URL is managed by the browser and Next.js's App Router. These two systems need to be kept in sync bidirectionally:
 
@@ -5021,29 +5019,29 @@ Filter state is managed by a `useReducer` in `FilterContext`. The URL is managed
 
 The tricky part is doing this without causing an infinite feedback loop between the two directions, and without overwriting an incoming shared URL on the first render.
 
-### Step 1: Define the URL parameter schema
+#### Define the URL parameter schema
 
 Before writing any code, decide what the URL should look like. The key principle: **omit default values**. A clean URL (`/`) means the default view. Params only appear when the user has changed something.
 
 Our URL schema:
 
-| Filter       | Default (omitted)                         | URL when non-default                                   |
-| ------------ | ----------------------------------------- | ------------------------------------------------------ |
-| Mode         | `null` (all)                              | `?mode=Bicyclist`                                      |
-| Severity     | `['Death','Major Injury','Minor Injury']` | `?severity=Death,Minor+Injury`                         |
-| Include None | `false`                                   | `None` appended to severity CSV                        |
-| Date         | `{ type:'year', year: 2025 }`             | `?year=2024`, `?dateFrom=...&dateTo=...`, `?date=none` |
-| State        | `'Washington'`                            | `?state=Ohio` or `?state=none` (all states)            |
-| County       | `null`                                    | `?county=Franklin`                                     |
-| City         | `null`                                    | `?city=Columbus`                                       |
+| Filter       | Default (omitted)                         | URL when non-default                                                                 |
+| ------------ | ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| Mode         | `null` (all)                              | `?mode=Bicyclist`                                                                    |
+| Severity     | `['Death','Major Injury','Minor Injury']` | `?severity=Death,Minor+Injury`                                                       |
+| Include None | `false`                                   | `None` appended to severity CSV                                                      |
+| Date         | preset (YTD, omitted from URL)            | `?date=90d`, `?date=last-year`, `?date=3y`, `?date=none`, `?dateFrom=...&dateTo=...` |
+| State        | `'Washington'`                            | `?state=Ohio` or `?state=none` (all states)                                          |
+| County       | `null`                                    | `?county=Franklin`                                                                   |
+| City         | `null`                                    | `?city=Columbus`                                                                     |
 
 A few design decisions worth noting:
 
 - **Severity uses CSV** — `?severity=Death,Major+Injury,Minor+Injury` — because it's the only multi-value field. The `None` bucket is embedded in the same CSV (rather than a separate `?noInjury=1` param) since the two are always displayed together in the UI.
 - **`?state=none`** — we need a sentinel value for "all states" (null) because the default is _Washington_ (non-null). Without an explicit sentinel, absent `?state` is ambiguous: does it mean "Washington" or "all states"? The sentinel resolves this: absent = Washington, `?state=none` = all states.
-- **`?date=none`** — same problem for the date filter. Absent = default year (2025), `?date=none` = no date filter.
+- **`?date=none`** — same problem for the date filter. Absent = the default preset (YTD), `?date=none` = no date filter. Named presets use explicit values (`?date=90d`, `?date=last-year`, `?date=3y`); only `ytd` is omitted. The date filter was later overhauled to use named presets — see the Date Filter sections below.
 
-### Step 2: Create pure encode/decode utilities
+#### Create pure encode/decode utilities
 
 Create `lib/filterUrlState.ts` with two pure functions — no React, no side effects, fully unit-testable:
 
@@ -5133,7 +5131,7 @@ export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
 
 Notice the **orphan param guard** for county/city: if someone manually types `?city=Seattle` without `?county=King+County`, we silently ignore the orphaned city. This prevents invalid partial states from hydrating into the reducer.
 
-### Step 3: Add INIT_FROM_URL to the reducer
+#### Add INIT_FROM_URL to the reducer
 
 The filter reducer needs a new action that atomically sets all URL-derived values in one shot. This is important because we can't use existing actions like `SET_STATE` — that action cascades and clears county/city, which would break URL hydration if we dispatched `SET_STATE` before `SET_COUNTY`.
 
@@ -5170,7 +5168,7 @@ case 'INIT_FROM_URL':
 
 The `INIT_FROM_URL` case writes all URL-derived fields at once, without cascading. The URL is the authoritative source here; we trust it to contain a consistent set of geo values (or not, in which case the UI degrades gracefully — showing no county results for a mismatched state).
 
-### Step 4: Create the sync bridge component
+#### Create the sync bridge component
 
 The sync logic lives in a dedicated `FilterUrlSync` component that renders `null` — it exists purely for its side effects. This separation keeps the `FilterContext` clean (no routing hooks) and lets us control the `<Suspense>` boundary precisely.
 
@@ -5225,7 +5223,7 @@ Without this guard, Effect 2 on the first render would encode `initialState` (Wa
 
 **Why `router.replace` instead of `router.push`?** `router.push` adds a history entry for every filter interaction. After clicking five filters, the user would need to press Back five times to leave the page. `router.replace` swaps the current history entry silently — the URL is shareable but navigation still feels natural.
 
-### Step 5: Wire it into the layout
+#### Wire it into the layout
 
 `useSearchParams()` in the Next.js App Router requires a `<Suspense>` boundary. Without one, Next.js throws a build error in production. The `FilterUrlSync` component must be both inside `FilterProvider` (to access context) and wrapped in `Suspense` (for the hook):
 
@@ -5245,17 +5243,17 @@ import { FilterUrlSync } from '@/components/FilterUrlSync'
 
 `fallback={null}` means nothing renders while search params are being read (which is instantaneous on the client). `FilterUrlSync` returns `null` anyway. The `<Suspense>` is a sibling of `{children}` — the map and all filter UI render immediately without waiting for URL sync to initialize.
 
-### How it interacts with the auto-zoom logic
+#### How it interacts with the auto-zoom logic
 
 There's a nice emergent interaction here: when `INIT_FROM_URL` sets a non-default state/county/city, `CrashLayer`'s existing auto-zoom logic fires automatically. The `prevGeoRef` comparison detects that state changed (from `'Washington'` to `'Ohio'`, say), sets `zoomPendingRef = true`, and when data arrives the map zooms to fit Ohio's crashes. A shared URL with `?state=Ohio&county=Franklin` will both filter the data AND zoom the map to Franklin County — no special handling required.
 
 ---
 
-## Step N: Google Street View Link and Copy Report Number
+### Step 7: Google Street View Link and Copy Report Number
 
 Two small but high-value additions to the crash popup: a Street View link so users can see the location, and a copy-to-clipboard button for the report number so they can paste it into the WSP crash report lookup portal.
 
-### The URL Scheme
+#### The URL Scheme
 
 Google Maps accepts a deep-link URL that opens Street View directly at a latitude/longitude:
 
@@ -5268,7 +5266,7 @@ https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lng}
 
 This is a stable, documented Google Maps URL scheme that works on both desktop and mobile (mobile opens the Maps app if installed).
 
-### Adding the Link
+#### Adding the Link
 
 The `selectedCrash` state in `MapContainer.tsx` already holds `latitude` and `longitude` — the coordinates of the clicked crash. We just need to construct the URL and add a link at the bottom of the popup:
 
@@ -5293,7 +5291,7 @@ A few details worth noting:
 - **`rel="noopener noreferrer"`** — standard security attribute for any `target="_blank"` link that navigates away from the current page
 - **`text-[12px]`** — slightly smaller than the popup body text (`13px`) to visually de-emphasize it as a utility link rather than primary data
 
-### Copy Report Number to Clipboard
+#### Copy Report Number to Clipboard
 
 The WSP crash report portal (`wrecr.wsp.wa.gov/wrecr/order`) requires the user to manually enter the collision report number to look up a crash. We can't pre-fill it (cross-origin JavaScript is blocked by the browser's same-origin policy, and the site is a React SPA that doesn't read URL query parameters). The next-best thing is a one-click copy button.
 
@@ -5338,9 +5336,7 @@ A few notes:
 
 ---
 
-## Phase 5: Data Export
-
-### Step: Add CSV Export for Filtered Results
+### Step 8: Data Export
 
 One of the most requested features in data visualization tools is the ability to download the underlying data. We'll add a CSV export that respects the current filters — so a user viewing Washington pedestrian crashes in 2025 can download exactly that dataset.
 
@@ -5582,9 +5578,9 @@ This gives users three ways to trigger an export: the always-visible icon in the
 
 ---
 
-## Step 18: About Panel and Pinnable Panels
+### Step 9: About Panel and Pinnable Panels
 
-### The About panel
+#### The About panel
 
 At this point the app has rich filtering but no context for users: what is this data? How is it collected? What do the map symbols mean? We add an About panel that mirrors the Filters panel structurally but lives on the left side of the screen.
 
@@ -5596,7 +5592,7 @@ Three new files:
 
 `InfoPanelContent` renders four sections: a dedication paragraph, "The Data" (methodology + link to the WSDOT Crash Data Portal), a map key (colored circles matching the actual Mapbox layer colors and opacities), and a data disclaimer. An "About" `<h2>` with a version/date sub-line sits at the top.
 
-### Desktop panel layout
+#### Desktop panel layout
 
 Both desktop panels are permanent flex-column siblings to the map container — they push the map rather than overlaying it. Opening and closing is handled by toggling the panel out of the DOM entirely; there is no Sheet/drawer animation on desktop.
 
@@ -5629,7 +5625,7 @@ useEffect(() => {
 
 Both panels default to open on desktop. The Info/Heart/Sliders buttons reopen their respective panels after the user closes them with the X button.
 
-### Emoji favicon
+#### Emoji favicon
 
 Set the tab icon to an emoji with no image asset required — an inline SVG data URI in the Next.js `metadata` export:
 
@@ -5646,9 +5642,9 @@ This takes priority over any `favicon.ico` file and works in all modern browsers
 
 ---
 
-## Phase 5: Polish — Summary Bar Redesign
+### Step 10: Summary Bar Redesign
 
-### Step: Emoji mode badges and shorter filter labels
+#### Emoji mode badges and shorter filter labels
 
 The `SummaryBar` initially used text labels like "All modes", "Bicyclists", "Pedestrians" for the mode badge. Replacing them with emojis reduces visual noise and saves horizontal space — critical on mobile where the bar has minimal room.
 
@@ -5678,7 +5674,7 @@ if (!filterState.city && filterState.county) labels.push(filterState.county)
 if (filterState.city) labels.push(filterState.city)
 ```
 
-### Step: Crash count moved to filter panels
+#### Crash count moved to filter panels
 
 Displaying the crash count in the floating `SummaryBar` wastes space on mobile. Instead, show it at the top of the filter panels where it's in context alongside the active filter controls.
 
@@ -5713,7 +5709,7 @@ In `FilterOverlay.tsx`, add it to the header below the title:
 </div>
 ```
 
-### Step: Mobile summary bar — flush-bottom strip
+#### Mobile summary bar — flush-bottom strip
 
 The floating pill (`absolute bottom-6 ... rounded-full`) works well on desktop but is awkward on mobile — it floats over the map and obscures crash dots. The better pattern for mobile is a thin strip pinned to the very bottom of the viewport, similar to a browser bottom tab bar.
 
@@ -5744,7 +5740,7 @@ The export button is also hidden on mobile (the Filters overlay has a full-width
 }
 ```
 
-### Step: Popup viewport centering — zoom in and restore on close
+#### Popup viewport centering — zoom in and restore on close
 
 When a user clicks a crash dot, the map should zoom in and tilt toward that location, then snap back to the original view when the popup is dismissed. This creates a clear focus-and-return pattern without losing the user's place.
 
@@ -5854,13 +5850,13 @@ The result: clicking a crash zooms the map to street level (zoom 15.5) with a 45
 
 ---
 
-## Step N: Update Search as Map Moves
+### Step 11: Update Search as Map Moves
 
-### The Goal
+#### The Goal
 
 We want a toggle that switches the crash query from "filter by state/county/city text" to "filter by whatever's currently visible on the map." When the user pans or zooms, the query automatically updates. County and city filters should also be decoupled so either can be selected independently.
 
-### Why the Naive Approach Fails
+#### Why the Naive Approach Fails
 
 The existing `map.getBounds()` method seems like the obvious tool here, but it has a subtle gotcha: Mapbox stores **camera padding** when you call `fitBounds({ padding: 80 })`. After that, `getBounds()` returns the bounds of the inner _un-padded_ area — the viewport minus the padding margin — not the full canvas. The result is a bounding box that's noticeably smaller than what the user sees.
 
@@ -5874,7 +5870,7 @@ const ne = map.unproject([canvas.clientWidth, 0]) // top-right pixel
 
 `unproject()` converts screen pixels directly to geographic coordinates, bypassing all camera transforms and padding. We also add a 5% buffer in each direction so crashes near the edges load before the user pans to them.
 
-### The `updateWithMovement` State
+#### The `updateWithMovement` State
 
 Add `updateWithMovement: boolean` to `FilterState` and `UrlFilterState`, along with a `SET_UPDATE_WITH_MOVEMENT` action. Persisted in the URL as `?movement=1`.
 
@@ -5885,7 +5881,7 @@ When `updateWithMovement` is on:
 - Auto-zoom on geographic filter change is suppressed (the user is navigating manually)
 - The active filter badge shows "📍 Viewport" instead of a county/city name
 
-### The `moveend` Listener Pattern
+#### The `moveend` Listener Pattern
 
 In `CrashLayer`, when `updateWithMovement` turns on:
 
@@ -5919,7 +5915,7 @@ useEffect(() => {
 
 Using `moveend` (not `move`) means the query only fires when the user finishes interacting, not on every animation frame.
 
-### Preventing the Flash with `previousData`
+#### Preventing the Flash with `previousData`
 
 When the bbox changes, Apollo receives new query variables it hasn't seen before — a **cache miss**. For a brief moment, `data` is `undefined` while the network request is in flight. Without a fix, the component hits `if (!data) return null` and unmounts all the crash dots, causing a jarring flash.
 
@@ -5932,7 +5928,7 @@ const displayData = data ?? previousData
 
 During a loading refetch, `displayData` falls back to the previous result so the old dots stay rendered. When the new response arrives, `displayData` switches to the fresh set — new dots appear, out-of-viewport dots disappear, with no blank-map flash in between.
 
-### Decoupling County and City
+#### Decoupling County and City
 
 Previously, selecting a county would clear the city selection, and the city dropdown only loaded cities within the selected county. The new behavior:
 
@@ -5941,20 +5937,20 @@ Previously, selecting a county would clear the city selection, and the city drop
 - A user can select King County and Seattle independently — if the city isn't in the county, the DB returns no results (correct)
 - URL decode likewise drops the old "city only valid if county is set" guard
 
-### Removing the State Selector
+#### Removing the State Selector
 
 Since all data is from Washington, the State selector was removed from the Location filter UI. `state: 'Washington'` remains hardcoded in `toCrashFilter()` so the GraphQL query still filters by state for index efficiency, but users never see or interact with it.
 
 ---
 
-## Step N: CI/CD Pipeline and Staging Environment
+### Step 12: CI/CD Pipeline and Staging Environment
 
 With the core feature set in place, it's time to harden the deployment pipeline. The goal is a setup where:
 
 - **Every push to `main`** triggers a full CI check (lint, types, tests, codegen, build) and — only if all checks pass — automatically deploys to production on Render.
 - **A `staging` branch** gives you a live environment to verify changes before they touch production, without requiring CI to pass first.
 
-### The Problem with Render's Built-in Auto-Deploy
+#### The Problem with Render's Built-in Auto-Deploy
 
 Render's default "Auto-Deploy" setting watches the GitHub repo and deploys on every push to the tracked branch. This has two issues:
 
@@ -5963,7 +5959,7 @@ Render's default "Auto-Deploy" setting watches the GitHub repo and deploys on ev
 
 The fix is to set `autoDeploy: false` on the production service and use a **Render deploy hook** — a private URL you POST to when you want a deploy to happen. The CI workflow calls this URL only after all checks pass.
 
-### Updating render.yaml
+#### Updating render.yaml
 
 The `render.yaml` Blueprint file declares both services:
 
@@ -6010,7 +6006,7 @@ services:
 
 Since CrashMap is a read-only public app (no mutations), staging and production can safely share the same database — there's no risk of staging writes corrupting production data.
 
-### Creating the Staging Branch
+#### Creating the Staging Branch
 
 ```bash
 git checkout -b staging main
@@ -6019,11 +6015,11 @@ git push origin staging
 
 In the Render dashboard, create the `crashmap-staging` web service manually (there's no Blueprint sync UI in all plan tiers): connect the same GitHub repo, set branch to `staging`, use the same build/start commands, set `autoDeploy` to on. Then set the three env vars (`DATABASE_URL`, `NEXT_PUBLIC_MAPBOX_TOKEN`, `NEXT_PUBLIC_APP_URL`).
 
-### Wiring the Deploy Hook to GitHub Actions
+#### Wiring the Deploy Hook to GitHub Actions
 
 In the Render dashboard for the production `crashmap` service, go to **Settings → Deploy Hook** and copy the private URL. Add it to GitHub as a repository secret named `RENDER_DEPLOY_HOOK_PRODUCTION` (Settings → Secrets and variables → Actions → New repository secret).
 
-### Codegen Drift Check
+#### Codegen Drift Check
 
 The generated types file (`lib/graphql/__generated__/types.ts`) is committed to the repo. If someone updates `typeDefs.ts` or `resolvers.ts` but forgets to run `npm run codegen`, the committed types silently go stale. The CI drift check catches this:
 
@@ -6036,7 +6032,7 @@ The generated types file (`lib/graphql/__generated__/types.ts`) is committed to 
 
 `git diff --exit-code` returns a non-zero exit code if the file changed — failing the job. This forces the developer to run `npm run codegen` locally and commit the result before CI will pass.
 
-### First Run: The Prettier/Codegen Conflict
+#### First Run: The Prettier/Codegen Conflict
 
 Adding the drift check surfaced a subtler problem. The check failed on first run, not because of schema drift, but because of a conflict between codegen's output format and the project's prettier config.
 
@@ -6069,7 +6065,7 @@ git diff          → no changes → drift check passes, commit succeeds
 
 **Takeaway:** whenever you use a codegen drift check, make sure the `codegen` script produces output that already conforms to the project's prettier config. The simplest way is to add `&& prettier --write <output-file>` to the codegen script.
 
-### The Updated CI Workflow
+#### The Updated CI Workflow
 
 The workflow splits into two jobs:
 
@@ -6089,7 +6085,7 @@ deploy:
 
 The `needs: check` dependency means this job is skipped entirely if `check` fails. The `if:` guard means it only runs on direct pushes to `main` (i.e., when a PR is merged) — not on feature branch pushes.
 
-### The Full Flow
+#### The Full Flow
 
 ```text
 Feature branch → PR → CI (check job) runs on the branch
@@ -6386,7 +6382,7 @@ The job depends on `deploy`, so it only runs after a successful Render deploymen
 
 No `assert` block means Lighthouse never fails CI — it's purely observational. For a map-heavy WebGL app you'd expect Performance scores in the 60–80 range depending on device/connection; Accessibility and Best Practices should be 90+.
 
-## Phase 5: Health Check Endpoint
+## Health Check Endpoint
 
 Render uses a health check endpoint to determine when your app is ready to serve traffic after a deploy and to detect when the running service has gone unhealthy. Without one, Render falls back to TCP checks (just verifying the port is open), which can declare a service healthy before Next.js has finished initializing.
 
@@ -6496,7 +6492,7 @@ The result: users can enable the accessible palette from either the map toolbar 
 
 ---
 
-## Phase 5 Continued: Date Filter Overhaul
+## Date Filter Overhaul
 
 ### Step: Establishing a React file structure convention
 
@@ -6596,7 +6592,7 @@ Text inputs also fire a format error toast when the user types exactly 10 charac
 
 ---
 
-## Phase 5 Continued: Date Filter — shadcn Range Calendar Refactor
+## Date Filter — shadcn Range Calendar Refactor
 
 ### Overview
 
@@ -6698,7 +6694,7 @@ Rather than a transient toast, render a conditional banner absolutely positioned
 
 ---
 
-## Phase 5 Continued: Date Filter — Named Preset Buttons
+## Date Filter — Named Preset Buttons
 
 Instead of hardcoded year buttons (2025, 2024, …), the date filter now uses four dynamic named presets that always reflect the actual available data.
 
@@ -6964,7 +6960,7 @@ The `tilted` state is local to `AppShell` — it only drives the button's `varia
 
 ---
 
-## Step: Display Limit & Warning Toast
+## Display Limit & Warning Toast
 
 ### Why cap the query?
 
