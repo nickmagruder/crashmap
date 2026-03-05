@@ -4696,7 +4696,7 @@ export async function POST(request: NextRequest) {
 
 Note that `Access-Control-Allow-Origin` must be a single origin value (not a list) when `Access-Control-Allow-Credentials` is involved. Since we don't use credentials, we could use `*` — but reflecting the requesting origin from an allowlist gives us more control.
 
-#### Verify
+#### Verify It
 
 Run `npm run build` to confirm TypeScript and the build both pass. Then start the dev server and open the browser DevTools Network tab — every HTML and API response should now carry the security headers. You can verify CSP enforcement by temporarily adding an inline script that tries to call `eval()` and observing the console error.
 
@@ -6432,7 +6432,38 @@ Render polls the health check path every 10 seconds. If it returns a non-2xx sta
 
 ---
 
-### Step 6: Adding a Support Panel
+### Step 6: Better Stack — Infrastructure Metrics
+
+Sentry covers application errors and Lighthouse covers web vitals. What's still missing is infrastructure-level visibility: CPU usage, memory, HTTP response times, and uptime. Render exposes a native metrics stream that can forward this data to an external provider.
+
+#### Why Better Stack
+
+Render supports several metrics destinations: Better Stack, Datadog, Grafana Cloud, Groundcover, Honeycomb, New Relic, and Signoz. For a low-traffic solo-operated app that already has Sentry for errors, Better Stack is the best fit:
+
+- Most generous free tier for small projects (logs + uptime + metrics in one product)
+- Render's native integration is first-class and well-documented
+- Low operational overhead — no dashboards to configure from scratch
+
+Grafana Cloud and New Relic are stronger choices if you anticipate significant growth or want open-source portability, but are heavier to set up.
+
+#### Connect the metrics stream
+
+1. Create a free account at [betterstack.com](https://betterstack.com) if you don't have one
+2. In the Better Stack dashboard, go to **Telemetry** → **Sources** → **Connect source** → select **Render**
+3. Copy the ingestion endpoint URL and the source token that Better Stack provides
+4. In the Render dashboard, open the `crashmap` web service → **Log & Metrics** → **Configure metrics**
+5. Select **Better Stack** as the destination, paste the endpoint and token, and save
+6. Repeat for `crashmap-staging`
+
+Render will begin streaming CPU percentage, memory usage, HTTP request count, response time percentiles, and service uptime to Better Stack within a few minutes of the next deploy.
+
+#### Verify the connection
+
+After the next deploy completes, open your Better Stack **Telemetry** dashboard and confirm metrics are flowing. You should see CPU and memory graphs within 5–10 minutes.
+
+---
+
+### Step 7: Adding a Support Panel
 
 #### Why
 
@@ -6458,7 +6489,7 @@ The top map buttons use `variant="outline"` which picks up `border-input` in dar
 
 ---
 
-### Step 7: Accessible Color Scale
+### Step 8: Accessible Color Scale
 
 Map dots rely on color to communicate severity — which is a problem for the ~8% of males with red-green color blindness who can't distinguish the standard dark-red / orange / yellow / green scale. We add a toggle that swaps to the **Paul Tol Muted** palette, a scheme specifically engineered to be distinguishable under all forms of color vision deficiency (protanopia, deuteranopia, tritanopia).
 
@@ -6496,7 +6527,7 @@ The result: users can enable the accessible palette from either the map toolbar 
 
 ---
 
-### Step 8: Date Filter Overhaul
+### Step 9: Date Filter Overhaul
 
 #### Establishing a React file structure convention
 
@@ -6596,7 +6627,7 @@ Text inputs also fire a format error toast when the user types exactly 10 charac
 
 ---
 
-### Step 9: Date Filter — shadcn Range Calendar Refactor
+### Step 10: Date Filter — shadcn Range Calendar Refactor
 
 #### Overview
 
@@ -6698,7 +6729,7 @@ Rather than a transient toast, render a conditional banner absolutely positioned
 
 ---
 
-### Step 10: Date Filter — Named Preset Buttons
+### Step 11: Date Filter — Named Preset Buttons
 
 Instead of hardcoded year buttons (2025, 2024, …), the date filter now uses four dynamic named presets that always reflect the actual available data.
 
@@ -6878,7 +6909,7 @@ Clicking an active preset button toggles it off (dispatches `CLEAR_DATE`), consi
 
 ---
 
-### Step 11: Popup Centering with Mapbox Padding
+### Step 12: Popup Centering with Mapbox Padding
 
 When a crash is clicked, the map flies to center on the crash coordinates. But since the popup anchors at the bottom of the crash point and renders upward, it can overlap the UI buttons at the top of the screen — especially on mobile.
 
@@ -6895,7 +6926,7 @@ map.flyTo({ center: coords, zoom: targetZoom, pitch: 45, padding, duration: 800 
 
 The `bottom: 70` on mobile accounts for the fixed SummaryBar strip at the bottom of the viewport (~44px + buffer). When the popup closes and the viewport is restored, padding must be explicitly reset to `{ top: 0, bottom: 0, left: 0, right: 0 }` — Mapbox retains the padding state across `flyTo` calls.
 
-### Step 12: Metered Zoom
+### Step 13: Metered Zoom
 
 Jumping straight to zoom 15.5 on every crash click is jarring when the user starts from a state-level view (zoom 7–10). A better UX is to fly halfway to the target zoom, so the user lands at a contextually appropriate level and can click again to go deeper if needed.
 
@@ -6909,7 +6940,7 @@ map.flyTo({ center: coords, zoom: newZoom, ... })
 
 For crash-to-crash clicks (clicking a new crash without closing the popup), `savedViewportRef` is NOT updated — it retains the original pre-popup zoom. This keeps the depth consistent: every crash click from a given starting position lands at the same zoom level, regardless of how many crashes the user has clicked through.
 
-### Step 13: Retaining User Camera Moves During Popup
+### Step 14: Retaining User Camera Moves During Popup
 
 If the user pans or zooms while a popup is open, the saved viewport should update so that dismissing the popup returns to their new position rather than the original one.
 
@@ -6942,7 +6973,7 @@ const handleMoveEnd = useCallback(() => {
 
 Both `flyTo` call sites (popup open and popup close) must set the flag — missing either one causes the saved viewport to get corrupted by the animation's `moveend` event.
 
-### Step 14: Tilt Toggle and Zoom Buttons
+### Step 15: Tilt Toggle and Zoom Buttons
 
 Standard map controls (zoom in/out, tilt toggle) live in `AppShell` at `absolute bottom-14 left-4 md:bottom-6` — above the fixed mobile SummaryBar. They use the same shadcn `Button` `variant="outline"` styling as all other floating controls.
 
@@ -6962,7 +6993,7 @@ The `tilted` state is local to `AppShell` — it only drives the button's `varia
 
 ---
 
-### Step 15: Display Limit & Warning Toast
+### Step 16: Display Limit & Warning Toast
 
 #### Why cap the query?
 
