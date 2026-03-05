@@ -817,14 +817,14 @@ Set `output: 'standalone'` in `next.config.ts` for optimal builds on Render (alr
 
 ### Development & DevOps
 
-| Purpose        | Tool                                          |
-| -------------- | --------------------------------------------- |
-| Local DB       | Docker + `postgis/postgis` image              |
-| API Playground | Apollo Sandbox (built into Apollo Server)     |
-| Error Tracking | Sentry                                        |
-| CI/CD          | GitHub Actions                                |
-| Hosting        | Render (app + database — all on one platform) |
-| Monitoring     | Sentry (errors) + Lighthouse CI (web vitals)  |
+| Purpose        | Tool                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------ |
+| Local DB       | Docker + `postgis/postgis` image                                                     |
+| API Playground | Apollo Sandbox (built into Apollo Server)                                            |
+| Error Tracking | Sentry                                                                               |
+| CI/CD          | GitHub Actions                                                                       |
+| Hosting        | Render (app + database — all on one platform)                                        |
+| Monitoring     | Sentry (errors) + Lighthouse CI (web vitals) + Better Stack (infrastructure metrics) |
 
 ### Documentation & Learning
 
@@ -851,14 +851,15 @@ Set `output: 'standalone'` in `next.config.ts` for optimal builds on Render (alr
 | **Largest Contentful Paint (LCP)**    | < 2.5s                                                      | Web Vitals                |
 | **Map initial render**                | < 2s with full dataset loaded                               | Browser performance marks |
 | **Error rate**                        | < 0.1%                                                      | Sentry                    |
+| **CPU / memory / uptime**             | CPU < 80% sustained; uptime > 99.9%                         | Better Stack              |
 
 ### Evaluation Cadence
 
 Given low daily traffic, a lightweight evaluation approach is appropriate:
 
 - **After deployment:** Run Lighthouse, test all filters, verify map rendering with full dataset
-- **Monthly:** Check Sentry for errors, run Lighthouse for any performance regressions
-- **After data imports:** Verify query performance hasn't degraded as the dataset grows
+- **Monthly:** Check Sentry for errors, review Better Stack metrics dashboard for CPU/memory trends, run Lighthouse for any performance regressions
+- **After data imports:** Verify query performance hasn't degraded as the dataset grows; check Better Stack for memory spikes during import
 
 ### User Feedback Loop
 

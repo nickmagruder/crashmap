@@ -271,6 +271,14 @@ This project is developed in the open. To report issues or suggest features, ple
 
 ## Changelog
 
+### 2026-03-04 — Filter Sentry Browser Extension Noise
+
+- Added `beforeSend` hook to `instrumentation-client.ts` to drop Sentry events caused by browser extensions: Firefox Reader Mode (`window.__firefox__`) and crypto wallet extensions (`window.ethereum`); checks both `hint.originalException.message` and `event.exception.values[0].value` to catch all event shapes
+
+### 2026-03-04 — Better Stack Metrics Stream
+
+- Connected Better Stack as a Render metrics stream (Render dashboard → Log & Metrics → Configure metrics) for both `crashmap` and `crashmap-staging`; streams infrastructure metrics (CPU, memory, HTTP response times, uptime)
+
 ### 2026-02-26 — Raise Display Limit to 40,000
 
 - Raised the crash display cap from 10,000 to 40,000 (resolver hard cap, `CrashLayer` `DISPLAY_LIMIT` constant, and CSV export limit); covers the full ~34,000-row dataset without truncation
@@ -390,6 +398,16 @@ This project is developed in the open. To report issues or suggest features, ple
 - Clicking from one crash to another while a popup is open flies to the new crash but keeps the original viewport for the eventual restore
 - Implemented with `useImperativeHandle` so the existing external `mapRef` used by `AppShell` for `map.resize()` continues to work unchanged; a `savedViewportRef` (not state) stores the captured viewport without triggering re-renders
 
+### 2026-02-23 — Monitoring (Sentry + Lighthouse CI)
+
+- Installed `@sentry/nextjs` and ran Sentry wizard; configured `instrumentation-client.ts` (client, Session Replay), `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts` (`onRequestError`), and `app/global-error.tsx`
+- Added `consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })` and `enableLogs: true` to all three Sentry init files — forwards `console.log/warn/error` calls to Sentry Logs
+- DSN stored in `NEXT_PUBLIC_SENTRY_DSN` env var; declared in `render.yaml` for both services and set in Render dashboard; `SENTRY_AUTH_TOKEN` added as GitHub Actions secret and exposed in the CI build step env for source-map uploads
+- Added `tunnelRoute: "/monitoring"` to `withSentryConfig` to bypass ad blockers; updated `connect-src` CSP to include `*.ingest.sentry.io` and `*.ingest.us.sentry.io` as fallback
+- Updated `app/error.tsx` to call `Sentry.captureException` instead of `console.error`
+- Added Lighthouse CI: `.lighthouserc.json` targeting `https://crashmap.io`; `lighthouse` job in `ci.yml` runs after `deploy` on `main`, uploads report to temporary public storage (report-only, never fails CI)
+- Fixed `FilterUrlSync` sub-route redirect bug: `router.replace` now uses `usePathname()` to preserve the current path instead of always replacing to `/`
+
 ### 2026-02-20 — Summary Bar Redesign and Emoji Mode Badges
 
 - `SummaryBar` mobile layout changed to a fixed full-width strip flush against the viewport bottom (`fixed bottom-0 left-0 right-0`), minimal height, no rounded corners; desktop changed to a `rounded-md` bar close to the bottom edge (`bottom-3`) with tighter padding
@@ -437,6 +455,12 @@ This project is developed in the open. To report issues or suggest features, ple
 - Added `components/FilterUrlSync.tsx` — invisible client component that syncs URL ↔ `FilterContext` via two effects: mount reads URL → `INIT_FROM_URL` dispatch; subsequent filter changes → `router.replace` (no history pollution); `skipFirstSyncRef` prevents the initial render from overwriting an incoming shared URL with defaults
 - Added `INIT_FROM_URL` action and `UrlFilterState` exported type to `context/FilterContext.tsx` — atomic state write that bypasses cascading reset logic
 - Wired `<FilterUrlSync />` in `app/layout.tsx` inside `<Suspense fallback={null}>` within `FilterProvider` (required by `useSearchParams` in the App Router)
+
+### 2026-02-19 — Error Boundaries
+
+- Added `components/ErrorBoundary.tsx` — reusable React class component with a `fallback` prop; logs caught errors to console via `componentDidCatch`
+- Added `app/error.tsx` — Next.js route-level error page with a "Try again" reset button
+- Applied boundaries in `AppShell`: `MapContainer` gets a "Map failed to load / Refresh" full-screen fallback; `Sidebar` + `FilterOverlay` silently suppress (`fallback={null}`) so the map stays usable if filters crash
 
 ### 2026-02-19 — Skeleton Screens
 
@@ -739,19 +763,3 @@ This project is developed in the open. To report issues or suggest features, ple
 - Refined generated Prisma model: renamed to `CrashData`, added camelCase field names with `@map` decorators and `@@map("crashdata")`
 - Ran `npx prisma generate` to produce typed client in `lib/generated/prisma/`
 - Added `lib/generated/prisma` to `.gitignore`
-
-### 2026-02-23 — Monitoring (Sentry + Lighthouse CI)
-
-- Installed `@sentry/nextjs` and ran Sentry wizard; configured `instrumentation-client.ts` (client, Session Replay), `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts` (`onRequestError`), and `app/global-error.tsx`
-- Added `consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })` and `enableLogs: true` to all three Sentry init files — forwards `console.log/warn/error` calls to Sentry Logs
-- DSN stored in `NEXT_PUBLIC_SENTRY_DSN` env var; declared in `render.yaml` for both services and set in Render dashboard; `SENTRY_AUTH_TOKEN` added as GitHub Actions secret and exposed in the CI build step env for source-map uploads
-- Added `tunnelRoute: "/monitoring"` to `withSentryConfig` to bypass ad blockers; updated `connect-src` CSP to include `*.ingest.sentry.io` and `*.ingest.us.sentry.io` as fallback
-- Updated `app/error.tsx` to call `Sentry.captureException` instead of `console.error`
-- Added Lighthouse CI: `.lighthouserc.json` targeting `https://crashmap.io`; `lighthouse` job in `ci.yml` runs after `deploy` on `main`, uploads report to temporary public storage (report-only, never fails CI)
-- Fixed `FilterUrlSync` sub-route redirect bug: `router.replace` now uses `usePathname()` to preserve the current path instead of always replacing to `/`
-
-### 2026-02-19 — Error Boundaries
-
-- Added `components/ErrorBoundary.tsx` — reusable React class component with a `fallback` prop; logs caught errors to console via `componentDidCatch`
-- Added `app/error.tsx` — Next.js route-level error page with a "Try again" reset button
-- Applied boundaries in `AppShell`: `MapContainer` gets a "Map failed to load / Refresh" full-screen fallback; `Sidebar` + `FilterOverlay` silently suppress (`fallback={null}`) so the map stays usable if filters crash

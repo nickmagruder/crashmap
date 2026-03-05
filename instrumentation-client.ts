@@ -7,6 +7,18 @@ import * as Sentry from '@sentry/nextjs'
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
+  beforeSend(event, hint) {
+    const error = hint?.originalException
+    const hintMsg = error instanceof Error ? error.message : String(error ?? '')
+    const eventMsg = event.exception?.values?.[0]?.value ?? ''
+    const combined = hintMsg + ' ' + eventMsg
+    // Ignore Firefox Reader Mode and browser extension noise
+    if (combined.includes('__firefox__') || combined.includes('window.ethereum')) {
+      return null
+    }
+    return event
+  },
+
   // Add optional integrations for additional features
   integrations: [
     Sentry.replayIntegration(),
