@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.7.1
+**Version:** 0.7.3
 
 **CrashMap** ([crashmap.io](https://crashmap.io)) is a public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians in Washington State. Crash data is self-collected from state DOT sources and displayed on an interactive, filterable map — making it easy to explore where and how crashes happen in your community.
 
@@ -763,6 +763,11 @@ This project is developed in the open. To report issues or suggest features, ple
 - Refined generated Prisma model: renamed to `CrashData`, added camelCase field names with `@map` decorators and `@@map("crashdata")`
 - Ran `npx prisma generate` to produce typed client in `lib/generated/prisma/`
 - Added `lib/generated/prisma` to `.gitignore`
+
+### 2026-03-08 — February 2026 Data Ingestion
+
+- Imported February 2026 crash data: 43 pedestrian + 8 bicyclist records (51 total; EG82570 missing coordinates)
+- Added post-import checklist steps to `data-pipeline.md`: update `InfoPanelContent.tsx` data range and log entry after each ingestion
 
 ### 2026-03-08 — Sentry Noise Filtering & Spurious Navigation Fix
 
