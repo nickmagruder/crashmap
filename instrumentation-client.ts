@@ -11,9 +11,28 @@ Sentry.init({
     const error = hint?.originalException
     const hintMsg = error instanceof Error ? error.message : String(error ?? '')
     const eventMsg = event.exception?.values?.[0]?.value ?? ''
+    const exceptionType = event.exception?.values?.[0]?.type ?? ''
     const combined = hintMsg + ' ' + eventMsg
-    // Ignore Firefox Reader Mode and browser extension noise
-    if (combined.includes('__firefox__') || combined.includes('window.ethereum')) {
+    // Ignore Firefox Reader Mode, wallet extensions, and Safari extension noise
+    if (
+      combined.includes('__firefox__') ||
+      combined.includes('window.ethereum') ||
+      combined.includes('runtime.sendMessage')
+    ) {
+      return null
+    }
+    // Ignore Mapbox GL worker/tile failures — they reject with CustomEvent objects
+    // rather than real Errors and are not actionable application errors
+    if (exceptionType === 'CustomEvent') {
+      return null
+    }
+    // Ignore Mapbox GL worker termination errors — postMessage on a terminated worker
+    // throws "The object is in an invalid state." (DOMException InvalidStateError);
+    // occurs when the Map component unmounts while tile-fetch callbacks are still queued
+    if (
+      exceptionType === 'InvalidStateError' &&
+      eventMsg === 'The object is in an invalid state.'
+    ) {
       return null
     }
     return event

@@ -763,3 +763,8 @@ This project is developed in the open. To report issues or suggest features, ple
 - Refined generated Prisma model: renamed to `CrashData`, added camelCase field names with `@map` decorators and `@@map("crashdata")`
 - Ran `npx prisma generate` to produce typed client in `lib/generated/prisma/`
 - Added `lib/generated/prisma` to `.gitignore`
+
+### 2026-03-08 — Sentry Noise Filtering & Spurious Navigation Fix
+
+- Fixed `FilterUrlSync` spurious same-URL `router.replace` — added early-return guard when encoded params match current `searchParams`; prevents redundant RSC fetches and downstream Mapbox worker errors on every page load
+- Expanded Sentry `beforeSend` noise filters: added `runtime.sendMessage` (Safari extension), `CustomEvent` exception type (Mapbox GL tile/worker rejections), and `InvalidStateError` + "The object is in an invalid state." (Mapbox GL worker termination)
