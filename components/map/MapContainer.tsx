@@ -145,6 +145,7 @@ export const MapContainer = forwardRef<MapRef>(function MapContainer(_, ref) {
       interactiveLayerIds={['crashes-none', 'crashes-minor', 'crashes-major', 'crashes-death']}
       onClick={handleMapClick}
       onMoveEnd={handleMoveEnd}
+      aria-label="Crash data map"
     >
       <CrashLayer />
       {selectedCrash && <CrashPopup crash={selectedCrash} onClose={closePopup} />}

@@ -88,12 +88,15 @@ export function GeographicFilter() {
           )}
         </div>
 
+        <Label htmlFor="county-select" className="text-xs text-muted-foreground">
+          County
+        </Label>
         <Select
           value={filterState.county ?? ALL}
           onValueChange={handleCountyChange}
           disabled={isDisabled || counties.length === 0}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="county-select" className="w-full">
             <SelectValue placeholder="All counties" />
           </SelectTrigger>
           <SelectContent>
@@ -106,12 +109,15 @@ export function GeographicFilter() {
           </SelectContent>
         </Select>
 
+        <Label htmlFor="city-select" className="text-xs text-muted-foreground">
+          City
+        </Label>
         <Select
           value={filterState.city ?? ALL}
           onValueChange={handleCityChange}
           disabled={isDisabled || cities.length === 0}
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger id="city-select" className="w-full">
             <SelectValue placeholder="All cities" />
           </SelectTrigger>
           <SelectContent>

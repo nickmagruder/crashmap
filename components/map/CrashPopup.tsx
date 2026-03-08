@@ -116,10 +116,14 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
             </span>
             <button
               onClick={() => handleCopyReportNum(crash.colliRptNum!)}
-              title="Copy report number"
+              aria-label={copied ? 'Report number copied' : 'Copy report number'}
               style={{ color: 'var(--muted-foreground)', lineHeight: 1 }}
             >
-              {copied ? <Check size={11} /> : <Copy size={11} />}
+              {copied ? (
+                <Check size={11} aria-hidden="true" />
+              ) : (
+                <Copy size={11} aria-hidden="true" />
+              )}
             </button>
           </div>
         )}
