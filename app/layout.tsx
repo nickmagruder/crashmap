@@ -43,6 +43,12 @@ export default function RootLayout({
         >
           <ApolloProvider>
             <FilterProvider>
+              <a
+                href="#map-region"
+                className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:rounded focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                Skip to main content
+              </a>
               <Suspense fallback={null}>
                 <FilterUrlSync />
               </Suspense>

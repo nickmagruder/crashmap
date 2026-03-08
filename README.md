@@ -769,6 +769,14 @@ This project is developed in the open. To report issues or suggest features, ple
 - Imported February 2026 crash data: 43 pedestrian + 8 bicyclist records (51 total; EG82570 missing coordinates)
 - Added post-import checklist steps to `data-pipeline.md`: update `InfoPanelContent.tsx` data range and log entry after each ingestion
 
+### 2026-03-08 — WCAG 2.1 AA Accessibility Improvements (Phase 8.1)
+
+- Added skip link ("Skip to main content") at top of `app/layout.tsx` — visually hidden, visible on focus, jumps to `#map-region`
+- Added `id="map-region"` + `role="main"` to map container in `AppShell.tsx`; added `aria-label="Crash data map"` to Mapbox `<Map>`
+- Added explicit `<label>` elements for County and City dropdowns in `GeographicFilter.tsx` with matching `id` on `SelectTrigger`
+- Both mobile overlays (`FilterOverlay`, `InfoOverlay`) now use `aria-labelledby` pointing to heading `id`, close on Escape, move focus to close button on open, and restore focus to the trigger button on close
+- Fixed copy-report-number button in `CrashPopup.tsx` — replaced mouse-only `title` with dynamic `aria-label`; both icon variants marked `aria-hidden`
+
 ### 2026-03-08 — Sentry Noise Filtering & Spurious Navigation Fix
 
 - Fixed `FilterUrlSync` spurious same-URL `router.replace` — added early-return guard when encoded params match current `searchParams`; prevents redundant RSC fetches and downstream Mapbox worker errors on every page load

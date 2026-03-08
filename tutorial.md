@@ -7380,4 +7380,198 @@ For the full operator workflow (routine monthly imports, troubleshooting, valida
 
 ---
 
+## Phase 8: Accessibility Audit (WCAG 2.1 AA)
+
+CrashMap is a public-facing safety tool. Anyone should be able to use it — including people who navigate with a keyboard only, or who use a screen reader. This phase works through the WCAG 2.1 AA standard systematically: critical structural requirements first, then high-priority announcements and labels, then medium-priority polish.
+
+The Mapbox map itself is inherently inaccessible to screen readers (it's a canvas-like element), but everything around it — the filters, overlays, export, and controls — can and should be fully accessible. That's where this phase focuses.
+
+### Step 1: Critical Fixes
+
+The critical fixes address the structural requirements that screen reader and keyboard users rely on most: where focus lands, whether dialogs are announced, and whether form controls have names.
+
+#### Skip Link
+
+A visually-hidden skip link lets keyboard users jump past all the controls directly to the map region — the same way sighted users can just click the map. Without it, a keyboard user must tab through every button before reaching the content.
+
+Add it as the first element inside `<FilterProvider>` in `app/layout.tsx`:
+
+```tsx
+<a
+  href="#map-region"
+  className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:rounded focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md focus:outline-none focus:ring-2 focus:ring-ring"
+>
+  Skip to main content
+</a>
+```
+
+`sr-only` hides it visually. `focus:not-sr-only` makes it fully visible when a keyboard user tabs to it and it receives focus. The `focus:ring-2` gives it a clear focus indicator consistent with the rest of the shadcn/ui design system.
+
+#### Main Landmark and Map Label
+
+The skip link needs a target. Add `id="map-region"` and `role="main"` to the center container div in `AppShell.tsx`:
+
+```tsx
+<div id="map-region" role="main" className="flex-1 relative" style={{ minWidth: 0 }}>
+```
+
+`role="main"` marks this as the primary content landmark — screen readers expose landmark regions in a navigation menu, so this lets users jump directly to the map area without using the skip link.
+
+Add `aria-label="Crash data map"` to the `<Map>` element in `MapContainer.tsx`. Mapbox renders its own `<canvas>` internally; without a label, the map is an anonymous element from the screen reader's perspective:
+
+```tsx
+<Map
+  ...
+  aria-label="Crash data map"
+>
+```
+
+#### Form Labels for Filter Dropdowns
+
+The County and City dropdowns in `GeographicFilter.tsx` were previously unlabeled — screen readers would announce "button, collapsed" with no context. shadcn's `SelectTrigger` accepts an `id` prop, so we can link a standard `<Label>` to it with `htmlFor`:
+
+```tsx
+<Label htmlFor="county-select" className="text-xs text-muted-foreground">
+  County
+</Label>
+<Select ...>
+  <SelectTrigger id="county-select" className="w-full">
+    <SelectValue placeholder="All counties" />
+  </SelectTrigger>
+  ...
+</Select>
+
+<Label htmlFor="city-select" className="text-xs text-muted-foreground">
+  City
+</Label>
+<Select ...>
+  <SelectTrigger id="city-select" className="w-full">
+    ...
+  </SelectTrigger>
+  ...
+</Select>
+```
+
+`Label` was already imported. Clicking the label text now activates the dropdown, and screen readers announce "County, button, collapsed" — giving full context.
+
+#### Mobile Overlay Accessibility
+
+Both mobile overlays (`FilterOverlay` and `InfoOverlay`) already had `role="dialog"` and `aria-modal="true"`, but were missing three things: a dialog name, keyboard dismissal, and focus management.
+
+**Dialog name:** Replace `aria-label` with `aria-labelledby` pointing to the heading:
+
+```tsx
+// Before
+<div role="dialog" aria-modal="true" aria-label="Filters">
+  <h2>Filters</h2>
+
+// After
+<div role="dialog" aria-modal="true" aria-labelledby="filter-overlay-title">
+  <h2 id="filter-overlay-title">Filters</h2>
+```
+
+This is preferred over `aria-label` because the visible heading text is the source of truth — the name is derived from actual content rather than duplicating it.
+
+**Escape key:** Keyboard users expect Escape to close dialogs. Add a keydown listener that is active only when the overlay is open:
+
+```tsx
+useEffect(() => {
+  if (!isOpen) return
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') onClose()
+  }
+  document.addEventListener('keydown', handleKeyDown)
+  return () => document.removeEventListener('keydown', handleKeyDown)
+}, [isOpen, onClose])
+```
+
+**Focus on open:** When an overlay opens, focus should move into it immediately — otherwise screen reader users don't know the dialog appeared. Add a `ref` to the close button and focus it when `isOpen` becomes true:
+
+```tsx
+const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+useEffect(() => {
+  if (isOpen) closeButtonRef.current?.focus()
+}, [isOpen])
+
+// ...
+
+<Button ref={closeButtonRef} variant="ghost" size="icon" onClick={onClose} aria-label="Close filters">
+```
+
+The close button is a sensible first focus target — it's the first interactive element and gives the user an immediate escape route.
+
+**Important:** All three hooks must be called unconditionally, before the `if (!isOpen) return null` early return. React's rules of hooks require hooks to run in the same order on every render:
+
+```tsx
+export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
+  const { filterState } = useFilterContext()
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => { ... }, [isOpen])           // focus on open
+  useEffect(() => { ... }, [isOpen, onClose])  // Escape key
+
+  if (!isOpen) return null  // early return AFTER hooks
+
+  return ( ... )
+}
+```
+
+**Focus restoration on close:** When the overlay closes, focus should return to the button that opened it — otherwise keyboard focus is lost and the user has to find their place again. In `AppShell.tsx`, add refs to the mobile trigger buttons and track the previous open state:
+
+```tsx
+const filterTriggerRef = useRef<HTMLButtonElement>(null)
+const infoTriggerRef = useRef<HTMLButtonElement>(null)
+
+const prevOverlayOpenRef = useRef(false)
+const prevInfoOverlayOpenRef = useRef(false)
+
+useEffect(() => {
+  if (prevOverlayOpenRef.current && !overlayOpen) filterTriggerRef.current?.focus()
+  prevOverlayOpenRef.current = overlayOpen
+}, [overlayOpen])
+
+useEffect(() => {
+  if (prevInfoOverlayOpenRef.current && !infoOverlayOpen) infoTriggerRef.current?.focus()
+  prevInfoOverlayOpenRef.current = infoOverlayOpen
+}, [infoOverlayOpen])
+```
+
+The `prevOpenRef` guard prevents the effect from firing focus on the initial render (when both `prevOpen` and `open` are false).
+
+Attach the refs to the mobile trigger buttons:
+
+```tsx
+<Button ref={filterTriggerRef} onClick={() => setOverlayOpen(true)} aria-label="Open filters">
+<Button ref={infoTriggerRef} onClick={() => setInfoOverlayOpen(true)} aria-label="Open about">
+```
+
+#### Copy Button in Crash Popup
+
+The copy-report-number button in `CrashPopup.tsx` used `title="Copy report number"` for its label. `title` is mouse-only — screen readers don't reliably read it, and it doesn't change when the copy succeeds. Replace it with a dynamic `aria-label` and add `aria-hidden` to the icons:
+
+```tsx
+// Before
+<button title="Copy report number">
+  {copied ? <Check size={11} /> : <Copy size={11} />}
+</button>
+
+// After
+<button aria-label={copied ? 'Report number copied' : 'Copy report number'}>
+  {copied ? <Check size={11} aria-hidden="true" /> : <Copy size={11} aria-hidden="true" />}
+</button>
+```
+
+When the user copies the report number, the `aria-label` changes to "Report number copied" — screen readers will re-read the button label, announcing the confirmation. The icons are marked `aria-hidden` because the button's accessible name already comes from the label.
+
+### Step 2: High-Priority Fixes
+
+### Step 3: Medium-Priority Fixes
+
+### Step 4: Verification
+
+### Summary
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

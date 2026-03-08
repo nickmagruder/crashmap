@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ModeToggle } from '@/components/filters/ModeToggle'
@@ -16,6 +17,21 @@ interface FilterOverlayProps {
 
 export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
   const { filterState } = useFilterContext()
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (isOpen) closeButtonRef.current?.focus()
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   return (
@@ -23,18 +39,26 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
       className="fixed inset-0 z-20 flex flex-col bg-background md:hidden"
       role="dialog"
       aria-modal="true"
-      aria-label="Filters"
+      aria-labelledby="filter-overlay-title"
     >
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div>
-          <h2 className="text-base font-semibold">Filters</h2>
+          <h2 id="filter-overlay-title" className="text-base font-semibold">
+            Filters
+          </h2>
           {filterState.totalCount !== null && (
             <p className="text-xs text-muted-foreground">
               {filterState.totalCount.toLocaleString()} crashes
             </p>
           )}
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close filters">
+        <Button
+          ref={closeButtonRef}
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          aria-label="Close filters"
+        >
           <X className="size-4" />
         </Button>
       </div>

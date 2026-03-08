@@ -35,6 +35,8 @@ export function AppShell() {
   const [infoPanelView, setInfoPanelView] = useState<InfoPanelView>('info')
   const [tilted, setTilted] = useState(false)
   const mapRef = useRef<MapRef>(null)
+  const filterTriggerRef = useRef<HTMLButtonElement>(null)
+  const infoTriggerRef = useRef<HTMLButtonElement>(null)
   const { filterState, dispatch } = useFilterContext()
 
   // Call resize() after any panel transition so Mapbox recomputes canvas size.
@@ -42,6 +44,18 @@ export function AppShell() {
     const id = setTimeout(() => mapRef.current?.resize(), 0)
     return () => clearTimeout(id)
   }, [sidebarOpen, overlayOpen, infoPanelOpen, infoOverlayOpen])
+
+  // Restore focus to trigger buttons when mobile overlays close.
+  const prevOverlayOpenRef = useRef(false)
+  const prevInfoOverlayOpenRef = useRef(false)
+  useEffect(() => {
+    if (prevOverlayOpenRef.current && !overlayOpen) filterTriggerRef.current?.focus()
+    prevOverlayOpenRef.current = overlayOpen
+  }, [overlayOpen])
+  useEffect(() => {
+    if (prevInfoOverlayOpenRef.current && !infoOverlayOpen) infoTriggerRef.current?.focus()
+    prevInfoOverlayOpenRef.current = infoOverlayOpen
+  }, [infoOverlayOpen])
 
   // Warn if no dates are selected, since that can be confusing. Dismiss when they do select some.
   useEffect(() => {
@@ -67,7 +81,7 @@ export function AppShell() {
       )}
 
       {/* Center: map + overlays + controls */}
-      <div className="flex-1 relative" style={{ minWidth: 0 }}>
+      <div id="map-region" role="main" className="flex-1 relative" style={{ minWidth: 0 }}>
         <ErrorBoundary fallback={mapFallback}>
           <MapContainer ref={mapRef} />
         </ErrorBoundary>
@@ -104,6 +118,7 @@ export function AppShell() {
           {/* Mobile version */}
           <div className="md:hidden flex gap-2">
             <Button
+              ref={infoTriggerRef}
               variant="outline"
               size="icon"
               className="dark:bg-zinc-900 dark:border-zinc-700"
@@ -175,6 +190,7 @@ export function AppShell() {
           {/* Filter overlay toggle — mobile only */}
           <div className="md:hidden">
             <Button
+              ref={filterTriggerRef}
               variant="outline"
               size="icon"
               className="dark:bg-zinc-900 dark:border-zinc-700"
