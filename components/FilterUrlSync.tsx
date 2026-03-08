@@ -41,8 +41,10 @@ export function FilterUrlSync() {
     }
     const params = encodeFilterParams(filterState)
     const search = params.toString()
+    // Skip if the URL would be unchanged — avoids spurious RSC navigations
+    if (search === searchParams.toString()) return
     router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false })
-  }, [filterState, router, pathname])
+  }, [filterState, router, pathname, searchParams])
 
   return null
 }
