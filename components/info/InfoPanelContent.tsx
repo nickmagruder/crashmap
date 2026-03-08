@@ -53,7 +53,7 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
       <section>
         <h3 className="text-sm font-semibold mb-2">The Data</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">The current data range is:</p>
-        <p className="text-sm text-muted-foreground leading-relaxed">2015 - Jan 2026</p>
+        <p className="text-sm text-muted-foreground leading-relaxed">2015 - Feb 2026</p>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Each record represents a reported crash involving at least one &quot;pedacyclist&quot; or
           pedestrian with a known location. Crashes are classified by the most severe injury to any
@@ -144,7 +144,7 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
       </section>
       <section>
         <p className="text-xs text-muted-foreground/60 mt-0.5">
-          Version 0.7.2 &middot; Updated 2/26/2026
+          Version 0.7.3 &middot; Updated 3/8/2026
         </p>
         <p className="text-xs text-muted-foreground/60 mt-0.5">© Copyright 2026 Nick Magruder</p>
       </section>

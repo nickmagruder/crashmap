@@ -6,6 +6,22 @@
 
 ---
 
+## Data Ingestion Log
+
+A record of every data import run against CrashMap's production database.
+
+| Date       | Scope                      | Mode       | Records | Notes                                                       |
+| ---------- | -------------------------- | ---------- | ------- | ----------------------------------------------------------- |
+| 2026-02-24 | Initial backfill 2015–2026 | Pedestrian | 22,419  | Stage 0 run first: dropped StatePlane cols, truncated table |
+| 2026-02-24 | Initial backfill 2015–2026 | Bicyclist  | 13,213  | After Pedestrian; ~1,000 cross-report dupes skipped         |
+| 2026-03-08 | February 2026              | Pedestrian | 43      | EG82570 (Kirkland) has NULL lat/lng — won't appear on map   |
+| 2026-03-08 | February 2026              | Bicyclist  | 8       | No cross-report duplicates                                  |
+
+Combined total after initial backfill: 35,632 records
+Combined total after February 2026 import: 35,683 records
+
+---
+
 ## Overview
 
 The full workflow has five stages, plus a one-time database preparation stage for initial setup:
@@ -301,6 +317,8 @@ Use this checklist each time you import new data.
 - [ ] `REFRESH MATERIALIZED VIEW available_years;`
 - [ ] Verify new records visible in CrashMap app
 - [ ] Verify year and location filters updated
+- [ ] Update `components/info/InfoPanelContent.tsx`: data range string (line ~57) and version/date footer (last `<section>`)
+- [ ] Add entry to the Data Ingestion Log in this file
 
 ---
 
