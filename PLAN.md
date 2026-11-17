@@ -299,8 +299,12 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 - [x] `beforeSend` noise filters unchanged (v11 keeps `beforeSend` for error events; only `beforeSendTransaction`/`ignoreTransactions` stopped working, and neither is used)
 - [x] Privacy change noted in the README changelog
 - [x] Audit: 11 → 7 (0 critical); production deps 6 → 1 (only the Apollo-capped `@graphql-tools/utils`)
-- [ ] After deploy: confirm on crashmap.io that `/monitoring` returns 200 and a browser error reaches Sentry with no IP address or cookies on the event; confirm Render logs no longer show `MaxListenersExceededWarning`
-- [ ] In Sentry: check alerts, dashboards and saved searches that used transactions (v11 streams spans instead); consider turning on "Prevent Storing of IP Addresses" under Project Settings → Security & Privacy, since the tunnel forwards the visitor's IP to Sentry's ingest
+- [x] Deployed 2026-11-16: browser now posts to plain `/monitoring` (no `?o=&p=` query) and the map, filters and GraphQL work with a clean console. Envelopes captured through the SDK transport (span items, DSN present) all return 200
+- [x] The one `/monitoring` 400 is expected: `app/sentry-example-page/page.tsx` calls `Sentry.diagnoseSdkConnectivity()` on mount, which POSTs the literal body `{}` to the tunnel only to check it's reachable, and the tunnel rejects it as an envelope with no DSN. It only happens on that page; map-to-map navigations send no 400s, and every real envelope (spans, errors, replay) returned 200
+- [x] 2026-11-17: threw the sample errors on `/sentry-example-page`. Both `SentryExampleFrontendError` and `SentryExampleAPIError` reached Sentry through the tunnel (SDK 11.13.0, release `b63da92`), with 0 users. Event JSON for both: no `user.ip_address` and no IP-like strings anywhere; `request` holds only `url` (plus `method` on the server event), with no headers and no cookies. Sentry still derives a coarse `user.geo` (country/region/city) at ingest from the forwarded client IP
+- [x] Render logs, 24h search for `MaxListeners` (checked 2026-11-17): warnings appear only from the pre-9.4 instances (`qckn6`, `4t28t`, `v2kwn`), the last at 2026-11-17 06:44 UTC as the 9.4 deploy replaced them. The 9.4 instance (`jps7f`) has logged none in ~11h of real traffic plus ~30 test tunnel requests
+- [x] Sentry: no alert or monitor depends on transactions (only the error monitor, the issue stream and the crashmap.io uptime check), and the dashboards are Sentry's built-in templates with no custom widgets, so span streaming needs no changes
+- [x] 2026-11-17: turned on Sentry "Prevent Storing of IP Addresses" for the `javascript-nextjs` project (Project Settings → Security & Privacy; API shows `scrubIPAddresses: true`). The org-level setting is still off. Stored events already had no IP; this is extra insurance and may drop the derived `user.geo` on new events
 
 ### Phase 9.5 — TypeScript 6
 
