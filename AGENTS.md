@@ -114,7 +114,7 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 - **Dark Reader** injects attributes on inline-colored spans and Lucide SVGs; add `suppressHydrationWarning` where hydration warnings appear.
 - **Sentry noise:** `instrumentation-client.ts` `beforeSend` drops browser-extension errors (`__firefox__`, `window.ethereum`, `runtime.sendMessage`) and Mapbox GL worker noise (`CustomEvent` type; `InvalidStateError` "The object is in an invalid state."). Extend that list rather than adding new filters elsewhere.
 - **CI YAML:** Prettier single-quotes the `'on':` key (YAML 1.1 boolean). Correct; don't revert.
-- **DayPicker v9 range mode:** a first click sets `from === to` (treat it as start-only); with `captionLayout="dropdown"` always control `month`/`onMonthChange`; bound years with `startMonth`/`endMonth`.
+- **DayPicker (`@daypicker/react` v10) range mode:** a first click sets `from === to` (treat it as start-only); with `captionLayout="dropdown"` always control `month`/`onMonthChange`; bound years with `startMonth`/`endMonth`. In the shadcn `calendar.tsx`, use v10 `classNames` keys (`month_grid`, not `table`) and keep the nav `pointer-events-none` so the dropdowns stay clickable.
 - **Apollo Client v4 imports:** hooks from `@apollo/client/react`, `HttpLink` from `@apollo/client/link/http`, `gql` from `@apollo/client`.
 - **react-map-gl v8:** import `Map`, `MapRef`, etc. from `react-map-gl/mapbox`.
 - **Skipped queries:** `previousData` isn't cleared when `skip` turns on; override the display data explicitly (see `CrashLayer.tsx`).

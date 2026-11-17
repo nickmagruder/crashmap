@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { format, parseISO, isBefore, isAfter } from 'date-fns'
-import type { DateRange } from 'react-day-picker'
+import type { DateRange } from '@daypicker/react'
 import { CalendarIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useQuery } from '@apollo/client/react'
@@ -98,7 +98,7 @@ export function DateFilter() {
   }
 
   function handleRangeSelect(range: DateRange | undefined) {
-    // DayPicker v9 sets from === to on the first click; treat that as start-only
+    // DayPicker (v9 and v10) sets from === to on the first click; treat that as start-only
     if (range?.from && range?.to && range.from.getTime() === range.to.getTime()) {
       setPendingRange({ from: range.from, to: undefined })
       return
