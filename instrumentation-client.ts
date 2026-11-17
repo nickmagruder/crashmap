@@ -3,9 +3,16 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs'
+import { SENTRY_DATA_COLLECTION, SENTRY_TUNNEL_PATH } from '@/lib/sentryConfig'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+
+  // Send events to our own origin; serveTunnelIntegration in the server/edge configs forwards them.
+  tunnel: SENTRY_TUNNEL_PATH,
+
+  // What Sentry may collect (no IPs, cookies, headers or bodies). See lib/sentryConfig.ts.
+  dataCollection: SENTRY_DATA_COLLECTION,
 
   beforeSend(event, hint) {
     const error = hint?.originalException
@@ -46,8 +53,7 @@ Sentry.init({
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
+  // Logs are sent through consoleLoggingIntegration above (Sentry v11 removed `enableLogs`).
 
   // Define how likely Replay events are sampled.
   // This sets the sample rate to be 10%. You may want this to be 100% while
@@ -56,10 +62,6 @@ Sentry.init({
 
   // Define how likely Replay events are sampled when an error occurs.
   replaysOnErrorSampleRate: 1.0,
-
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
 })
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

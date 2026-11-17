@@ -815,3 +815,12 @@ This project is developed in the open. To report issues or suggest features, ple
 - Renamed `vitest.config.ts` → `vitest.config.mts` (ESM, `import.meta.dirname`), removing Vitest's "ESM loaded as CommonJS" warning
 - Added `.vitest/` (Vitest 5's report and artifact directory) to `.gitignore`
 - No test changes needed; all 56 tests pass
+
+### 2026-11-16 — Dependency Upgrades Phase 9.4: Sentry v11 + Privacy
+
+- Upgraded `@sentry/nextjs` 10.78 → 11.13
+- **Privacy:** Sentry no longer receives visitors' IP addresses, cookies, HTTP headers or request/response bodies. `sendDefaultPii: true` is replaced by an explicit `dataCollection` shared by the browser, server and edge configs (`lib/sentryConfig.ts`); error capture, masked session replay, tracing and console logs are unchanged
+- Replaced the deprecated `tunnelRoute` rewrite with Sentry's managed tunnel (`tunnel: '/monitoring'` in the browser, `serveTunnelIntegration` on the server and edge). The server SDK answers tunnel requests directly, which ends the `MaxListenersExceededWarning` that Next.js's rewrite proxy logged on every browser Sentry event
+- Removed `enableLogs` (dropped in v11); logs still flow through `consoleLoggingIntegration`
+- Tracing now streams spans instead of sending transactions (Sentry v11 default)
+- `npm audit`: 11 → 7 vulnerabilities (0 critical); production dependencies 6 → 1

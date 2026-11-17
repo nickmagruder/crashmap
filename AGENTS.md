@@ -154,7 +154,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `components/export/ExportButton.tsx`, `lib/csv-export.ts`: CSV export
 - `lib/crashColors.ts`: standard and accessible severity palettes
 - `components/ErrorBoundary.tsx`, `app/error.tsx`, `app/global-error.tsx`: error boundaries
-- `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`: Sentry setup
+- `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`, `lib/sentryConfig.ts`: Sentry setup (shared tunnel path and `dataCollection` in `lib/sentryConfig.ts`)
 - `render.yaml`: Render services (production + staging)
 - `.github/workflows/ci.yml`: lint, format, typecheck, test, codegen drift, build, deploy hook, Lighthouse
 - `.lighthouserc.json`: Lighthouse CI config
