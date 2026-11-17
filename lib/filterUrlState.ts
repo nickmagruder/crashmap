@@ -5,7 +5,7 @@ import type {
   ModeFilter,
   SeverityBucket,
 } from '@/context/FilterContext'
-import { DEFAULT_SEVERITY } from '@/context/FilterContext'
+import { DEFAULT_DATE_PRESET, DEFAULT_SEVERITY } from '@/context/FilterContext'
 
 // The URL-serializable subset of FilterState (no derived fields).
 export type UrlFilterState = {
@@ -57,11 +57,11 @@ export function encodeFilterParams(filterState: FilterState): URLSearchParams {
     params.set('severity', buckets.join(','))
   }
 
-  // dateFilter — omit when it's the default (90d preset)
+  // dateFilter — omit when it's the default preset (DEFAULT_DATE_PRESET)
   const { dateFilter } = filterState
   if (dateFilter.type === 'none') {
     params.set('date', 'none')
-  } else if (dateFilter.type === 'preset' && dateFilter.preset !== '90d') {
+  } else if (dateFilter.type === 'preset' && dateFilter.preset !== DEFAULT_DATE_PRESET) {
     params.set('date', dateFilter.preset)
   } else if (dateFilter.type === 'year') {
     params.set('year', String(dateFilter.year))
@@ -69,7 +69,7 @@ export function encodeFilterParams(filterState: FilterState): URLSearchParams {
     params.set('dateFrom', dateFilter.startDate)
     params.set('dateTo', dateFilter.endDate)
   }
-  // preset === '90d' → omit (default)
+  // preset === DEFAULT_DATE_PRESET → omit (default)
 
   // state — omit when it matches the default ('Washington')
   if (filterState.state !== DEFAULT_STATE) {
@@ -124,7 +124,7 @@ export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
   }
 
   // dateFilter
-  let dateFilter: DateFilter = { type: 'preset', preset: '90d' }
+  let dateFilter: DateFilter = { type: 'preset', preset: DEFAULT_DATE_PRESET }
   const rawDate = params.get('date')
   const rawYear = params.get('year')
   const rawDateFrom = params.get('dateFrom')

@@ -10,6 +10,9 @@ export type ModeFilter = 'Bicyclist' | 'Pedestrian' | null
 
 export type DatePreset = 'ytd' | '90d' | 'last-year' | '3y'
 
+/** First-load date preset. Omitted from the URL when active (see lib/filterUrlState.ts). */
+export const DEFAULT_DATE_PRESET: DatePreset = 'ytd'
+
 export type DateFilter =
   | { type: 'none' }
   | { type: 'year'; year: number }
@@ -93,7 +96,7 @@ const initialState: FilterState = {
   mode: null,
   severity: DEFAULT_SEVERITY,
   includeNoInjury: false,
-  dateFilter: { type: 'preset', preset: '90d' },
+  dateFilter: { type: 'preset', preset: DEFAULT_DATE_PRESET },
   state: 'Washington',
   county: null,
   city: null,
@@ -196,6 +199,8 @@ export function useFilterContext(): FilterContextValue {
 /**
  * Compute a concrete date range from a named preset, anchored to dataBounds.maxDate.
  * YTD, 90d, and 3y use maxDate as their end anchor so they never exceed available data.
+ * YTD starts on January 1 of maxDate's year, not today's: WSDOT reports lag by weeks, so in
+ * early January today's year may have no data yet, which would put the start after the end.
  * Last Year always spans the previous complete calendar year.
  */
 export function presetToDateRange(
@@ -206,7 +211,7 @@ export function presetToDateRange(
   const today = new Date()
   switch (preset) {
     case 'ytd':
-      return { startDate: format(startOfYear(today), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+      return { startDate: format(startOfYear(maxDate), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
     case '90d':
       return { startDate: format(subDays(maxDate, 90), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
     case 'last-year': {

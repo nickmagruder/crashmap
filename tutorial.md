@@ -7617,4 +7617,38 @@ The upgrade landed as six small PRs instead of one risky one, each verified in p
 
 ---
 
+## Phase 10: Data Refresh and a YTD Default
+
+Months without an import had left the map stale: the newest crash was from February, and because WSDOT reports arrive weeks or months late, January and February held only a fraction of their eventual crashes. This phase re-imported 2025 onward with upserts (see `data-pipeline.md` for the import itself) and changed what the map shows on first load. `PLAN.md` Phase 10 has the checklist.
+
+### Step 1: Make YTD the Default
+
+Phase 6 switched the default preset from YTD to 90 Days. With fresh data, YTD is the more useful first view: it shows the whole current year so far. The default now lives in one exported constant, so the reducer's initial state and the URL encoder can't drift apart:
+
+```typescript
+// context/FilterContext.tsx
+export const DEFAULT_DATE_PRESET: DatePreset = 'ytd'
+```
+
+`initialState` uses it, and `lib/filterUrlState.ts` omits it from the URL and falls back to it when decoding. 90 Days is now an ordinary preset written as `?date=90d`. Shared links made under the old default have no date param, so they now open on YTD.
+
+### Step 2: Anchor YTD to the Data, Not the Calendar
+
+YTD used to start on January 1 of _today's_ year. That breaks every January: until the first new-year crashes are imported, the newest crash is from December, so the range runs from January 1 of the new year to a December date of the old one, and the default view is empty. The fix is one line: start from the newest crash's year instead.
+
+```typescript
+case 'ytd':
+  return { startDate: format(startOfYear(maxDate), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+```
+
+### Step 3: Test It
+
+Neither the URL helpers nor the presets had tests, so this phase added them. `lib/__tests__/filterUrlState.test.ts` checks that a bare URL decodes to YTD, that YTD is left out of the URL, and that every date filter round-trips. `context/__tests__/presetToDateRange.test.ts` uses Vitest's fake timers (`vi.setSystemTime`) to pin "today", including a January date with December data.
+
+### Summary
+
+The map opens on a full, current year again, and the default no longer depends on the import schedule lining up with the calendar.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

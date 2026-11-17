@@ -85,7 +85,7 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 | Mode                                                           | `ToggleGroup`                      | `Mode`                                            |
 | Injury severity (multi-select)                                 | `Checkbox` + `Label`               | `MostSevereInjuryType`                            |
 
-- Defaults: state Washington, 90-day preset, all modes, None/Unknown injuries hidden.
+- Defaults: state Washington, YTD preset (`DEFAULT_DATE_PRESET`; Jan 1 of the newest crash's year → newest crash), all modes, None/Unknown injuries hidden.
 - County and city are decoupled from each other; changing state clears both.
 - Filter state round-trips through the URL (`lib/filterUrlState.ts`); defaults are omitted from the URL.
 
@@ -138,7 +138,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `lib/graphql/resolvers.ts`: resolvers, severity bucket mapping, `buildWhere`
 - `lib/graphql/queries.ts`: client-side GraphQL documents
 - `lib/graphql/__generated__/types.ts`: codegen output (committed; `npm run codegen`; CI drift check)
-- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest); `lib/__tests__/`: other `lib/` unit tests (e.g. `sentryConfig.test.ts`)
+- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest); `lib/__tests__/`: other `lib/` unit tests (e.g. `sentryConfig.test.ts`, `filterUrlState.test.ts`); `context/__tests__/`: `presetToDateRange` tests
 - `app/api/graphql/route.ts`: Apollo route handler, CORS, depth limit (5)
 - `app/api/health/route.ts`: `GET /api/health` for Render health checks
 - `lib/rate-limit.ts`: in-memory 60 req/min per-IP limiter
