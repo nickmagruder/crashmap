@@ -314,7 +314,11 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 ### Phase 9.6 — react-day-picker 10
 
-- [ ] `react-day-picker` 9 → 10: the code already uses `startMonth`/`endMonth` and no removed props; keep the `react-day-picker` package name (still supported) or switch imports in `components/ui/calendar.tsx` and `DateFilter.tsx` to `@daypicker/react`; recheck the DayPicker v9 gotchas in `AGENTS.md` (range first-click, dropdown `month` control)
+- [x] `react-day-picker` 9.14 → `@daypicker/react` 10.0.2 (the v10 package name; `react-day-picker` is removed from `package.json`), with imports updated in `components/ui/calendar.tsx` and `DateFilter.tsx`. Checked against the official v10 upgrade guide: none of the removed props, aliases or `components.Button` are used
+- [x] `components/ui/calendar.tsx` (shadcn copy): renamed the removed `table` classNames key to `month_grid`, and added the `pointer-events` nav fix from shadcn-ui/ui#10441 so the month/year dropdowns stay clickable under the absolutely positioned nav row
+- [x] Tested locally (dev server, mobile filter overlay): the calendar renders with the correct grid; the month and year dropdowns move the controlled month (to June 2024), with years bounded 2015–2026 by `startMonth`/`endMonth`; after Clear, the first click sets a start-only pending range and keeps the popover open (the `from === to` handling still applies); the second click commits the range, updates the URL and count, and closes the popover. No console errors
+- [x] The AGENTS.md DayPicker gotchas still hold on v10 (renamed from "v9")
+- [x] Audit unchanged at 30 (all from the picomatch advisory noted in 9.5)
 
 ### Phase 9.7 — Deferred (revisit 2027-Q1)
 

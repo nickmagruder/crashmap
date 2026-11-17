@@ -837,3 +837,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - Upgraded TypeScript 5.9.3 → 6.0.3, the bridge release to the native TypeScript 7 compiler; no type errors or deprecation warnings
 - `tsconfig.json`: added `"types": ["node"]` (TypeScript 6 no longer loads every `@types` package by default) and dropped `dom.iterable` (now part of `dom`)
 - Noted a new picomatch ReDoS advisory (GHSA-fc5q-39xc-vjpf, all versions, no fix yet) that raises the `npm audit` count; it reaches production only through Sentry's build tooling
+
+### 2026-11-17 — Dependency Upgrades Phase 9.6: DayPicker 10
+
+- Replaced `react-day-picker` 9.14 with `@daypicker/react` 10.0.2 (DayPicker's new package name) in the shadcn `Calendar` and the date filter
+- `Calendar`: renamed the removed `table` class key to `month_grid`, and let clicks pass through the nav row so the month/year dropdowns stay clickable
+- Tested the custom date range locally: dropdowns, data-bounded years, start-only first click, and commit-on-second-click all work
