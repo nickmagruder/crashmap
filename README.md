@@ -50,12 +50,12 @@ An **accessible color palette** (Paul Tol Muted scheme — teal, tan, rose, indi
 
 All filters combine with AND logic and update the map in real time:
 
-| Filter       | Options                                                |
-| ------------ | ------------------------------------------------------ |
-| **Mode**     | All / Bicyclist / Pedestrian                           |
-| **Severity** | Death, Major Injury, Minor Injury, None/Unknown        |
-| **Date**     | YTD, 90 Days, Last Year, 3 Years, or custom date range |
-| **Location** | County and City (independent, not cascading)           |
+| Filter       | Options                                                        |
+| ------------ | -------------------------------------------------------------- |
+| **Mode**     | All / Bicyclist / Pedestrian                                   |
+| **Severity** | Death, Major Injury, Minor Injury, None/Unknown                |
+| **Date**     | 90 Days, YTD, 1 Year, Last Year, 3 Years, or custom date range |
+| **Location** | County and City (independent, not cascading)                   |
 
 ### Smart Map Behavior
 
@@ -875,3 +875,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - The map now opens on **YTD** instead of 90 Days (`DEFAULT_DATE_PRESET` in `FilterContext`); YTD is omitted from the URL, and 90 Days is now written as `?date=90d`. Old shared links without a date param open on YTD
 - YTD now starts on January 1 of the newest crash's year instead of today's year, so in early January (before new-year data is imported) the default view isn't empty
 - Added unit tests for the URL default and round-trip (`lib/__tests__/filterUrlState.test.ts`) and for preset ranges, including the January case (`context/__tests__/presetToDateRange.test.ts`)
+
+### 2026-11-17 — 1-Year Date Preset
+
+- New **1yr** date preset: the 365 days ending at the newest crash (today, when the data is current). It's now the first-load default (`DEFAULT_DATE_PRESET = '1y'`) and is omitted from the URL; YTD is now written as `?date=ytd`
+- Preset buttons reordered to 90d, YTD, 1yr, Last Year, 3yrs
+- Tests updated for the new default and the 1-year range

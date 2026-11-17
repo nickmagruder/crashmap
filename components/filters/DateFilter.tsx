@@ -13,8 +13,9 @@ import { useFilterContext, type DatePreset, presetToDateRange } from '@/context/
 import { GET_FILTER_OPTIONS, type GetFilterOptionsQuery } from '@/lib/graphql/queries'
 
 const QUICK_PRESETS: { id: DatePreset; label: string }[] = [
-  { id: 'ytd', label: 'YTD' },
   { id: '90d', label: '90d' },
+  { id: 'ytd', label: 'YTD' },
+  { id: '1y', label: '1yr' },
   { id: 'last-year', label: 'Last Year' },
   { id: '3y', label: '3yrs' },
 ]

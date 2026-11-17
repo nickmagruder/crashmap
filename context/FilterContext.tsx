@@ -8,10 +8,10 @@ import { format, parseISO, subDays, subMonths, startOfYear, endOfYear, subYears 
 export type SeverityBucket = 'Death' | 'Major Injury' | 'Minor Injury' | 'None'
 export type ModeFilter = 'Bicyclist' | 'Pedestrian' | null
 
-export type DatePreset = 'ytd' | '90d' | 'last-year' | '3y'
+export type DatePreset = '90d' | 'ytd' | '1y' | 'last-year' | '3y'
 
 /** First-load date preset. Omitted from the URL when active (see lib/filterUrlState.ts). */
-export const DEFAULT_DATE_PRESET: DatePreset = 'ytd'
+export const DEFAULT_DATE_PRESET: DatePreset = '1y'
 
 export type DateFilter =
   | { type: 'none' }
@@ -86,8 +86,9 @@ export type CrashFilterInput = {
 export const DEFAULT_SEVERITY: SeverityBucket[] = ['Death', 'Major Injury', 'Minor Injury']
 
 export const PRESET_LABELS: Record<DatePreset, string> = {
-  ytd: 'YTD',
   '90d': '90 Days',
+  ytd: 'YTD',
+  '1y': '1 Year',
   'last-year': 'Last Year',
   '3y': '3 Years',
 }
@@ -198,7 +199,8 @@ export function useFilterContext(): FilterContextValue {
 
 /**
  * Compute a concrete date range from a named preset, anchored to dataBounds.maxDate.
- * YTD, 90d, and 3y use maxDate as their end anchor so they never exceed available data.
+ * 90d, YTD, 1y and 3y use maxDate as their end anchor so they never exceed available data.
+ * 1y covers the 365 days ending at maxDate (today, or the newest crash when data lags).
  * YTD starts on January 1 of maxDate's year, not today's: WSDOT reports lag by weeks, so in
  * early January today's year may have no data yet, which would put the start after the end.
  * Last Year always spans the previous complete calendar year.
@@ -214,6 +216,8 @@ export function presetToDateRange(
       return { startDate: format(startOfYear(maxDate), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
     case '90d':
       return { startDate: format(subDays(maxDate, 90), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+    case '1y':
+      return { startDate: format(subDays(maxDate, 365), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
     case 'last-year': {
       const lastYear = subYears(today, 1)
       return {

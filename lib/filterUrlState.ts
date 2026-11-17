@@ -25,7 +25,7 @@ const DEFAULT_STATE = 'Washington'
 const DEFAULT_SEVERITY_SET = new Set<string>(DEFAULT_SEVERITY)
 const VALID_SEVERITY_BUCKETS = new Set<string>(['Death', 'Major Injury', 'Minor Injury', 'None'])
 const VALID_MODES = new Set<string>(['Bicyclist', 'Pedestrian'])
-const VALID_PRESETS = new Set<string>(['ytd', '90d', 'last-year', '3y'])
+const VALID_PRESETS = new Set<string>(['90d', 'ytd', '1y', 'last-year', '3y'])
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function isDefaultSeverity(severity: SeverityBucket[], includeNoInjury: boolean): boolean {

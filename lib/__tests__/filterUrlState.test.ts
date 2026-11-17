@@ -26,35 +26,36 @@ function makeState(dateFilter: DateFilter): FilterState {
 }
 
 describe('default date preset', () => {
-  it('is YTD', () => {
-    expect(DEFAULT_DATE_PRESET).toBe('ytd')
+  it('is 1 year', () => {
+    expect(DEFAULT_DATE_PRESET).toBe('1y')
   })
 
-  it('decodes a URL with no date params to the YTD preset', () => {
+  it('decodes a URL with no date params to the 1y preset', () => {
     expect(decodeFilterParams(new URLSearchParams()).dateFilter).toEqual({
       type: 'preset',
-      preset: 'ytd',
+      preset: '1y',
     })
   })
 
-  it('omits the YTD preset from the URL, so the default view has a clean URL', () => {
-    const params = encodeFilterParams(makeState({ type: 'preset', preset: 'ytd' }))
+  it('omits the 1y preset from the URL, so the default view has a clean URL', () => {
+    const params = encodeFilterParams(makeState({ type: 'preset', preset: '1y' }))
     expect(params.has('date')).toBe(false)
     expect(params.toString()).toBe('')
   })
 
-  it('falls back to YTD for an unknown preset', () => {
+  it('falls back to 1y for an unknown preset', () => {
     expect(decodeFilterParams(new URLSearchParams('date=bogus')).dateFilter).toEqual({
       type: 'preset',
-      preset: 'ytd',
+      preset: '1y',
     })
   })
 })
 
 describe('date filter round-trip', () => {
   const cases: DateFilter[] = [
-    { type: 'preset', preset: 'ytd' },
     { type: 'preset', preset: '90d' },
+    { type: 'preset', preset: 'ytd' },
+    { type: 'preset', preset: '1y' },
     { type: 'preset', preset: 'last-year' },
     { type: 'preset', preset: '3y' },
     { type: 'none' },
@@ -67,8 +68,11 @@ describe('date filter round-trip', () => {
     expect(decodeFilterParams(params).dateFilter).toEqual(dateFilter)
   })
 
-  it('writes the former default (90d) to the URL explicitly', () => {
-    const params = encodeFilterParams(makeState({ type: 'preset', preset: '90d' }))
-    expect(params.get('date')).toBe('90d')
-  })
+  it.each(['90d', 'ytd'] as const)(
+    'writes the former default %s to the URL explicitly',
+    (preset) => {
+      const params = encodeFilterParams(makeState({ type: 'preset', preset }))
+      expect(params.get('date')).toBe(preset)
+    }
+  )
 })
