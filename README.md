@@ -824,3 +824,10 @@ This project is developed in the open. To report issues or suggest features, ple
 - Removed `enableLogs` (dropped in v11); logs still flow through `consoleLoggingIntegration`
 - Tracing now streams spans instead of sending transactions (Sentry v11 default)
 - `npm audit`: 11 → 7 vulnerabilities (0 critical); production dependencies 6 → 1
+
+### 2026-11-17 — Phase 9.4 Production Verification
+
+- Confirmed in production that browser and server errors reach Sentry through the `/monitoring` tunnel with no IP address, headers or cookies on the stored events
+- Turned on Sentry's "Prevent Storing of IP Addresses" for the project as extra insurance
+- Confirmed in the Render logs that `MaxListenersExceededWarning` stopped when the 9.4 deploy went live
+- Explained the one expected `/monitoring` 400 on `/sentry-example-page` (its `diagnoseSdkConnectivity()` reachability probe)
