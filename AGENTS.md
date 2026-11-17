@@ -20,7 +20,7 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 
 ## Working rules
 
-- **Overrides clankers (git):** never commit, push or branch, even when asked in a session. Nick handles all commits and PRs manually in GitHub Desktop. At the end of a task, report what changed and stop.
+- **Git:** commit, push or open a PR only when Nick asks in that session (the clankers default). Then branch from the latest `main`, open a PR, and never merge it or push to `main`; Nick merges. Without a request, end the task with a summary and a proposed commit message (Nick often commits in GitHub Desktop). Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
 - **Overrides clankers (versioning):** never bump the version on line 2 of `README.md` (`**Version:** x.x.x`); Nick edits it by hand. Agents only add changelog entries (newest at the bottom of `README.md`).
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
 - **Deployment debugging:** check the simple things first: missing env vars, wrong URLs, misconfigured Render settings.
@@ -125,6 +125,7 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 - `README.md`: overview, version (line 2), changelog (bottom)
+- `PROMPTS.md`: project prompts, including `Close-Out-Session`
 - `PLAN.md`: phased checklist and bugs list
 - `ARCHITECTURE.md`: data model, GraphQL schema, indexes, security, detailed file notes
 - `tutorial.md`: blog-post draft of the build
@@ -161,13 +162,16 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 ## Close-out
 
+"Close out session" runs `Close-Out-Session` in `PROMPTS.md`, which replaces the generic clankers `close-out-session` skill for this repo. In brief:
+
 - After a data import, update the Data Ingestion Log and the data date range in `InfoPanelContent.tsx` (steps in `data-pipeline.md`).
-- Don't commit, push or bump the version (see Working rules); end with a summary Nick can use as a commit message.
-- Tick finished items in `PLAN.md`.
+- Tick finished items in `PLAN.md`; never bump the version.
+- Production checks (CI, crashmap.io smoke test, Render logs, Sentry) run only when the session deployed.
+- Offer to ship; on Nick's yes, branch from `main`, commit and open a PR, but never merge.
 
 ## Docs kept in this repo
 
-- `README.md`, `PLAN.md`, `ARCHITECTURE.md`, `tutorial.md` (update after significant steps), `data-pipeline.md`
+- `README.md`, `PLAN.md`, `ARCHITECTURE.md`, `tutorial.md` (update after significant steps), `data-pipeline.md`, `PROMPTS.md`
 
 ## Stretch goals
 

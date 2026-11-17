@@ -849,3 +849,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - Stopped false "N+1 API Call" performance issues: browser tracing no longer records spans for Mapbox's parallel style/tile requests (`isMapboxRequest` in `lib/sentryConfig.ts`, with unit tests), which also keeps token-bearing URLs out of traces
 - Filtered Mapbox's internal worker error `Can't serialize object of unregistered class "DOMException"` in `beforeSend`
 - Triaged the remaining issues: a Google Translate hydration mismatch and a Next.js RSC invariant from bots (old Next version, no recent events); neither needs a code change
+
+### 2026-11-17 — Close-Out-Session Prompt
+
+- Added `PROMPTS.md` with a CrashMap-specific `Close-Out-Session` prompt: memory vs. AGENTS.md routing, docs and plan updates, prompt review, checks (Prettier for Markdown), production checks only after a deploy (CI, crashmap.io smoke test, Render logs, Sentry), and an offer-then-PR ship step that never merges
+- `AGENTS.md` `## Close-out` now points to it; key-files and docs lists include `PROMPTS.md`
+- `AGENTS.md` git rule restored to "commit, push or open a PR only when Nick asks in the session; never merge" (it had reverted to "never commit, even when asked")
