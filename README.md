@@ -800,3 +800,11 @@ This project is developed in the open. To report issues or suggest features, ple
 - Applied all in-range minor/patch updates (Apollo Client 4.3, Apollo Server 5.5, Prisma 7.10, Sentry 10.78, Mapbox GL 3.35, Radix UI 1.8, Tailwind 4.3, Prettier 3.10, Vitest 4.1, others) and `npm audit fix`; vulnerabilities went from 104 (4 critical) to 23 (0 critical)
 - GitHub Actions: `actions/checkout` v7, `actions/setup-node` v7, `actions/cache` v6
 - `next.config.ts` imports `withSentryConfig` from `@sentry/nextjs/config` (the old path is deprecated)
+
+### 2026-11-16 — Dependency Upgrades Phase 9.2: Tooling Majors + Lucide 1.x
+
+- Upgraded GraphQL Code Generator (`cli` 8, `add` 8, `typescript` 7, `typescript-resolvers` 7); regenerated types drop five unused helper types
+- Upgraded `lint-staged` 17, `dotenv` 18 and the `shadcn` CLI 4; no config changes needed
+- Upgraded `lucide-react` 0.574 → 1.x; icons without an accessible label now get `aria-hidden="true"` automatically
+- Recorded the Phase 9.1 production checks in `PLAN.md`: Render runs Node 24.22.3, and the `MaxListenersExceededWarning` comes from Next 16.4's external-rewrite proxy behind the Sentry `/monitoring` tunnel (log noise, fixed in 9.4)
+- `npm audit`: 23 → 11 vulnerabilities (0 critical)
