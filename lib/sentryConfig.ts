@@ -14,6 +14,27 @@ type DataCollection = NonNullable<NonNullable<Parameters<typeof Sentry.init>[0]>
 export const SENTRY_TUNNEL_PATH = '/monitoring'
 
 /**
+ * True for requests to Mapbox (style, sprites, glyphs, tiles, telemetry). The browser tracing
+ * integration skips spans for these: map loading fires many parallel GETs, which Sentry's
+ * performance detector flags as an "N+1 API Call", and their URLs carry the Mapbox access token.
+ */
+export function isMapboxRequest(url: string): boolean {
+  try {
+    const { hostname } = new URL(url, 'https://crashmap.io')
+    return hostname === 'mapbox.com' || hostname.endsWith('.mapbox.com')
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Browser error messages that are Mapbox GL internals, not CrashMap bugs. Mapbox's worker
+ * serializer can't post a DOMException (e.g. an aborted tile fetch) between threads and throws
+ * from its `blob:` worker script.
+ */
+export const MAPBOX_WORKER_SERIALIZE_ERROR = `Can't serialize object of unregistered class "DOMException"`
+
+/**
  * What Sentry may collect. Sentry v11 collects everything when this is unset, so it is set explicitly.
  *
  * CrashMap has no accounts or personal data of its own, so visitor details stay out of Sentry: no user

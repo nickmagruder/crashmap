@@ -3,7 +3,12 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs'
-import { SENTRY_DATA_COLLECTION, SENTRY_TUNNEL_PATH } from '@/lib/sentryConfig'
+import {
+  MAPBOX_WORKER_SERIALIZE_ERROR,
+  SENTRY_DATA_COLLECTION,
+  SENTRY_TUNNEL_PATH,
+  isMapboxRequest,
+} from '@/lib/sentryConfig'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -42,11 +47,21 @@ Sentry.init({
     ) {
       return null
     }
+    // Ignore Mapbox GL worker serialization failures — Mapbox's worker can't post a
+    // DOMException (e.g. an aborted tile fetch) between threads and throws from its blob: script
+    if (combined.includes(MAPBOX_WORKER_SERIALIZE_ERROR)) {
+      return null
+    }
     return event
   },
 
   // Add optional integrations for additional features
   integrations: [
+    // Skip spans for Mapbox requests: map loading fires many parallel GETs that Sentry flags as
+    // an "N+1 API Call", and their URLs carry the Mapbox token. See isMapboxRequest.
+    Sentry.browserTracingIntegration({
+      shouldCreateSpanForRequest: (url) => !isMapboxRequest(url),
+    }),
     Sentry.replayIntegration(),
     Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
   ],
