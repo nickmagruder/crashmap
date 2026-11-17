@@ -10,7 +10,7 @@ services:
       cp -r public .next/standalone/public &&
       cp -r .next/static .next/standalone/.next/static
     startCommand: node .next/standalone/server.js
-    nodeVersion: 20
+    nodeVersion: 24
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -32,7 +32,7 @@ services:
       cp -r public .next/standalone/public &&
       cp -r .next/static .next/standalone/.next/static
     startCommand: node .next/standalone/server.js
-    nodeVersion: 20
+    nodeVersion: 24
     envVars:
       - key: DATABASE_URL
         sync: false

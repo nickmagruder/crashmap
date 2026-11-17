@@ -254,6 +254,65 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 
 ---
 
+## Phase 9: Dependency Upgrades (planned 2026-11-16)
+
+Snapshot on 2026-11-16: `npm outdated` showed 35 outdated packages (12 with a new major); `npm audit` reported 55 vulnerabilities (2 critical, 30 high), including a critical one in production `next` (HTTP request smuggling in rewrites, fixed in 16.4.6). Node 20, used by `render.yaml` and CI, reached end of life on 2026-04-30.
+
+Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); TypeScript to **6.x** only (bridge to TS 7); Sentry v11 with **reduced data collection**; **one PR per phase**, each deployed to `crashmap-staging` and smoke-tested before merging to `main`.
+
+**Every PR:** `npm ci`, `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`, `npm run codegen` (no diff), `npm run build`, then the staging smoke test: map loads, all filters and date presets, custom date range, county/city selects, crash popup + copy, CSV export, URL round-trip, light/dark and accessible palette, mobile overlays, a Sentry test error arrives, Lighthouse not regressed.
+
+### Phase 9.1 — Node 24 + security patches (urgent; do first)
+
+- [x] Node 24: `nodeVersion: 24` for both services in `render.yaml`; `node-version: 24` in `.github/workflows/ci.yml`; add `.nvmrc` (`24`) and `"engines": { "node": ">=24 <25" }`
+- [ ] Confirm Render builds with Node 24 (staging and production build logs); if a `NODE_VERSION` env var is set in the Render dashboard, update or remove it
+- [x] `@types/node` `^20` → `^24`
+- [x] `next` and `eslint-config-next` 16.1.6 → 16.4.6 (fixes the critical `next` advisory plus `postcss`/`sharp` advisories); keep both pinned to the same exact version
+- [x] `react`/`react-dom` 19.2.3 → 19.3.1 (exact pins); `@types/react`/`@types/react-dom` → 19.3.x
+- [x] In-range minor/patch via `npm update --save`: Apollo Client 4.3, Apollo Server 5.5, `@apollo/client-integration-nextjs`, Prisma (`prisma`, `@prisma/client`, `@prisma/adapter-pg`) 7.10 (all three together), Sentry 10.78, `mapbox-gl` 3.35, `react-map-gl` 8.1.3, `radix-ui` 1.8, Tailwind 4.3, `date-fns`, `sonner`, `tailwind-merge`, `prettier` 3.10, `react-day-picker` 9.14, `graphql` 16.15, `eslint` 9.39.x, `dotenv` 17.x, `lint-staged` 16.x, `vitest` 4.1
+- [x] `npm audit fix` (never `--force`): 23 remain (0 critical, 15 high, 8 moderate), 6 of them in production deps. All but one are cleared by the 9.2 (codegen 8, shadcn 4) and 9.4 (Sentry 11) majors. The exception, `@graphql-tools/utils` ≤12.0.1 under `@apollo/server` 5.5.2, can't be fixed yet because Apollo Server caps it at `<12.0.2`; its prototype-pollution advisories hit merge helpers that only see our own schema at startup. Recheck when Apollo Server widens the range
+- [x] Prettier 3.10: only `lib/graphql/__generated__/types.ts` changed (`npm run codegen` reformats it)
+- [x] GitHub Actions: `actions/checkout` v4 → v7, `actions/setup-node` v4 → v7, `actions/cache` v4 → v6 (ESM/Node 24 runtimes; no input changes affect this workflow); `treosh/lighthouse-ci-action` v12 is already the latest major
+- [x] Prisma 7.10: `npx prisma generate`; all 56 tests pass; local GraphQL query returns data from the Render DB
+- [x] Pulled forward from 9.4: `withSentryConfig` now imported from `@sentry/nextjs/config` (removes the v11 deprecation warning at build time)
+
+### Phase 9.2 — Low-risk majors (dev tooling + icons)
+
+- [ ] `@graphql-codegen/cli` 8, `add` 8, `typescript` 7, `typescript-resolvers` 7 (clears most remaining high advisories: `@graphql-tools/utils`, `lodash`); read the v7 and v8 changelogs, re-run codegen and review the diff in `lib/graphql/__generated__/types.ts`
+- [ ] `lint-staged` 17 (needs Node 22+, Git ≥ 2.32); test a commit through the husky hook
+- [ ] `dotenv` 18: read the changelog first (no breaking-change notes found in research); check `prisma.config.ts` and any `dotenv/config` imports
+- [ ] `shadcn` CLI 4 (dev only; clears the `zod` advisory): check `components.json` against the v4 changelog (import aliases); don't re-add components with `--overwrite`
+- [ ] `lucide-react` 1.x: no brand icons are used, so imports should be unchanged; v1 sets `aria-hidden` on icons by default, so recheck Phase 8.2/8.3 icon items and remove redundant `aria-hidden` props only if desired
+
+### Phase 9.3 — Vitest 5
+
+- [ ] `vitest` 4 → 5 (Node 22.12+; Vite is now a peer dep): check `vitest.config.ts` (Vitest 4.1 already warns it is ESM loaded as CommonJS; rename to `vitest.config.mts`); note `clearMocks` is now on by default, `toThrow('')` matches any error, and reports go under `.vitest/` (add to `.gitignore`)
+
+### Phase 9.4 — Sentry v11
+
+- [ ] `@sentry/nextjs` 10 → 11, following the official Next.js v10→v11 migration guide
+- [x] `next.config.ts`: import `withSentryConfig` from the new `/config` subpath (done in 9.1)
+- [ ] Replace `sendDefaultPii: true` in `instrumentation-client.ts`, `sentry.server.config.ts` and `sentry.edge.config.ts` with an explicit `dataCollection` that turns **off** IP addresses, cookies and request headers (unset now means collect everything); keep error capture, masked session replay and tracing
+- [ ] Recheck the `beforeSend` noise filters still apply, and review tracing/alerts after the switch to span streaming
+- [ ] Note the privacy change in the README changelog
+
+### Phase 9.5 — TypeScript 6
+
+- [ ] `typescript` 5.9 → 6.x (confirm Next 16.4 supports it); fix new errors and deprecation warnings in `tsconfig.json` so the project is ready for TS 7
+
+### Phase 9.6 — react-day-picker 10
+
+- [ ] `react-day-picker` 9 → 10: the code already uses `startMonth`/`endMonth` and no removed props; keep the `react-day-picker` package name (still supported) or switch imports in `components/ui/calendar.tsx` and `DateFilter.tsx` to `@daypicker/react`; recheck the DayPicker v9 gotchas in `AGENTS.md` (range first-click, dropdown `month` control)
+
+### Phase 9.7 — Deferred (revisit 2027-Q1)
+
+- [ ] ESLint 10: wait until `eslint-config-next` declares ESLint 10 in its peer dependencies (vercel/next.js#91702); no `--legacy-peer-deps`
+- [ ] `graphql` 17: wait until Apollo Server 5 and graphql-codegen declare support for the final 17.x
+- [ ] TypeScript 7 (native compiler): after 9.5, once Next.js and codegen work with it; try `npx tsgo --noEmit` first
+- [ ] After all phases: update `AGENTS.md` (Node version, gotchas), `ARCHITECTURE.md` and the README changelog
+
+---
+
 ## Phase D: Auditing docs
 
 - [x] Audit Phase 1
