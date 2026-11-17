@@ -948,3 +948,108 @@ const themes = {
 - Location 2: Broadway and E Fir St, Seattle, WA, coordinates of 47.602701919984966, -122.32077733634235
 
 ---
+
+## 11. Implementation Notes
+
+Detailed per-file notes moved here from the agent context (`AGENTS.md` keeps a one-line key-files list). Keep these in sync when the files change.
+
+### Key Files in Detail
+
+- `ARCHITECTURE.md` — Full architecture document with data model, GraphQL schema, Prisma model, SQL indexes, action plan, and all technical details
+- `tutorial.md` — Step-by-step tutorial draft for blog post
+- `README.md` — Project readme with changelog at the bottom
+- `data-pipeline.md` — Operator guide for routine monthly data ingestion: fetch → generate → import → refresh → validate; includes Data Ingestion Log and Full Import Checklist
+- `prisma/schema.prisma` — Prisma schema (introspected via `prisma db pull`; do NOT run `prisma migrate dev`)
+- `lib/prisma.ts` — PrismaClient singleton (with `@prisma/adapter-pg`)
+- `lib/graphql/typeDefs.ts` — Full GraphQL schema (SDL string)
+- `lib/graphql/resolvers.ts` — All resolvers with severity bucket mapping and `buildWhere` helper
+- `app/api/graphql/route.ts` — Apollo Server route handler; also contains the inline `depthLimitRule` validation rule (max depth: 5)
+- `app/api/health/route.ts` — Health check endpoint; `GET /api/health` returns `200 {"status":"ok"}`; `force-dynamic` prevents static caching; referenced by `healthCheckPath` in `render.yaml` and Render dashboard Health & Alerts
+- `lib/graphql/__generated__/types.ts` — Generated GraphQL types (committed; regenerated via `npm run codegen`, which runs codegen then pipes prettier to ensure output matches project style before commit)
+- `lib/rate-limit.ts` — In-memory sliding window rate limiter (60 req/min per IP); `getClientIp()` reads `x-forwarded-for` for Render's proxy; periodic `setInterval` sweep evicts idle IPs
+- `lib/graphql/__tests__/helpers.test.ts` — Unit tests for `rawToBucket`, `bucketsToRawValues`, `buildWhere`
+- `lib/graphql/__tests__/queries.test.ts` — Integration tests for all GraphQL queries via `executeOperation` with mocked Prisma
+- `vitest.config.ts` — Vitest configuration with `@` path alias
+- `components/theme-provider.tsx` — thin `NextThemesProvider` wrapper (`attribute="class"`, `defaultTheme="system"`, `enableSystem`)
+- `components/ui/theme-toggle.tsx` — Sun/Moon icon button; CSS-driven icon swap via `dark:hidden`/`hidden dark:block`
+- `context/FilterContext.tsx` — React `useReducer` filter state; `FilterProvider`, `useFilterContext()`, `toCrashFilter()`, `getActiveFilterLabels()`; exports `UrlFilterState` type, `CrashFilterInput` type (includes `bbox`), `DatePreset` type (`'ytd' | '90d' | 'last-year' | '3y'`), `PRESET_LABELS` record, `presetToDateRange(preset, dataBounds)` utility, and `INIT_FROM_URL` / `SET_UPDATE_WITH_MOVEMENT` / `SET_DATE_BOUNDS` / `SET_DATE_PRESET` actions; default initialState: `state: 'Washington'`, `dateFilter: { type: 'preset', preset: '90d' }`, `mode: null`, `updateWithMovement: false`; county and city are decoupled (neither resets the other); `dataBounds: { minDate: string; maxDate: string } | null` holds the DB min/max CrashDate fetched on app load; preset ranges anchored to `dataBounds.maxDate` (YTD, 90d, 3y) or previous full calendar year (last-year)
+- `lib/filterUrlState.ts` — Pure encode/decode utilities: `encodeFilterParams(FilterState) → URLSearchParams` (omits defaults) and `decodeFilterParams(URLSearchParams) → UrlFilterState` (falls back to defaults for absent/invalid params); URL schema: `?mode`, `?severity` (CSV, `None` doubles as `includeNoInjury`), `?date=ytd|last-year|3y|none` (preset; `90d` omitted as default), `?year` (legacy — still decoded for backward compat), `?dateFrom`/`?dateTo` (custom range), `?state` (`none` = all states), `?county`, `?city`, `?movement=1` (updateWithMovement); county/city are decoupled in both encode and decode
+- `components/filters/GeographicFilter.tsx` — Location filter UI; county and city selects (both load all Washington options, decoupled from each other); "Map Controls" section with "Update search as map moves" and "Satellite view" Switch toggles; selectors disabled when `updateWithMovement` is on
+- `components/FilterUrlSync.tsx` — Invisible `'use client'` bridge rendered inside `<Suspense>` within `FilterProvider`; Effect 1 (mount): reads URL → `INIT_FROM_URL`; Effect 2 (filterState dep): encodes state → `router.replace` using `usePathname()` so sub-routes are preserved; `skipFirstSyncRef` prevents initial state from overwriting incoming shared URL; early-return guard (`if (search === searchParams.toString()) return`) prevents spurious same-URL navigations that would trigger redundant RSC fetches and downstream Mapbox worker errors
+- `components/ErrorBoundary.tsx` — Reusable React class-based error boundary; `fallback` prop accepts any ReactNode; logs caught errors via `componentDidCatch`
+- `app/error.tsx` — Next.js route-level error page (client component); calls `Sentry.captureException`; shows "Something went wrong" with a `reset()` button
+- `app/global-error.tsx` — Root-level error boundary (catches errors in layout); calls `Sentry.captureException`; created by Sentry wizard
+- `instrumentation.ts` — Next.js instrumentation hook; imports `sentry.server.config.ts` (nodejs runtime) or `sentry.edge.config.ts` (edge runtime); exports `onRequestError = Sentry.captureRequestError`
+- `instrumentation-client.ts` — Client-side Sentry init; enables Session Replay, logs, and performance tracing; exports `onRouterTransitionStart`; `beforeSend` hook filters known noise by checking `hint.originalException`, `event.exception.values[0].value`, and `event.exception.values[0].type`: (1) browser extension strings `__firefox__`, `window.ethereum`, `runtime.sendMessage`; (2) `exceptionType === 'CustomEvent'` (Mapbox GL tile/worker rejections); (3) `InvalidStateError` + `"The object is in an invalid state."` (Mapbox GL worker terminated while callbacks were queued)
+- `sentry.server.config.ts` — Server-side `Sentry.init`; DSN from `NEXT_PUBLIC_SENTRY_DSN`; includes `consoleLoggingIntegration` and `enableLogs: true`
+- `sentry.edge.config.ts` — Edge-runtime `Sentry.init`; DSN from `NEXT_PUBLIC_SENTRY_DSN`; includes `consoleLoggingIntegration` and `enableLogs: true`
+- `.lighthouserc.json` — Lighthouse CI config; targets `https://crashmap.io`; uploads to temporary public storage (report-only, never fails CI)
+- `lib/crashColors.ts` — `STANDARD_COLORS` and `ACCESSIBLE_COLORS` as `Record<SeverityBucket, string>`; Paul Tol Muted palette for the accessible variant; imported by `CrashLayer.tsx`, `SeverityFilter.tsx`, and `InfoPanelContent.tsx` so all three locations always stay in sync
+- `lib/csv-export.ts` — `generateCsv(CrashRow[]) → string` (with BOM for Excel) and `downloadCsv(content, filename)` (Blob + anchor click); no external dependencies
+- `components/export/ExportButton.tsx` — Self-contained export button; uses `useLazyQuery(GET_CRASHES_EXPORT)` with current filter state; two variants: `icon` (for SummaryBar) and `full` (for Sidebar/FilterOverlay); builds descriptive filename from active geo/date filters
+- `components/layout/AppShell.tsx` — `'use client'` layout orchestrator; flex container managing `sidebarOpen`, `infoPanelOpen`, `overlayOpen`, `infoOverlayOpen`, and `infoPanelView: 'info' | 'support'` state; Info (ℹ) and Heart (❤) buttons top-left open the left panel in the respective view; both panels default open on desktop; `map.resize()` fires (0ms timeout) on all panel state changes; wraps `MapContainer` and panels in `ErrorBoundary`; top-right buttons: Eye (accessible colors toggle, `variant="default"` when active), ThemeToggle, SlidersHorizontal; all use `dark:bg-zinc-900 dark:border-zinc-700` for solid dark-mode appearance; renders a persistent top-center "No dates selected" warning banner (`TriangleAlert` icon) when `filterState.dateFilter.type === 'none'`; bottom-left controls: Box (tilt toggle, `variant="default"` when pitch > 0, calls `map.easeTo({ pitch: 0|45 })`), Plus (`map.zoomIn()`), Minus (`map.zoomOut()`), positioned at `absolute bottom-14 left-4 md:bottom-6`; `tilted` local state tracks button appearance; center map div has `id="map-region"` + `role="main"` (skip-link target); `filterTriggerRef` + `infoTriggerRef` hold refs to mobile trigger buttons; `prevOverlayOpenRef`/`prevInfoOverlayOpenRef` track prior open state so focus restores to the correct trigger when overlays close
+- `components/map/MapContainer.tsx` — `'use client'` Mapbox map filling parent container; `aria-label="Crash data map"` for screen readers; map style driven by `filterState.satellite` (satellite-streets-v12) and `resolvedTheme` (dark/light); clicking a crash zooms + tilts the map and restores the original viewport on popup close (saved in `savedViewportRef`; `useImperativeHandle` forwards the internal map ref externally); renders `<CrashPopup>` when a crash is selected; click zoom is metered: `newZoom = (savedViewport.zoom + TARGET_ZOOM) / 2` so the map always flies halfway to 15.5 rather than jumping there directly; Mapbox `padding` (mobile: top 200/bottom 70, desktop: top 150) offsets the center so the popup clears the top UI buttons, reset to zero on popup close; `flyingRef` prevents `onMoveEnd` from recording programmatic `flyTo` positions; `handleMoveEnd` updates `savedViewportRef` (center, zoom, bearing, pitch) on user-initiated camera moves so closing the popup returns to wherever the user navigated
+- `components/map/CrashPopup.tsx` — Crash detail popup component; receives `crash: SelectedCrash` + `onClose` props; renders Mapbox `Popup` with date, time, injury type (color dot), mode, city/county, jurisdiction, involved persons, report number (with copy-to-clipboard), Apple Maps link, and Google Street View link; owns `copied` state internally; copy button uses `aria-label={copied ? 'Report number copied' : 'Copy report number'}` (no `title`); both icon variants have `aria-hidden="true"`; exports `SelectedCrash` type
+- `components/sidebar/Sidebar.tsx` — Filter panel; flex column (desktop only) with title + X close button; shows crash count at top of filter content
+- `components/overlay/FilterOverlay.tsx` — Full-screen filter overlay (mobile, <768px); `role="dialog"` + `aria-modal="true"` + `aria-labelledby="filter-overlay-title"`; Escape key closes; focus moves to close button on open; shows crash count in header below "Filters" title
+- `components/info/InfoPanelContent.tsx` — Info panel content: dedication, data description + WSDOT link + GitHub link, map key, data disclaimer, Get Involved links, "❤️ Support this App" nav button; accepts `onSwitchView` callback
+- `components/info/InfoOverlay.tsx` — Mobile full-screen info overlay (`md:hidden`); `role="dialog"` + `aria-modal="true"` + `aria-labelledby="info-overlay-title"`; Escape key closes; focus moves to close button on open; accepts `view` and `onSwitchView` props; renders `InfoPanelContent` or `SupportPanelContent` based on view
+- `components/info/InfoSidePanel.tsx` — Left panel; flex column (desktop only) with title + X close button; accepts `view?: 'info' | 'support'` and `onSwitchView`; exports `InfoPanelView` type; `PanelBody` helper selects content component
+- `components/info/SupportPanelContent.tsx` — Support panel content: "Support this App" heading, hosting blurb, PayPal/CashApp/Venmo links, contact link, "← Back to Info" nav button; accepts `onSwitchView` callback
+- `components/info/PanelCredit.tsx` — Shared author credit block rendered at the top of both info and support panel contents; "Created by Nick Magruder" (linked) + tagline
+- `components/summary/SummaryBar.tsx` — Mobile: fixed full-width strip flush against viewport bottom with active filter badges; Desktop: floating centered `rounded-md` bar near the bottom edge. Crash count removed (moved to filter panels); `actions` slot (export button) shown on desktop only
+- `components/filters/DateFilter.tsx` — Date filter UI; four named preset buttons (YTD, 90 Days, Last Year, 3 Years) backed by `DatePreset` type; pressing an active preset toggles it off (`CLEAR_DATE`); custom range popover (`Popover` + `Calendar`) shows computed date range in its trigger label when a preset is active; popover contains a single-month shadcn `Calendar` (`mode="range"`, `captionLayout="dropdown"`) with month/year dropdowns bounded by `dataBounds` (`startMonth`/`endMonth`); controlled `month`/`setMonth` state seeded from active preset range start on open; DayPicker v9 first-click quirk patched: `from === to` on first click is intercepted and treated as start-only; commits immediately when both dates are selected, popover auto-closes; Clear wipes selection and keeps popover open; `dateFilter.type === 'none'` skips the GraphQL query in `CrashLayer` and shows a warning banner on the map; Sonner `toast.error` fires for out-of-range dates
+- `components/ui/input.tsx` — shadcn Input component
+- `components/ui/sonner.tsx` — shadcn Sonner toast wrapper; `<Toaster />` rendered in `app/layout.tsx`; `position="top-center"`, `offset={32}` (desktop), `mobileOffset={{ top: 80, right: 16, left: 16, bottom: 16 }}` (mobile ≤600px, full-width, below top buttons); `toast.error(msg)` from `sonner` used for date validation errors in `DateFilter`; `toast.warning(..., { id, duration: Infinity })` used in `CrashLayer` for the 40,000-crash display-limit warning
+- `lib/generated/prisma/` — Generated Prisma client (gitignored; regenerated via `postinstall: prisma generate`)
+
+### Code Patterns
+
+#### Inline Query Depth Limiting (Apollo Server v5)
+
+Lives in `app/api/graphql/route.ts`; avoids a dependency for a ~20-line rule.
+
+```ts
+const MAX_DEPTH = 5
+
+function queryDepth(node: ASTNode, depth = 0): number {
+  if ('selectionSet' in node && node.selectionSet) {
+    const sels = (node.selectionSet as { selections: readonly ASTNode[] }).selections
+    if (sels.length === 0) return depth
+    return Math.max(...sels.map((s) => queryDepth(s, depth + 1)))
+  }
+  return depth
+}
+
+const depthLimitRule: ValidationRule = (context: ValidationContext) => ({
+  Document(doc) {
+    for (const def of doc.definitions) {
+      if (queryDepth(def as ASTNode) > MAX_DEPTH) {
+        context.reportError(new GraphQLError(`Query depth limit exceeded (max: ${MAX_DEPTH}).`))
+      }
+    }
+  },
+})
+```
+
+#### CSP Headers for Next.js + Mapbox GL
+
+Set via `headers()` in `next.config.ts`.
+
+- `'unsafe-inline'` in `script-src`/`style-src`: Next.js hydration scripts plus Tailwind/Mapbox inline styles
+- `'unsafe-eval'` in development only (Next.js HMR)
+- `blob:` in both `img-src` and `worker-src`: Mapbox GL spawns workers from blob URLs
+- `connect-src` and `img-src` allow `https://*.mapbox.com` (and `events.mapbox.com` for telemetry)
+- `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`
+
+#### CORS on the GraphQL Route Handler
+
+Copy the response headers into a fresh `Headers` instance rather than mutating a possibly immutable one, and always export `OPTIONS` for browser preflight:
+
+```ts
+async function withCors(response: Response, request: NextRequest): Promise<NextResponse> {
+  const headers = new Headers(response.headers)
+  headers.set('Access-Control-Allow-Origin', getCorsOrigin(request))
+  return new NextResponse(response.body, { status: response.status, headers })
+}
+```
