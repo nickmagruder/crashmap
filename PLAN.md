@@ -288,7 +288,7 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 ### Phase 9.3 — Vitest 5
 
-- [ ] `vitest` 4 → 5 (Node 22.12+; Vite is now a peer dep): check `vitest.config.ts` (Vitest 4.1 already warns it is ESM loaded as CommonJS; rename to `vitest.config.mts`); note `clearMocks` is now on by default, `toThrow('')` matches any error, and reports go under `.vitest/` (add to `.gitignore`)
+- [x] `vitest` 4.1 → 5.1 with `vite` 8 added as an explicit devDependency (now a peer dep). Renamed `vitest.config.ts` → `vitest.config.mts` and replaced `__dirname` with `import.meta.dirname`, which removes the "ESM loaded as CommonJS" warning; added `.vitest/` to `.gitignore`. Checked against the official migration guide: `vi.hoisted`/`vi.mock` are already top level, `vi.clearAllMocks()` in `beforeEach` matches the new `clearMocks` default, and there are no `toThrow('')`, unawaited `resolves`/`rejects`, benchmarks or removed entry points. All 56 tests pass (~1.2s warm)
 
 ### Phase 9.4 — Sentry v11
 

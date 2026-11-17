@@ -808,3 +808,10 @@ This project is developed in the open. To report issues or suggest features, ple
 - Upgraded `lucide-react` 0.574 → 1.x; icons without an accessible label now get `aria-hidden="true"` automatically
 - Recorded the Phase 9.1 production checks in `PLAN.md`: Render runs Node 24.22.3, and the `MaxListenersExceededWarning` comes from Next 16.4's external-rewrite proxy behind the Sentry `/monitoring` tunnel (log noise, fixed in 9.4)
 - `npm audit`: 23 → 11 vulnerabilities (0 critical)
+
+### 2026-11-16 — Dependency Upgrades Phase 9.3: Vitest 5
+
+- Upgraded Vitest 4.1 → 5.1 and added `vite` 8 as an explicit devDependency (Vitest 5 makes it a peer dependency)
+- Renamed `vitest.config.ts` → `vitest.config.mts` (ESM, `import.meta.dirname`), removing Vitest's "ESM loaded as CommonJS" warning
+- Added `.vitest/` (Vitest 5's report and artifact directory) to `.gitignore`
+- No test changes needed; all 56 tests pass
