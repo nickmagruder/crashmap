@@ -3,18 +3,20 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs'
+import { SENTRY_DATA_COLLECTION, SENTRY_TUNNEL_PATH } from '@/lib/sentryConfig'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  integrations: [Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] })],
+  integrations: [
+    // Logs are sent through this integration (Sentry v11 removed `enableLogs`).
+    Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
+    // Answers the browser's tunnel requests and forwards them to Sentry.
+    Sentry.serveTunnelIntegration({ path: SENTRY_TUNNEL_PATH }),
+  ],
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,
 
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
-
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  // What Sentry may collect (no IPs, cookies, headers or bodies). See lib/sentryConfig.ts.
+  dataCollection: SENTRY_DATA_COLLECTION,
 })

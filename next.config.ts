@@ -66,11 +66,8 @@ export default withSentryConfig(nextConfig, {
   // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
 
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  tunnelRoute: '/monitoring',
+  // The ad-blocker tunnel is set up in the Sentry.init calls instead (`tunnel` in the browser,
+  // `serveTunnelIntegration` on the server and edge); see lib/sentryConfig.ts.
 
   webpack: {
     // Tree-shaking options for reducing bundle size

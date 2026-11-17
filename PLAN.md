@@ -292,12 +292,15 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 ### Phase 9.4 — Sentry v11
 
-- [ ] `@sentry/nextjs` 10 → 11, following the official Next.js v10→v11 migration guide
+- [x] `@sentry/nextjs` 10.78 → 11.13, checked against the official v10→v11 migration notes. The ones that applied: `sendDefaultPii` → `dataCollection`, `enableLogs` removed (logs still flow through `consoleLoggingIntegration`), `withSentryConfig` from `/config`, and span streaming now the default
 - [x] `next.config.ts`: import `withSentryConfig` from the new `/config` subpath (done in 9.1)
-- [ ] Replace `sendDefaultPii: true` in `instrumentation-client.ts`, `sentry.server.config.ts` and `sentry.edge.config.ts` with an explicit `dataCollection` that turns **off** IP addresses, cookies and request headers (unset now means collect everything); keep error capture, masked session replay and tracing
-- [ ] Move the `tunnelRoute: '/monitoring'` rewrite to the route-handler tunnel added in `@sentry/nextjs` 11.9 (`export { POST } from '@sentry/nextjs/tunnel'`). This removes the external-rewrite proxy that logs a `MaxListenersExceededWarning` on every browser Sentry event (see 9.1); confirm the warning is gone and browser errors still reach Sentry
-- [ ] Recheck the `beforeSend` noise filters still apply, and review tracing/alerts after the switch to span streaming
-- [ ] Note the privacy change in the README changelog
+- [x] Replaced `sendDefaultPii: true` in all three `Sentry.init` calls with a shared `SENTRY_DATA_COLLECTION` (`lib/sentryConfig.ts`): `userInfo` (IP addresses), `cookies` and `httpHeaders` off, `httpBodies: []`, `databaseQueryData` off, `urlQueryParams` on (filter state only). Error capture, masked session replay, tracing and console logs are unchanged
+- [x] Tunnel: Sentry 11.13 deprecates `tunnelRoute`, so it uses the new managed tunnel instead of the 11.9 route handler: `tunnel: '/monitoring'` in the browser and `serveTunnelIntegration({ path: '/monitoring' })` on the server and edge; `tunnelRoute` removed from `next.config.ts`. The server SDK now answers tunnel requests itself (no Next.js rewrite proxy). Local standalone test: 16 tunnel requests, 0 `MaxListenersExceededWarning`; empty envelopes get 400, a foreign DSN gets 403
+- [x] `beforeSend` noise filters unchanged (v11 keeps `beforeSend` for error events; only `beforeSendTransaction`/`ignoreTransactions` stopped working, and neither is used)
+- [x] Privacy change noted in the README changelog
+- [x] Audit: 11 → 7 (0 critical); production deps 6 → 1 (only the Apollo-capped `@graphql-tools/utils`)
+- [ ] After deploy: confirm on crashmap.io that `/monitoring` returns 200 and a browser error reaches Sentry with no IP address or cookies on the event; confirm Render logs no longer show `MaxListenersExceededWarning`
+- [ ] In Sentry: check alerts, dashboards and saved searches that used transactions (v11 streams spans instead); consider turning on "Prevent Storing of IP Addresses" under Project Settings → Security & Privacy, since the tunnel forwards the visitor's IP to Sentry's ingest
 
 ### Phase 9.5 — TypeScript 6
 
