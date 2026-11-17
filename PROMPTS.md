@@ -31,6 +31,11 @@ and edit shared files (`PLAN.md`, `README.md`, `AGENTS.md`, `ARCHITECTURE.md`, t
 by content-anchored replacement that matches exactly once, never by line number or whole-file
 rewrite. Check `git diff` afterward.
 
+Shared docs can change outside this session (Nick, GitHub Desktop, another session). Before relying
+on a rule in `AGENTS.md` or `PROMPTS.md`, check `git log` and `git diff` for changes this session
+didn't make. If one contradicts something decided in this session, ask before keeping or
+overwriting it (2026-11-17: the AGENTS.md git rule had reverted to "never commit" mid-session).
+
 Work through every step. Say which steps were no-ops instead of skipping them silently.
 
 --- STEP 1: MEMORY ---
@@ -59,7 +64,12 @@ Auto-memory here is machine-local and personal. Project facts belong in the repo
   version on line 2; Nick bumps it by hand.
 - `ARCHITECTURE.md` §11: update notes for every source file whose behavior changed.
 - `tutorial.md`: update after significant steps (a new feature or architecture change), not for
-  routine fixes or upgrades.
+  routine fixes or upgrades. Earlier chapters record the build as it happened, so don't rewrite
+  them to the new setup. Add a chapter at the end (before the "work in progress" line) that
+  says what replaced them, as the Phase 9 chapter does.
+- Check facts in any new prose (counts, PR numbers, chapter or phase references, versions)
+  against the repo and `git log` before writing them (2026-11-17: the first Phase 9 chapter
+  draft said "eight PRs" and "Phase 6"; it was six and Phase 4).
 - After a data import: update the Data Ingestion Log, the data date range in
   `InfoPanelContent.tsx`, and the other steps in `data-pipeline.md`.
 - Renamed, moved or deleted files: grep the old path across `*.md`, `AGENTS.md`, code comments and

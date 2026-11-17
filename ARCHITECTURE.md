@@ -969,6 +969,7 @@ Detailed per-file notes moved here from the agent context (`AGENTS.md` keeps a o
 - `lib/rate-limit.ts` — In-memory sliding window rate limiter (60 req/min per IP); `getClientIp()` reads `x-forwarded-for` for Render's proxy; periodic `setInterval` sweep evicts idle IPs
 - `lib/graphql/__tests__/helpers.test.ts` — Unit tests for `rawToBucket`, `bucketsToRawValues`, `buildWhere`
 - `lib/graphql/__tests__/queries.test.ts` — Integration tests for all GraphQL queries via `executeOperation` with mocked Prisma
+- `lib/__tests__/sentryConfig.test.ts` — Unit tests for `isMapboxRequest` (Mapbox hosts and subdomains match; same-origin, look-alike and unparseable URLs don't)
 - `vitest.config.mts` — Vitest configuration (ESM) with `@` path alias
 - `components/theme-provider.tsx` — thin `NextThemesProvider` wrapper (`attribute="class"`, `defaultTheme="system"`, `enableSystem`)
 - `components/ui/theme-toggle.tsx` — Sun/Moon icon button; CSS-driven icon swap via `dark:hidden`/`hidden dark:block`

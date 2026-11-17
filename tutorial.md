@@ -7574,4 +7574,47 @@ When the user copies the report number, the `aria-label` changes to "Report numb
 
 ---
 
+## Phase 9: Dependency Upgrades
+
+A year in, the dependencies had drifted: Node 20 had reached end of life, `npm audit` reported 2 critical advisories (one in Next.js itself), and a dozen packages had new major versions. This phase upgraded everything in small, separately deployed steps. Some earlier chapters now describe setups that have changed; this section says what replaced them, and `PLAN.md` Phase 9 has the full checklist.
+
+### Step 1: Plan the Upgrade in Phases
+
+Rather than one big-bang upgrade, the work was split by risk, one PR each, smoke-tested on crashmap.io after every deploy:
+
+1. **Node 24 and security patches:** Node 24 in `render.yaml`, CI, `.nvmrc` and `engines`; Next.js 16.4.6, React 19.3, and every in-range minor/patch update
+2. **Low-risk majors:** GraphQL Code Generator 8, lint-staged 17, dotenv 18, the shadcn CLI 4, lucide-react 1.x
+3. **Vitest 5**
+4. **Sentry v11**
+5. **TypeScript 6**
+6. **DayPicker 10**
+
+ESLint 10, `graphql` 17 and TypeScript 7 were deferred until the rest of the ecosystem supports them.
+
+### Step 2: What Changed From Earlier Chapters
+
+- **Node 20 → 24.** Earlier chapters set `node-version: 20` in CI and `nodeVersion: 20` in `render.yaml`. Both are now 24, and Render reads the version from `.nvmrc`.
+- **`vitest.config.ts` → `vitest.config.mts`.** Vitest started warning that the config is ESM loaded as CommonJS. Renaming it to `.mts` and using `import.meta.dirname` instead of `__dirname` fixes that.
+- **`react-day-picker` → `@daypicker/react`.** DayPicker 10 publishes under a new package name. The shadcn `Calendar` needs one class-name key renamed (`table` → `month_grid`), and its nav row needs `pointer-events-none` so the month/year dropdowns underneath stay clickable. The v9 first-click quirk described in Phase 4 still applies.
+- **Sentry `tunnelRoute` → managed tunnel.** The Phase 5 setup used `tunnelRoute: "/monitoring"` in `withSentryConfig`, which Next.js serves as an external rewrite. After the Next.js upgrade, that rewrite proxy logged a `MaxListenersExceededWarning` on every browser Sentry event. Sentry 11 replaces it: the browser sets `tunnel: '/monitoring'`, and the server and edge configs add `serveTunnelIntegration({ path: '/monitoring' })`, so the server SDK answers tunnel requests itself.
+- **Sentry `sendDefaultPii`/`enableLogs` → `dataCollection`.** Sentry 11 collects everything unless told otherwise, so `lib/sentryConfig.ts` now defines one explicit `dataCollection` shared by all three `Sentry.init` calls: no IP addresses, cookies, headers or request bodies. `enableLogs` is gone; `consoleLoggingIntegration` alone sends logs.
+
+### Step 3: Clean Up the Error Noise
+
+With Sentry 11's tracing in place, a false "N+1 API Call" issue appeared: on page load Mapbox fetches its style, sprites, glyphs and tiles in parallel, and Sentry's performance detector read that as a repeated-request bug. The fix is to not create spans for Mapbox requests at all:
+
+```typescript
+Sentry.browserTracingIntegration({
+  shouldCreateSpanForRequest: (url) => !isMapboxRequest(url),
+})
+```
+
+`isMapboxRequest` (in `lib/sentryConfig.ts`, with unit tests) matches `mapbox.com` and its subdomains only. As a bonus, URLs carrying the Mapbox access token no longer appear in traces. A Mapbox worker error (`Can't serialize object of unregistered class "DOMException"`) joined the existing `beforeSend` noise filter.
+
+### Summary
+
+The upgrade landed as six small PRs instead of one risky one, each verified in production before the next. Along the way it closed every critical advisory, removed a class of log warnings, made Sentry collect less visitor data, and cleared the Sentry issue list.
+
+---
+
 _This tutorial is a work in progress. More steps will be added as the project progresses._

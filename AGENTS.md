@@ -14,6 +14,7 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 - **Frontend:** Next.js (App Router) + React + TypeScript; shadcn/ui (Radix + Tailwind); Mapbox GL JS via `react-map-gl`; React Context for UI state
 - **API:** Apollo Server in a Next.js route (`/app/api/graphql`); Apollo Client with InMemoryCache; `graphql-codegen` for end-to-end types
 - **Data:** PostgreSQL + PostGIS on Render (Basic plan, 5GB); Prisma 7 (`provider = "prisma-client"` + `@prisma/adapter-pg`)
+- **Runtime and tooling:** Node 24 (`.nvmrc`, `engines`, `render.yaml`, CI); TypeScript 6; Vitest 5 (`vitest.config.mts`)
 - **Hosting/CI:** Render (Professional web service: `crashmap` production from `main`, `crashmap-staging` from `staging`, but no `staging` branch exists on origin, so staging is idle); GitHub Actions CI deploys `main` to production via a deploy hook; domain crashmap.io
 - **Observability:** Sentry (errors + session replay), Lighthouse CI (web vitals, report-only), Better Stack (infrastructure metrics via the Render metrics stream)
 - **Data ingestion:** the companion [esri-exporter](https://github.com/nickmagruder/esri-exporter) repo fetches WSDOT records and generates SQL imports; the operator runbook is `data-pipeline.md`
@@ -136,7 +137,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `lib/graphql/resolvers.ts`: resolvers, severity bucket mapping, `buildWhere`
 - `lib/graphql/queries.ts`: client-side GraphQL documents
 - `lib/graphql/__generated__/types.ts`: codegen output (committed; `npm run codegen`; CI drift check)
-- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest)
+- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest); `lib/__tests__/`: other `lib/` unit tests (e.g. `sentryConfig.test.ts`)
 - `app/api/graphql/route.ts`: Apollo route handler, CORS, depth limit (5)
 - `app/api/health/route.ts`: `GET /api/health` for Render health checks
 - `lib/rate-limit.ts`: in-memory 60 req/min per-IP limiter
