@@ -855,3 +855,11 @@ This project is developed in the open. To report issues or suggest features, ple
 - Added `PROMPTS.md` with a CrashMap-specific `Close-Out-Session` prompt: memory vs. AGENTS.md routing, docs and plan updates, prompt review, checks (Prettier for Markdown), production checks only after a deploy (CI, crashmap.io smoke test, Render logs, Sentry), and an offer-then-PR ship step that never merges
 - `AGENTS.md` `## Close-out` now points to it; key-files and docs lists include `PROMPTS.md`
 - `AGENTS.md` git rule restored to "commit, push or open a PR only when Nick asks in the session; never merge" (it had reverted to "never commit, even when asked")
+
+### 2026-11-17 — Phase 9 Close-Out
+
+- `AGENTS.md`: Stack lists Node 24, TypeScript 6 and Vitest 5; key files include `lib/__tests__/`
+- `ARCHITECTURE.md` §11: notes for `lib/__tests__/sentryConfig.test.ts`
+- `tutorial.md`: new Phase 9 chapter on the dependency upgrades: what replaced the earlier chapters' Node 20, `vitest.config.ts`, `react-day-picker` and Sentry `tunnelRoute`/`sendDefaultPii` setups, and the Mapbox tracing fix
+- `PLAN.md`: ticked the Phase 9 docs item; added follow-ups for the picomatch and `@graphql-tools/utils` advisories, Sentry regression watching, pre-9.4 Sentry events with visitor IPs, and a production mobile smoke test
+- `PROMPTS.md`: `Close-Out-Session` now checks for doc changes made outside the session, adds tutorial chapters instead of rewriting history, and fact-checks new prose
