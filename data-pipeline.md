@@ -10,15 +10,100 @@
 
 A record of every data import run against CrashMap's production database.
 
-| Date       | Scope                      | Mode       | Records | Notes                                                       |
-| ---------- | -------------------------- | ---------- | ------- | ----------------------------------------------------------- |
-| 2026-02-24 | Initial backfill 2015–2026 | Pedestrian | 22,419  | Stage 0 run first: dropped StatePlane cols, truncated table |
-| 2026-02-24 | Initial backfill 2015–2026 | Bicyclist  | 13,213  | After Pedestrian; ~1,000 cross-report dupes skipped         |
-| 2026-03-08 | February 2026              | Pedestrian | 43      | EG82570 (Kirkland) has NULL lat/lng — won't appear on map   |
-| 2026-03-08 | February 2026              | Bicyclist  | 8       | No cross-report duplicates                                  |
+| Date       | Scope                            | Mode       | Records       | Notes                                                       |
+| ---------- | -------------------------------- | ---------- | ------------- | ----------------------------------------------------------- |
+| 2026-02-24 | Initial backfill 2015–2026       | Pedestrian | 22,419        | Stage 0 run first: dropped StatePlane cols, truncated table |
+| 2026-02-24 | Initial backfill 2015–2026       | Bicyclist  | 13,213        | After Pedestrian; ~1,000 cross-report dupes skipped         |
+| 2026-03-08 | February 2026                    | Pedestrian | 43            | EG82570 (Kirkland) has NULL lat/lng — won't appear on map   |
+| 2026-03-08 | February 2026                    | Bicyclist  | 8             | No cross-report duplicates                                  |
+| 2026-11-17 | 2025-01-01–2026-11-17 (4 chunks) | Pedestrian | 3,820 fetched | 3,820 inserted or updated by guarded upsert                 |
+| 2026-11-17 | 2025-01-01–2026-11-17 (4 chunks) | Bicyclist  | 2,323 fetched | 2,314 inserted or updated; 9 Pedestrian rows preserved      |
 
 Combined total after initial backfill: 35,632 records
 Combined total after February 2026 import: 35,683 records
+Combined total after 2026-11-17 refresh: 38,386 records (net increase: 2,703)
+
+### 2026-11-17 — Pre-import baseline
+
+Captured read-only from the verified production Render database before the Phase 10.2
+refresh. The table contained 35,683 rows, with `CrashDate` from 2015-01-01 through
+2026-02-28. Before importing, created and verified
+`public.crashdata_backup_20261117` with the same 35,683 rows and date range. It was
+kept through Phase 10.3 validation and dropped after all checks passed.
+
+**Monthly counts before and after the refresh (2025-01 onward):**
+
+| Month   | Before | After |
+| ------- | -----: | ----: |
+| 2025-01 |    279 |   280 |
+| 2025-02 |    197 |   199 |
+| 2025-03 |    231 |   232 |
+| 2025-04 |    248 |   248 |
+| 2025-05 |    265 |   267 |
+| 2025-06 |    274 |   275 |
+| 2025-07 |    317 |   319 |
+| 2025-08 |    305 |   309 |
+| 2025-09 |    327 |   327 |
+| 2025-10 |    325 |   333 |
+| 2025-11 |    316 |   318 |
+| 2025-12 |    269 |   316 |
+| 2026-01 |     60 |   295 |
+| 2026-02 |     51 |   240 |
+| 2026-03 |      — |   233 |
+| 2026-04 |      — |   300 |
+| 2026-05 |      — |   311 |
+| 2026-06 |      — |   320 |
+| 2026-07 |      — |   329 |
+| 2026-08 |      — |   292 |
+| 2026-09 |      — |   304 |
+| 2026-10 |      — |   102 |
+| 2026-11 |      — |    18 |
+
+**Counts by `MostSevereInjuryType` before and after (all dates):**
+
+| Injury type              |     Before |      After |
+| ------------------------ | ---------: | ---------: |
+| Dead at Scene            |        741 |        783 |
+| Dead on Arrival          |        110 |        122 |
+| Died in Hospital         |        662 |        700 |
+| No Apparent Injury       |      1,350 |      1,505 |
+| Possible Injury          |     12,016 |     12,664 |
+| Suspected Minor Injury   |     14,890 |     16,225 |
+| Suspected Serious Injury |      5,781 |      6,245 |
+| Unknown                  |        133 |        142 |
+| **Total**                | **35,683** | **38,386** |
+
+### Post-import comparison
+
+The deployed guarded-upsert exporter returned 6,143 records; 6,134 were inserted or
+updated, while 9 Bicyclist conflicts were kept as Pedestrian. Comparing against the
+backup found 128 mode changes from Bicyclist to Pedestrian and none in the opposite
+direction. Two existing records changed injury classification: one Unknown to No
+Apparent Injury and one No Apparent Injury to Suspected Minor Injury; no existing
+record changed to a death category.
+
+February 2026 has 240 records (179 Pedestrian, 61 Bicyclist). A fresh February export
+returned the same 240 distinct report numbers; every source record is present in the
+database with the expected mode and mapped values. There are no cross-mode duplicates
+or missing source IDs. January has 295 records. The plan's ~250+ February figure was an
+estimate, not a completeness threshold; the source itself returns 240, so no additional
+import or manual adjustment was made.
+
+The final table has 24,162 Pedestrian and 14,224 Bicyclist records, with a latest
+`CrashDate` of 2026-11-12. Both materialized views were refreshed (`filter_metadata`:
+263 rows; `available_years`: 12 years, 2015–2026).
+
+Required-field null checks, NULL `geom`, and invalid-geometry checks all returned
+zero; the latest five records are within Washington. The rough bounding box flags 103
+coordinates (95 were in the backup, 8 newly added), but all 103 fall inside the US
+Census TIGERweb Washington state polygon (FIPS 53). The eight new records' mode, date,
+county/city, and coordinates match the deployed WSDOT export exactly. Seven are coastal
+points in Grays Harbor, Clallam, or Pacific County; the Blaine point is only slightly
+north of the rough 49-degree limit and is inside the state polygon. These are bounding
+box false positives, not import errors. After all checks passed, dropped only
+`public.crashdata_backup_20261117` on 2026-11-17.
+
+Boundary reference: [US Census TIGERweb State_County, Washington FIPS 53](https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0).
 
 ---
 
@@ -34,9 +119,9 @@ The full workflow has five stages, plus a one-time database preparation stage fo
 5. **Validate** — Run data integrity checks to confirm the import is complete and correct
 
 > **Important — always import Pedestrian data first, then Bicyclist.**
-> Some crashes appear in both reports. The pipeline uses `ON CONFLICT DO NOTHING`, so
-> whichever report is imported first "wins." Pedestrian is the canonical record for shared
-> crashes.
+> Some crashes appear in both reports. The pipeline uses a guarded upsert: records with
+> the same mode are updated, and a Pedestrian record may replace a Bicyclist record, but
+> a Bicyclist record never overwrites Pedestrian data. Pedestrian remains canonical.
 
 ---
 
@@ -149,7 +234,7 @@ Click **Fetch from WSDOT & Download SQL**. The backend will:
 1. Call the WSDOT API for the selected mode and date range
 2. Decode the double-encoded JSON response
 3. Map all fields to CrashMap's schema
-4. Generate batched `INSERT ... ON CONFLICT DO NOTHING` statements
+4. Generate batched `INSERT ... ON CONFLICT DO UPDATE` statements guarded to preserve Pedestrian records
 5. Return a `.sql` file download
 
 The `.sql` file downloads automatically to your browser's default download folder.
@@ -222,8 +307,9 @@ INSERT 0 500
 INSERT 0 432
 ```
 
-Each line corresponds to one batch. The number after `INSERT 0` is the rows inserted
-(not skipped by `ON CONFLICT`). A count of `0` on re-import is normal and expected.
+Each line corresponds to one batch. The number after `INSERT 0` is the rows inserted or
+updated. A Bicyclist row that conflicts with an existing Pedestrian row is left unchanged
+by the upsert guard; re-importing matching-mode data updates the existing row.
 
 #### Option B — GUI tool (pgAdmin, TablePlus, DBeaver)
 
@@ -299,7 +385,7 @@ Use this checklist each time you import new data.
 - [ ] Set date range (e.g. `20250101` – `20251231`)
 - [ ] Click **Fetch from WSDOT & Download SQL** — file downloads automatically
 - [ ] Run `.sql` against Render PostgreSQL: `psql "$DATABASE_URL" -f <file>.sql`
-- [ ] Confirm insert counts in psql output
+- [ ] Confirm inserted/updated row counts in psql output
 - [ ] Spot-check a record in the database
 
 ### Bicyclist Import (run after Pedestrian)
@@ -309,7 +395,7 @@ Use this checklist each time you import new data.
 - [ ] Set same date range as Pedestrian import
 - [ ] Click **Fetch from WSDOT & Download SQL** — file downloads automatically
 - [ ] Run `.sql` against Render PostgreSQL: `psql "$DATABASE_URL" -f <file>.sql`
-- [ ] Confirm insert counts (some `0` rows expected for cross-report duplicates)
+- [ ] Confirm inserted/updated row counts; Pedestrian conflicts are intentionally unchanged
 
 ### After Both Imports
 
@@ -427,10 +513,10 @@ Then hard-refresh the CrashMap browser tab (`Ctrl+Shift+R` / `Cmd+Shift+R`).
 
 ### Duplicate records (same crash in both ped and bike reports)
 
-This is expected behavior, not an error. The pipeline uses `ON CONFLICT DO NOTHING` to
-handle this silently. As long as the pedestrian import ran first, the duplicate will be
-stored as a pedestrian record and the bicyclist insert will be skipped. You may see
-`INSERT 0 N` lines in the psql output where `N` is less than the batch size — this is normal.
+This is expected behavior, not an error. The guarded upsert preserves Pedestrian records:
+a Pedestrian row can replace a Bicyclist row, but a Bicyclist conflict does not replace a
+Pedestrian row. Import Pedestrian first, then Bicyclist, to keep the canonical record
+without relying on import order for safety.
 
 ### Wrong mode selected for a file
 

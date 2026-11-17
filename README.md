@@ -863,3 +863,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - `tutorial.md`: new Phase 9 chapter on the dependency upgrades: what replaced the earlier chapters' Node 20, `vitest.config.ts`, `react-day-picker` and Sentry `tunnelRoute`/`sendDefaultPii` setups, and the Mapbox tracing fix
 - `PLAN.md`: ticked the Phase 9 docs item; added follow-ups for the picomatch and `@graphql-tools/utils` advisories, Sentry regression watching, pre-9.4 Sentry events with visitor IPs, and a production mobile smoke test
 - `PROMPTS.md`: `Close-Out-Session` now checks for doc changes made outside the session, adds tutorial chapters instead of rewriting history, and fact-checks new prose
+
+### 2026-11-17 — Phase 10 Data Refresh
+
+- Imported WSDOT pedestrian and bicyclist crash data from 2025-01-01 through 2026-11-17 using guarded upserts; the production table now contains 38,386 records through 2026-11-12
+- Recorded pre-import baselines and post-import validation in `data-pipeline.md`; February 2026's 240 records match the source export
+- Updated the info panel's data range to November 2026; no version bump

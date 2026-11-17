@@ -337,6 +337,57 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 ---
 
+## Phase 10: Data Refresh + YTD Default (planned 2026-11-17)
+
+Snapshot on 2026-11-17 (read-only production queries): 35,683 rows, `CrashDate` 2015-01-01 → **2026-02-28** (last import 2026-03-08). January and February 2026 hold only 60 and 51 crashes against a normal 270–330 a month in 2025: WSDOT's reporting lag meant most of those reports hadn't arrived at import time. March 2026 onward is missing entirely. The pipeline's `ON CONFLICT DO NOTHING` also means later WSDOT revisions to existing records (e.g. an injury upgraded to "Died in Hospital", coordinates added) never reach CrashMap.
+
+Decisions: **upsert** instead of insert-only, guarded so Pedestrian always wins; re-fetch from **2025-01-01** (not just the gap) to pick up late reports and revisions; make **YTD** the first-load default, anchored to the newest crash's year; ship the YTD change only **after** the import, so the default view opens on fresh data.
+
+### Phase 10.1 — Tooling (esri-exporter repo)
+
+- [x] Clone [esri-exporter](https://github.com/nickmagruder/esri-exporter) locally (not on this machine yet) or confirm its Render deployment still works
+- [x] Pick a way to run SQL: install the PostgreSQL client (`psql`) or use a small Node script with `pg` from this repo
+- [x] Switch the generated SQL to an upsert: `ON CONFLICT ("ColliRptNum") DO UPDATE SET <every mapped column> = EXCLUDED.<column> WHERE crashdata."Mode" = EXCLUDED."Mode" OR EXCLUDED."Mode" = 'Pedestrian'` (a Bicyclist row never overwrites a Pedestrian one; a Pedestrian row may replace a Bicyclist one). Optionally add `AND (crashdata.*) IS DISTINCT FROM (EXCLUDED.*)` to skip no-op writes. `geom` is generated, so it follows the coordinates
+- [x] esri-exporter tests for the new SQL; PR in that repo
+
+### Phase 10.2 — Import
+
+- [x] Back up first: `CREATE TABLE crashdata_backup_20261117 AS SELECT * FROM crashdata;` (or `pg_dump -t crashdata`); record before counts by month and by `MostSevereInjuryType`
+- [x] Fetch and import **Pedestrian** 2025-01-01 → today (split into half-year chunks if the WSDOT API times out)
+- [x] Fetch and import **Bicyclist** over the same window
+- [x] `REFRESH MATERIALIZED VIEW filter_metadata;` and `REFRESH MATERIALIZED VIEW available_years;`
+
+Completed 2026-11-17: captured the 35,683-row baseline, imported Pedestrian before
+Bicyclist in four half-year chunks per mode, and refreshed both materialized views.
+See `data-pipeline.md` for counts and source details.
+
+### Phase 10.3 — Validate
+
+- [x] `data-pipeline.md` Stage 5 checks (counts, nulls, `geom`, spot checks, coordinates within Washington)
+- [x] Compare monthly counts 2025-01 → now with the before snapshot: Jan/Feb 2026 should reach ~250+; the most recent months will still be short (lag)
+- [x] Compare severity counts before/after: expect a few more deaths from upserted revisions; no Pedestrian row turned into Bicyclist
+- [x] Drop the backup table once validated
+
+Completed 2026-11-17: February's 240 records match the WSDOT source; all 103 coarse
+bounding-box exceptions are inside Washington's state polygon; integrity and precedence
+checks passed. The backup was dropped after validation.
+
+### Phase 10.4 — YTD default (this repo; one PR, after 10.2)
+
+- [ ] Default `dateFilter` `'90d'` → `'ytd'`: `initialState` in `context/FilterContext.tsx`, the omit-the-default check and the parse fallback in `lib/filterUrlState.ts`. 90 Days stays as a button but is now written to the URL; old shared links with no date param will open on YTD
+- [ ] Anchor YTD to `startOfYear(maxDate)` instead of `startOfYear(today)` in `presetToDateRange`. Otherwise every January, before new-year data is imported, the start (Jan 1 of today's year) lands after the end (newest crash, in December) and the default view is empty
+- [ ] Tests: `filterUrlState` round-trip with the new default; `presetToDateRange` YTD including the January case
+- [x] Update the info-panel data range in `components/info/InfoPanelContent.tsx` ("2015 - Nov 2026")
+- [ ] Docs: filter defaults in `AGENTS.md`, `ARCHITECTURE.md`, `README.md`, `tutorial.md`; Data Ingestion Log in `data-pipeline.md` (plus a note there on the upsert and the rolling re-fetch); README changelog (no version bump)
+- [ ] After deploy, smoke test on crashmap.io: first load shows YTD with no `date` in the URL, ~2,500+ crashes, 90 Days still works and round-trips; check first-load speed on mobile and Lighthouse
+
+### Phase 10.5 — Keep it current
+
+- [ ] Each month, re-fetch a rolling 12 months with the upsert (catches late reports and revisions); update `data-pipeline.md`'s Full Import Checklist to say so
+- [ ] Optional: a monthly reminder, or later a scheduled job that runs the refresh
+
+---
+
 ## Phase D: Auditing docs
 
 - [x] Audit Phase 1

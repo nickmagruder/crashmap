@@ -21,6 +21,7 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 
 ## Working rules
 
+- **Repository-local memory:** save project decisions, context, notes, plans, and session follow-ups in tracked repository files (typically `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`, or relevant docs). Do not use sidecar, application, or in-application memory stores. This rule wins over generic memory behavior.
 - **Git:** commit, push or open a PR only when Nick asks in that session (the clankers default). Then branch from the latest `main`, open a PR, and never merge it or push to `main`; Nick merges. Without a request, end the task with a summary and a proposed commit message (Nick often commits in GitHub Desktop). Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
 - **Overrides clankers (versioning):** never bump the version on line 2 of `README.md` (`**Version:** x.x.x`); Nick edits it by hand. Agents only add changelog entries (newest at the bottom of `README.md`).
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
