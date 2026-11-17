@@ -258,9 +258,9 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 
 Snapshot on 2026-11-16: `npm outdated` showed 35 outdated packages (12 with a new major); `npm audit` reported 55 vulnerabilities (2 critical, 30 high), including a critical one in production `next` (HTTP request smuggling in rewrites, fixed in 16.4.6). Node 20, used by `render.yaml` and CI, reached end of life on 2026-04-30.
 
-Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); TypeScript to **6.x** only (bridge to TS 7); Sentry v11 with **reduced data collection**; **one PR per phase**, each deployed to `crashmap-staging` and smoke-tested before merging to `main`.
+Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); TypeScript to **6.x** only (bridge to TS 7); Sentry v11 with **reduced data collection**; **one PR per phase**, merged to `main` and smoke-tested on crashmap.io after the production deploy (no `staging` branch exists; see `AGENTS.md` → Smoke testing).
 
-**Every PR:** `npm ci`, `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`, `npm run codegen` (no diff), `npm run build`, then the staging smoke test: map loads, all filters and date presets, custom date range, county/city selects, crash popup + copy, CSV export, URL round-trip, light/dark and accessible palette, mobile overlays, a Sentry test error arrives, Lighthouse not regressed.
+**Every PR:** `npm ci`, `npm run lint`, `npm run format:check`, `npm run typecheck`, `npm test`, `npm run codegen` (no diff), `npm run build`; after merge and deploy, the production smoke test: map loads, all filters and date presets, custom date range, county/city selects, crash popup + copy, CSV export, URL round-trip, light/dark and accessible palette, mobile overlays, a Sentry test error arrives, Lighthouse not regressed.
 
 ### Phase 9.1 — Node 24 + security patches (urgent; do first)
 
