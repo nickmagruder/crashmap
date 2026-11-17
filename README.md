@@ -869,3 +869,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - Imported WSDOT pedestrian and bicyclist crash data from 2025-01-01 through 2026-11-17 using guarded upserts; the production table now contains 38,386 records through 2026-11-12
 - Recorded pre-import baselines and post-import validation in `data-pipeline.md`; February 2026's 240 records match the source export
 - Updated the info panel's data range to November 2026; no version bump
+
+### 2026-11-17 — YTD Default Date Filter
+
+- The map now opens on **YTD** instead of 90 Days (`DEFAULT_DATE_PRESET` in `FilterContext`); YTD is omitted from the URL, and 90 Days is now written as `?date=90d`. Old shared links without a date param open on YTD
+- YTD now starts on January 1 of the newest crash's year instead of today's year, so in early January (before new-year data is imported) the default view isn't empty
+- Added unit tests for the URL default and round-trip (`lib/__tests__/filterUrlState.test.ts`) and for preset ranges, including the January case (`context/__tests__/presetToDateRange.test.ts`)

@@ -374,11 +374,11 @@ checks passed. The backup was dropped after validation.
 
 ### Phase 10.4 — YTD default (this repo; one PR, after 10.2)
 
-- [ ] Default `dateFilter` `'90d'` → `'ytd'`: `initialState` in `context/FilterContext.tsx`, the omit-the-default check and the parse fallback in `lib/filterUrlState.ts`. 90 Days stays as a button but is now written to the URL; old shared links with no date param will open on YTD
-- [ ] Anchor YTD to `startOfYear(maxDate)` instead of `startOfYear(today)` in `presetToDateRange`. Otherwise every January, before new-year data is imported, the start (Jan 1 of today's year) lands after the end (newest crash, in December) and the default view is empty
-- [ ] Tests: `filterUrlState` round-trip with the new default; `presetToDateRange` YTD including the January case
+- [x] Default `dateFilter` `'90d'` → `'ytd'`: `initialState` in `context/FilterContext.tsx`, the omit-the-default check and the parse fallback in `lib/filterUrlState.ts`. 90 Days stays as a button but is now written to the URL; old shared links with no date param will open on YTD
+- [x] Anchor YTD to `startOfYear(maxDate)` instead of `startOfYear(today)` in `presetToDateRange`. Otherwise every January, before new-year data is imported, the start (Jan 1 of today's year) lands after the end (newest crash, in December) and the default view is empty
+- [x] Tests: `filterUrlState` round-trip with the new default; `presetToDateRange` YTD including the January case
 - [x] Update the info-panel data range in `components/info/InfoPanelContent.tsx` ("2015 - Nov 2026")
-- [ ] Docs: filter defaults in `AGENTS.md`, `ARCHITECTURE.md`, `README.md`, `tutorial.md`; Data Ingestion Log in `data-pipeline.md` (plus a note there on the upsert and the rolling re-fetch); README changelog (no version bump)
+- [x] Docs: filter defaults in `AGENTS.md`, `ARCHITECTURE.md`, `README.md`, `tutorial.md`; Data Ingestion Log in `data-pipeline.md` (plus a note there on the upsert and the rolling re-fetch); README changelog (no version bump)
 - [ ] After deploy, smoke test on crashmap.io: first load shows YTD with no `date` in the URL, ~2,500+ crashes, 90 Days still works and round-trips; check first-load speed on mobile and Lighthouse
 
 ### Phase 10.5 — Keep it current
