@@ -243,7 +243,7 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 - [ ] Verify color contrast ratios for all severity dot colors in `lib/crashColors.ts` against light and dark backgrounds using WebAIM or DevTools; document rationale for map dot colors (non-text, 3:1 ratio applies)
 - [ ] Wrap decorative emoji in `aria-hidden="true"` spans in `InfoSidePanel.tsx` and `InfoPanelContent.tsx`
 - [ ] Add `<span className="sr-only">Active filters: </span>` before badge list in `SummaryBar.tsx`
-- [ ] Audit all Lucide icon instances inside labeled buttons across `AppShell.tsx`, `InfoSidePanel.tsx`, `InfoPanelContent.tsx` — ensure `aria-hidden="true"` is present on each icon `<svg>`
+- [ ] Audit all Lucide icon instances inside labeled buttons across `AppShell.tsx`, `InfoSidePanel.tsx`, `InfoPanelContent.tsx` — ensure `aria-hidden="true"` is present on each icon `<svg>` (since `lucide-react` 1.x, Phase 9.2, icons get it automatically unless given an `aria-label`/`title`, so this audit becomes: find icons that have a label but sit inside an already-labeled control)
 
 ### Phase 8.4 — Verification
 
@@ -265,7 +265,8 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 ### Phase 9.1 — Node 24 + security patches (urgent; do first)
 
 - [x] Node 24: `nodeVersion: 24` for both services in `render.yaml`; `node-version: 24` in `.github/workflows/ci.yml`; add `.nvmrc` (`24`) and `"engines": { "node": ">=24 <25" }`
-- [ ] Confirm Render builds with Node 24 (staging and production build logs); if a `NODE_VERSION` env var is set in the Render dashboard, update or remove it
+- [x] Confirm Render builds with Node 24: production deploy of `2bb4cff` used Node 24.22.3 via `.nvmrc`
+- [x] Diagnosed the production `MaxListenersExceededWarning: 11 close listeners added to [ServerResponse]`: reproduced locally with the standalone server, one warning per request to the Sentry `/monitoring` tunnel (30 of 30, with placeholder IDs so nothing reached Sentry) and none for pages, RSC, static assets or GraphQL. The tunnel is a Next.js external rewrite; Next 16.4.6 proxies those with `httpxy` (16.1.6 used `http-proxy`), and its `pipe` into the response wrapped by Next's `compression` middleware adds the 11th listener. The count stays at 11 on each short-lived response, so it is log noise, not a growing leak. Fix: the route-handler tunnel in 9.4
 - [x] `@types/node` `^20` → `^24`
 - [x] `next` and `eslint-config-next` 16.1.6 → 16.4.6 (fixes the critical `next` advisory plus `postcss`/`sharp` advisories); keep both pinned to the same exact version
 - [x] `react`/`react-dom` 19.2.3 → 19.3.1 (exact pins); `@types/react`/`@types/react-dom` → 19.3.x
@@ -278,11 +279,12 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 ### Phase 9.2 — Low-risk majors (dev tooling + icons)
 
-- [ ] `@graphql-codegen/cli` 8, `add` 8, `typescript` 7, `typescript-resolvers` 7 (clears most remaining high advisories: `@graphql-tools/utils`, `lodash`); read the v7 and v8 changelogs, re-run codegen and review the diff in `lib/graphql/__generated__/types.ts`
-- [ ] `lint-staged` 17 (needs Node 22+, Git ≥ 2.32); test a commit through the husky hook
-- [ ] `dotenv` 18: read the changelog first (no breaking-change notes found in research); check `prisma.config.ts` and any `dotenv/config` imports
-- [ ] `shadcn` CLI 4 (dev only; clears the `zod` advisory): check `components.json` against the v4 changelog (import aliases); don't re-add components with `--overwrite`
-- [ ] `lucide-react` 1.x: no brand icons are used, so imports should be unchanged; v1 sets `aria-hidden` on icons by default, so recheck Phase 8.2/8.3 icon items and remove redundant `aria-hidden` props only if desired
+- [x] `@graphql-codegen/cli` 8, `add` 8, `typescript` 7, `typescript-resolvers` 7: `codegen.ts` needed no changes; the regenerated types only drop five unused helper types (`Exact`, `MakeOptional`, `MakeMaybe`, `MakeEmpty`, `Incremental`). The `#graphql` tag in `typeDefs.ts` (now plucked by default) changed nothing because the config has no `documents`
+- [x] `lint-staged` 17 (Node ≥ 22.22.1, Git ≥ 2.32; local Git 2.56): `npx lint-staged --diff=HEAD` runs cleanly; config in `package.json`, so the now-optional `yaml` dependency isn't needed
+- [x] `dotenv` 18: removed `.env.vault` support and `node -r dotenv/config` preloading, neither used; `import 'dotenv/config'` in `prisma.config.ts` still loads `.env`
+- [x] `shadcn` CLI 4 (dev only; clears the `zod` advisory): `components.json` already has the v4 alias layout; no components re-added
+- [x] `lucide-react` 1.x: no brand icons used; every imported icon (including `Loader2`) still exists. v1 adds `aria-hidden="true"` to any icon without an accessible label or title (see Phase 8.3)
+- [x] Audit: 23 → 11 (0 critical, 1 high), 6 in production deps (unchanged; cleared by 9.4 except the Apollo-capped `@graphql-tools/utils`). The 5 dev-only moderates left (`minimatch` DoS via `graphql-config` and the shadcn CLI's `ts-morph`) have no fix except npm's suggested downgrades, so they stay
 
 ### Phase 9.3 — Vitest 5
 
@@ -293,6 +295,7 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 - [ ] `@sentry/nextjs` 10 → 11, following the official Next.js v10→v11 migration guide
 - [x] `next.config.ts`: import `withSentryConfig` from the new `/config` subpath (done in 9.1)
 - [ ] Replace `sendDefaultPii: true` in `instrumentation-client.ts`, `sentry.server.config.ts` and `sentry.edge.config.ts` with an explicit `dataCollection` that turns **off** IP addresses, cookies and request headers (unset now means collect everything); keep error capture, masked session replay and tracing
+- [ ] Move the `tunnelRoute: '/monitoring'` rewrite to the route-handler tunnel added in `@sentry/nextjs` 11.9 (`export { POST } from '@sentry/nextjs/tunnel'`). This removes the external-rewrite proxy that logs a `MaxListenersExceededWarning` on every browser Sentry event (see 9.1); confirm the warning is gone and browser errors still reach Sentry
 - [ ] Recheck the `beforeSend` noise filters still apply, and review tracing/alerts after the switch to span streaming
 - [ ] Note the privacy change in the README changelog
 
@@ -308,6 +311,7 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 - [ ] ESLint 10: wait until `eslint-config-next` declares ESLint 10 in its peer dependencies (vercel/next.js#91702); no `--legacy-peer-deps`
 - [ ] `graphql` 17: wait until Apollo Server 5 and graphql-codegen declare support for the final 17.x
+- [ ] `pg` 9 / `pg-connection-string` 3: `sslmode=require` will switch to weaker libpq semantics (`pg` already warns at runtime). Before that upgrade, change `DATABASE_URL` locally and on Render to `sslmode=verify-full` (and update the `AGENTS.md` note)
 - [ ] TypeScript 7 (native compiler): after 9.5, once Next.js and codegen work with it; try `npx tsgo --noEmit` first
 - [ ] After all phases: update `AGENTS.md` (Node version, gotchas), `ARCHITECTURE.md` and the README changelog
 
