@@ -14,7 +14,7 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 - **Frontend:** Next.js (App Router) + React + TypeScript; shadcn/ui (Radix + Tailwind); Mapbox GL JS via `react-map-gl`; React Context for UI state
 - **API:** Apollo Server in a Next.js route (`/app/api/graphql`); Apollo Client with InMemoryCache; `graphql-codegen` for end-to-end types
 - **Data:** PostgreSQL + PostGIS on Render (Basic plan, 5GB); Prisma 7 (`provider = "prisma-client"` + `@prisma/adapter-pg`)
-- **Hosting/CI:** Render (Professional web service: `crashmap` production from `main`, `crashmap-staging` from `staging`); GitHub Actions CI; domain crashmap.io
+- **Hosting/CI:** Render (Professional web service: `crashmap` production from `main`, `crashmap-staging` from `staging`, but no `staging` branch exists on origin, so staging is idle); GitHub Actions CI deploys `main` to production via a deploy hook; domain crashmap.io
 - **Observability:** Sentry (errors + session replay), Lighthouse CI (web vitals, report-only), Better Stack (infrastructure metrics via the Render metrics stream)
 - **Data ingestion:** the companion [esri-exporter](https://github.com/nickmagruder/esri-exporter) repo fetches WSDOT records and generates SQL imports; the operator runbook is `data-pipeline.md`
 
@@ -24,6 +24,7 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 - **Overrides clankers (versioning):** never bump the version on line 2 of `README.md` (`**Version:** x.x.x`); Nick edits it by hand. Agents only add changelog entries (newest at the bottom of `README.md`).
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
 - **Deployment debugging:** check the simple things first: missing env vars, wrong URLs, misconfigured Render settings.
+- **Smoke testing:** PRs merge straight to `main` and deploy to production, so browser smoke tests run on https://crashmap.io after the `main` CI run (check, deploy, Lighthouse) finishes. `crashmap-staging.onrender.com` doesn't serve anything. Checklist: map loads, filters and date presets, custom date range, county/city selects, crash popup + copy, URL round-trip on reload, light/dark and accessible palette, mobile overlays (<768px), CSV export, no console errors, `/api/graphql` and `/monitoring` return 200.
 
 ## Data model
 
