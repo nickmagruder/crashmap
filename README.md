@@ -843,3 +843,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - Replaced `react-day-picker` 9.14 with `@daypicker/react` 10.0.2 (DayPicker's new package name) in the shadcn `Calendar` and the date filter
 - `Calendar`: renamed the removed `table` class key to `month_grid`, and let clicks pass through the nav row so the month/year dropdowns stay clickable
 - Tested the custom date range locally: dropdowns, data-bounded years, start-only first click, and commit-on-second-click all work
+
+### 2026-11-17 — Sentry Issue Triage
+
+- Stopped false "N+1 API Call" performance issues: browser tracing no longer records spans for Mapbox's parallel style/tile requests (`isMapboxRequest` in `lib/sentryConfig.ts`, with unit tests), which also keeps token-bearing URLs out of traces
+- Filtered Mapbox's internal worker error `Can't serialize object of unregistered class "DOMException"` in `beforeSend`
+- Triaged the remaining issues: a Google Translate hydration mismatch and a Next.js RSC invariant from bots (old Next version, no recent events); neither needs a code change
