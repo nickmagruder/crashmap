@@ -99,7 +99,7 @@ The map and UI automatically match your system preference, with a manual toggle.
 
 ### Prerequisites
 
-- **Node.js 20+**
+- **Node.js 24** (see `.nvmrc`)
 - **npm**
 - A **PostgreSQL** database (the schema is introspected — no migrations needed)
 - A **Mapbox** account and public access token ([sign up free](https://account.mapbox.com/))
@@ -791,3 +791,12 @@ This project is developed in the open. To report issues or suggest features, ple
 - Trimmed the key-files list to one line each; moved the detailed per-file notes and code patterns (depth limit, CSP, CORS) to `ARCHITECTURE.md` §11
 - Removed rules that duplicate the shared clankers standards; recorded the git and versioning overrides explicitly
 - Fixed stale docs: the default date preset is 90 days (not YTD); marked the Apollo `FilterOptions` cache bug resolved
+
+### 2026-11-16 — Dependency Upgrades Phase 9.1: Node 24 + Security Patches
+
+- Added Phase 9 (dependency upgrade plan) to `PLAN.md`
+- Moved from Node 20 (end of life 2026-04-30) to Node 24: `render.yaml`, CI, new `.nvmrc`, `engines` in `package.json`, `@types/node` `^24`
+- Upgraded Next.js and `eslint-config-next` 16.1.6 → 16.4.6 (fixes a critical request-smuggling advisory) and React 19.2.3 → 19.3.1
+- Applied all in-range minor/patch updates (Apollo Client 4.3, Apollo Server 5.5, Prisma 7.10, Sentry 10.78, Mapbox GL 3.35, Radix UI 1.8, Tailwind 4.3, Prettier 3.10, Vitest 4.1, others) and `npm audit fix`; vulnerabilities went from 104 (4 critical) to 23 (0 critical)
+- GitHub Actions: `actions/checkout` v7, `actions/setup-node` v7, `actions/cache` v6
+- `next.config.ts` imports `withSentryConfig` from `@sentry/nextjs/config` (the old path is deprecated)
