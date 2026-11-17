@@ -969,7 +969,7 @@ Detailed per-file notes moved here from the agent context (`AGENTS.md` keeps a o
 - `lib/rate-limit.ts` — In-memory sliding window rate limiter (60 req/min per IP); `getClientIp()` reads `x-forwarded-for` for Render's proxy; periodic `setInterval` sweep evicts idle IPs
 - `lib/graphql/__tests__/helpers.test.ts` — Unit tests for `rawToBucket`, `bucketsToRawValues`, `buildWhere`
 - `lib/graphql/__tests__/queries.test.ts` — Integration tests for all GraphQL queries via `executeOperation` with mocked Prisma
-- `vitest.config.ts` — Vitest configuration with `@` path alias
+- `vitest.config.mts` — Vitest configuration (ESM) with `@` path alias
 - `components/theme-provider.tsx` — thin `NextThemesProvider` wrapper (`attribute="class"`, `defaultTheme="system"`, `enableSystem`)
 - `components/ui/theme-toggle.tsx` — Sun/Moon icon button; CSS-driven icon swap via `dark:hidden`/`hidden dark:block`
 - `context/FilterContext.tsx` — React `useReducer` filter state; `FilterProvider`, `useFilterContext()`, `toCrashFilter()`, `getActiveFilterLabels()`; exports `UrlFilterState` type, `CrashFilterInput` type (includes `bbox`), `DatePreset` type (`'ytd' | '90d' | 'last-year' | '3y'`), `PRESET_LABELS` record, `presetToDateRange(preset, dataBounds)` utility, and `INIT_FROM_URL` / `SET_UPDATE_WITH_MOVEMENT` / `SET_DATE_BOUNDS` / `SET_DATE_PRESET` actions; default initialState: `state: 'Washington'`, `dateFilter: { type: 'preset', preset: '90d' }`, `mode: null`, `updateWithMovement: false`; county and city are decoupled (neither resets the other); `dataBounds: { minDate: string; maxDate: string } | null` holds the DB min/max CrashDate fetched on app load; preset ranges anchored to `dataBounds.maxDate` (YTD, 90d, 3y) or previous full calendar year (last-year)
