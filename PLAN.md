@@ -308,7 +308,9 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 ### Phase 9.5 — TypeScript 6
 
-- [ ] `typescript` 5.9 → 6.x (confirm Next 16.4 supports it); fix new errors and deprecation warnings in `tsconfig.json` so the project is ready for TS 7
+- [x] `typescript` 5.9.3 → 6.0.3. Checked against the official TS 6.0 notes. `tsc` passes with no errors or deprecation warnings (no `baseUrl`, `es5`, `node10` resolution, `downlevelIteration`, `outFile` or similar), and `next build` 16.4.6 type-checks with it and leaves `tsconfig.json` alone
+- [x] `tsconfig.json`: added `"types": ["node"]` (TS 6 defaults `types` to `[]`; Next's declarations already pulled `@types/node` in, so this is for TS 7 readiness) and removed `dom.iterable` from `lib` (now part of `dom`). `strict`, `module: esnext` and `isolatedModules` were already set, so the new defaults change nothing. The new `noUncheckedSideEffectImports` default raised no errors
+- [x] Audit note (unrelated to TS): a new advisory published 2026-11-17, picomatch ReDoS GHSA-fc5q-39xc-vjpf, covers all versions (`*`). It raises `npm audit` from 7 to 30, and production deps to 8, all via `@sentry/nextjs` build tooling (rollup commonjs plugin, nested Vite), which only matches build-config globs. No patched picomatch exists yet; recheck when one ships (`npm audit fix`)
 
 ### Phase 9.6 — react-day-picker 10
 
