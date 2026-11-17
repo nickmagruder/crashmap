@@ -209,8 +209,10 @@ crashmap/
 │   └── rate-limit.ts       # In-memory sliding-window rate limiter
 ├── prisma/
 │   └── schema.prisma       # Introspected schema (do not migrate)
+├── AGENTS.md               # Agent context (canonical; CLAUDE.md imports it)
 ├── ARCHITECTURE.md         # Full architecture reference
-├── CLAUDE.md               # Project context for Claude Code sessions
+├── CLAUDE.md               # `@AGENTS.md` import for Claude Code
+├── PLAN.md                 # Phased plan checklist and bugs list
 └── tutorial.md             # Step-by-step build tutorial (blog post draft)
 ```
 
@@ -781,3 +783,11 @@ This project is developed in the open. To report issues or suggest features, ple
 
 - Fixed `FilterUrlSync` spurious same-URL `router.replace` — added early-return guard when encoded params match current `searchParams`; prevents redundant RSC fetches and downstream Mapbox worker errors on every page load
 - Expanded Sentry `beforeSend` noise filters: added `runtime.sendMessage` (Safari extension), `CustomEvent` exception type (Mapbox GL tile/worker rejections), and `InvalidStateError` + "The object is in an invalid state." (Mapbox GL worker termination)
+
+### 2026-11-16 — AI Context Aligned with clankers
+
+- Moved agent context from `CLAUDE.md` into a canonical `AGENTS.md`; `CLAUDE.md` now just imports it
+- Moved the phased plan and bugs list into `PLAN.md`; dropped the already-applied Tutorial Phase 1 audit notes
+- Trimmed the key-files list to one line each; moved the detailed per-file notes and code patterns (depth limit, CSP, CORS) to `ARCHITECTURE.md` §11
+- Removed rules that duplicate the shared clankers standards; recorded the git and versioning overrides explicitly
+- Fixed stale docs: the default date preset is 90 days (not YTD); marked the Apollo `FilterOptions` cache bug resolved
