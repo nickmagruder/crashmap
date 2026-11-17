@@ -791,3 +791,5 @@ This project is developed in the open. To report issues or suggest features, ple
 - Trimmed the key-files list to one line each; moved the detailed per-file notes and code patterns (depth limit, CSP, CORS) to `ARCHITECTURE.md` §11
 - Removed rules that duplicate the shared clankers standards; recorded the git and versioning overrides explicitly
 - Fixed stale docs: the default date preset is 90 days (not YTD); marked the Apollo `FilterOptions` cache bug resolved
+- Agents may now commit when explicitly asked (the clankers default); `CLAUDE.md` and shared `.claude/` files are no longer gitignored (only `.claude/settings.local.json` is)
+- Added plan items: set up markdownlint, and confirm the Apollo cache warning is gone in the browser

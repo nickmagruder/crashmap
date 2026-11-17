@@ -155,6 +155,7 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 - [ ] Develop and implement package management & updating strategy
 - [ ] Monitor query performance — add materialized views only if aggregation queries become slow
 - [ ] If data grows beyond 50K rows or traffic increases, revisit the caching strategy
+- [ ] Add markdownlint (config + CI step, pinned version) — the docs standard requires it, but this repo has neither; agent docs were checked by hand with the clankers config (flagged 2026-11-16)
 
 ## Bugs
 
@@ -163,6 +164,7 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 - [ ] **Mapbox telemetry blocked by ad blockers** — `POST https://events.mapbox.com/events/v2` is blocked (`ERR_BLOCKED_BY_CLIENT`) by uBlock Origin and similar extensions. This is not a real bug — the request is Mapbox's optional usage telemetry and the map functions correctly without it. **Not worth fixing.** Document for future reference so it isn't investigated again.
 - [ ] **Dark Reader hydration mismatches on color spans** — Dark Reader injects `data-darkreader-inline-bgcolor` + CSS custom properties onto elements with inline `backgroundColor` styles (severity filter dots, map key dots). Also injects `data-darkreader-inline-stroke` onto Lucide SVG icons that don't yet have `suppressHydrationWarning`. Error disappears when Dark Reader is disabled. Fix: add `suppressHydrationWarning` to color dot `<span>` elements in `InfoPanelContent.tsx` and `SeverityFilter.tsx`, and to any Lucide icon SVGs in the affected tree (`X` in `InfoSidePanel.tsx`; `ExternalLink` icons in `InfoPanelContent.tsx`).
 - [ ] No severities selected
+- [ ] Confirm in the browser that the Apollo `FilterOptions` cache warning is gone — the bug was closed from the config alone (flagged 2026-11-16)
 
 ## Phase 7: Build Data Ingestion Pipeline
 

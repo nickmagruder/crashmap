@@ -20,7 +20,7 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 
 ## Working rules
 
-- **Overrides clankers (git):** never commit, push or branch, even when asked in a session. Nick handles all commits and PRs manually in GitHub Desktop. At the end of a task, report what changed and stop.
+- **Git:** commit only when Nick explicitly asks in that session (the clankers default); never push or open PRs unless asked. Nick usually handles commits and PRs in GitHub Desktop, so by default end a task with a summary and a proposed commit message. Agent context (`AGENTS.md`, `CLAUDE.md`, shared `.claude/` files) is committed; only `.claude/settings.local.json` is gitignored.
 - **Overrides clankers (versioning):** never bump the version on line 2 of `README.md` (`**Version:** x.x.x`); Nick edits it by hand. Agents only add changelog entries (newest at the bottom of `README.md`).
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
 - **Deployment debugging:** check the simple things first: missing env vars, wrong URLs, misconfigured Render settings.
@@ -161,7 +161,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 ## Close-out
 
 - After a data import, update the Data Ingestion Log and the data date range in `InfoPanelContent.tsx` (steps in `data-pipeline.md`).
-- Don't commit, push or bump the version (see Working rules); end with a summary Nick can use as a commit message.
+- Don't bump the version (see Working rules). Commit only if Nick asked in this session; otherwise end with a summary and a proposed commit message.
 - Tick finished items in `PLAN.md`.
 
 ## Docs kept in this repo

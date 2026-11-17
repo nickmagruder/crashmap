@@ -37,9 +37,8 @@ yarn-error.log*
 # prisma
 prisma/migrations/
 
-# claude
-.claude/
-CLAUDE.md
+# claude (agent context is committed; only personal local settings are ignored)
+.claude/settings.local.json
 
 # vercel
 .vercel
