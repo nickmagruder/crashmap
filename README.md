@@ -831,3 +831,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - Turned on Sentry's "Prevent Storing of IP Addresses" for the project as extra insurance
 - Confirmed in the Render logs that `MaxListenersExceededWarning` stopped when the 9.4 deploy went live
 - Explained the one expected `/monitoring` 400 on `/sentry-example-page` (its `diagnoseSdkConnectivity()` reachability probe)
+
+### 2026-11-17 — Dependency Upgrades Phase 9.5: TypeScript 6
+
+- Upgraded TypeScript 5.9.3 → 6.0.3, the bridge release to the native TypeScript 7 compiler; no type errors or deprecation warnings
+- `tsconfig.json`: added `"types": ["node"]` (TypeScript 6 no longer loads every `@types` package by default) and dropped `dom.iterable` (now part of `dom`)
+- Noted a new picomatch ReDoS advisory (GHSA-fc5q-39xc-vjpf, all versions, no fix yet) that raises the `npm audit` count; it reaches production only through Sentry's build tooling
