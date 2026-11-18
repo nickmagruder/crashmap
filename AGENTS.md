@@ -114,7 +114,7 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 
 - **Mapbox telemetry** (`events.mapbox.com`) is blocked by ad blockers: harmless, won't fix.
 - **Dark Reader** injects attributes on inline-colored spans and Lucide SVGs; add `suppressHydrationWarning` where hydration warnings appear.
-- **Sentry noise:** `instrumentation-client.ts` `beforeSend` drops browser-extension errors (`__firefox__`, `window.ethereum`, `runtime.sendMessage`) and Mapbox GL worker noise (`CustomEvent` type; `InvalidStateError` "The object is in an invalid state."; Mapbox's worker `Can't serialize object of unregistered class "DOMException"`). Extend that list rather than adding new filters elsewhere. Browser tracing skips spans for Mapbox requests (`isMapboxRequest` in `lib/sentryConfig.ts`), since parallel tile/style GETs otherwise trigger Sentry's "N+1 API Call" detector. A Sentry "Hydration Error" with `<font dir="auto">` in its diff is Google Translate rewriting the page, not an app bug.
+- **Sentry noise:** `instrumentation-client.ts` `beforeSend` drops browser-extension errors (`__firefox__`, `window.ethereum`, `runtime.sendMessage`) and Mapbox GL worker noise (`CustomEvent` type; `InvalidStateError` "The object is in an invalid state."; Mapbox's worker `Can't serialize object of unregistered class "DOMException"`). Extend that list rather than adding new filters elsewhere. Browser tracing skips spans for Mapbox requests (`isMapboxRequest` in `lib/sentryConfig.ts`), since parallel tile/style GETs otherwise trigger Sentry's "N+1 API Call" detector. A Sentry "Hydration Error" with `<font dir="auto">` in its diff is Google Translate rewriting the page, not an app bug. Only Render builds report as `production`/`staging` (`resolveSentryEnvironment`, from Render's `RENDER`/`RENDER_SERVICE_NAME` at build time); `next dev` reports as `development`, and local production builds are disabled.
 - **CI YAML:** Prettier single-quotes the `'on':` key (YAML 1.1 boolean). Correct; don't revert.
 - **DayPicker (`@daypicker/react` v10) range mode:** a first click sets `from === to` (treat it as start-only); with `captionLayout="dropdown"` always control `month`/`onMonthChange`; bound years with `startMonth`/`endMonth`. In the shadcn `calendar.tsx`, use v10 `classNames` keys (`month_grid`, not `table`) and keep the nav `pointer-events-none` so the dropdowns stay clickable.
 - **Apollo Client v4 imports:** hooks from `@apollo/client/react`, `HttpLink` from `@apollo/client/link/http`, `gql` from `@apollo/client`.
@@ -157,7 +157,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `components/export/ExportButton.tsx`, `lib/csv-export.ts`: CSV export
 - `lib/crashColors.ts`: standard and accessible severity palettes
 - `components/ErrorBoundary.tsx`, `app/error.tsx`, `app/global-error.tsx`: error boundaries
-- `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`, `lib/sentryConfig.ts`: Sentry setup (shared tunnel path and `dataCollection` in `lib/sentryConfig.ts`)
+- `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`, `lib/sentryConfig.ts`: Sentry setup (shared tunnel path, `dataCollection` and environment in `lib/sentryConfig.ts`)
 - `render.yaml`: Render services (production + staging)
 - `.github/workflows/ci.yml`: lint, format, typecheck, test, codegen drift, build, deploy hook, Lighthouse
 - `.lighthouserc.json`: Lighthouse CI config

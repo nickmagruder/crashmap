@@ -13,6 +13,37 @@ type DataCollection = NonNullable<NonNullable<Parameters<typeof Sentry.init>[0]>
  */
 export const SENTRY_TUNNEL_PATH = '/monitoring'
 
+export type SentryEnvironment = 'production' | 'staging' | 'development' | 'local'
+
+/**
+ * Picks the Sentry environment from the build's environment variables. `next.config.ts` calls this
+ * at build time and inlines the result as `NEXT_PUBLIC_SENTRY_ENVIRONMENT` for the browser, server
+ * and edge bundles.
+ *
+ * Render sets `RENDER` and `RENDER_SERVICE_NAME` on its build machines, so only Render deploys count
+ * as production or staging. Without this, Sentry falls back to `NODE_ENV`, and a local production
+ * build (`next build` + `next start`) reported its errors as production.
+ */
+export function resolveSentryEnvironment(env: {
+  RENDER?: string
+  RENDER_SERVICE_NAME?: string
+  NODE_ENV?: string
+}): SentryEnvironment {
+  if (env.RENDER) return env.RENDER_SERVICE_NAME === 'crashmap-staging' ? 'staging' : 'production'
+  return env.NODE_ENV === 'development' ? 'development' : 'local'
+}
+
+/** This build's Sentry environment (inlined by `next.config.ts`; `local` if it's missing). */
+export const SENTRY_ENVIRONMENT: SentryEnvironment =
+  (process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT as SentryEnvironment | undefined) ?? 'local'
+
+/**
+ * Whether Sentry sends anything. Local production builds don't: they're for testing, and their
+ * errors (e.g. requests aborted when the tester closes a tab) aren't production issues. The dev
+ * server still reports, tagged `development`.
+ */
+export const SENTRY_ENABLED = SENTRY_ENVIRONMENT !== 'local'
+
 /**
  * True for requests to Mapbox (style, sprites, glyphs, tiles, telemetry). The browser tracing
  * integration skips spans for these: map loading fires many parallel GETs, which Sentry's

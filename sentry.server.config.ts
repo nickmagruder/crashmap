@@ -3,10 +3,18 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from '@sentry/nextjs'
-import { SENTRY_DATA_COLLECTION, SENTRY_TUNNEL_PATH } from '@/lib/sentryConfig'
+import {
+  SENTRY_DATA_COLLECTION,
+  SENTRY_ENABLED,
+  SENTRY_ENVIRONMENT,
+  SENTRY_TUNNEL_PATH,
+} from '@/lib/sentryConfig'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  // production/staging only on Render; local production builds send nothing. See lib/sentryConfig.ts.
+  environment: SENTRY_ENVIRONMENT,
+  enabled: SENTRY_ENABLED,
   integrations: [
     // Logs are sent through this integration (Sentry v11 removed `enableLogs`).
     Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),

@@ -875,3 +875,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - The map now opens on **YTD** instead of 90 Days (`DEFAULT_DATE_PRESET` in `FilterContext`); YTD is omitted from the URL, and 90 Days is now written as `?date=90d`. Old shared links without a date param open on YTD
 - YTD now starts on January 1 of the newest crash's year instead of today's year, so in early January (before new-year data is imported) the default view isn't empty
 - Added unit tests for the URL default and round-trip (`lib/__tests__/filterUrlState.test.ts`) and for preset ranges, including the January case (`context/__tests__/presetToDateRange.test.ts`)
+
+### 2026-11-17 — Sentry Environments
+
+- Sentry's environment is now set explicitly (`resolveSentryEnvironment` in `lib/sentryConfig.ts`, inlined at build time by `next.config.ts`): `production`/`staging` only for Render builds, `development` for `next dev`, `local` otherwise
+- Local production builds (`next build` + `next start`) no longer send anything to Sentry; one of them had reported a client-aborted GraphQL request as a production error
+- Added unit tests for the environment resolution

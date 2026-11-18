@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next'
 import { withSentryConfig } from '@sentry/nextjs/config'
+import { resolveSentryEnvironment } from './lib/sentryConfig'
 
 const isDev = process.env.NODE_ENV === 'development'
 
@@ -31,6 +32,10 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['react-map-gl', 'mapbox-gl'],
   devIndicators: false,
+  // Inlined into the browser, server and edge bundles at build time (see lib/sentryConfig.ts).
+  env: {
+    NEXT_PUBLIC_SENTRY_ENVIRONMENT: resolveSentryEnvironment(process.env),
+  },
   async headers() {
     return [
       {
