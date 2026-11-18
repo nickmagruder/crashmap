@@ -379,7 +379,8 @@ checks passed. The backup was dropped after validation.
 - [x] Tests: `filterUrlState` round-trip with the new default; `presetToDateRange` YTD including the January case
 - [x] Update the info-panel data range in `components/info/InfoPanelContent.tsx` ("2015 - Nov 2026")
 - [x] Docs: filter defaults in `AGENTS.md`, `ARCHITECTURE.md`, `README.md`, `tutorial.md`; Data Ingestion Log in `data-pipeline.md` (plus a note there on the upsert and the rolling re-fetch); README changelog (no version bump)
-- [ ] After deploy, smoke test on crashmap.io: first load shows YTD with no `date` in the URL, ~2,500+ crashes, 90 Days still works and round-trips; check first-load speed on mobile and Lighthouse
+- [x] Follow-up (2026-11-17): new **1yr** preset (365 days ending at the newest crash) as the first-load default instead of YTD; buttons reordered to 90d, YTD, 1yr, Last Year, 3yrs; tests and docs updated
+- [ ] After deploy, smoke test on crashmap.io: first load shows 1yr with no `date` in the URL, ~3,000 crashes; 90d and YTD still work and round-trip (`?date=90d`, `?date=ytd`); check first-load speed on mobile and Lighthouse
 
 ### Phase 10.5 — Keep it current
 

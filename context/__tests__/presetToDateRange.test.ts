@@ -38,6 +38,24 @@ describe('presetToDateRange', () => {
     })
   })
 
+  describe('1y', () => {
+    it('covers the 365 days ending at the newest crash', () => {
+      vi.setSystemTime(new Date(2026, 10, 17))
+      expect(presetToDateRange('1y', bounds('2026-11-12'))).toEqual({
+        startDate: '2025-11-12',
+        endDate: '2026-11-12',
+      })
+    })
+
+    it('ends at today when the data is current', () => {
+      vi.setSystemTime(new Date(2026, 10, 17))
+      expect(presetToDateRange('1y', bounds('2026-11-17'))).toEqual({
+        startDate: '2025-11-17',
+        endDate: '2026-11-17',
+      })
+    })
+  })
+
   it('last-year spans the previous calendar year', () => {
     vi.setSystemTime(new Date(2026, 10, 17))
     expect(presetToDateRange('last-year', bounds('2026-11-12'))).toEqual({

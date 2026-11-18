@@ -78,14 +78,14 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 
 ### Filters (all AND-combined, live)
 
-| Filter                                                         | Component                          | Column                                            |
-| -------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------- |
-| Date presets (YTD, 90 Days, Last Year, 3 Years) + custom range | `Button`s + `Popover` + `Calendar` | `CrashDate`                                       |
-| State / County / City                                          | `Select`                           | `StateOrProvinceName` / `CountyName` / `CityName` |
-| Mode                                                           | `ToggleGroup`                      | `Mode`                                            |
-| Injury severity (multi-select)                                 | `Checkbox` + `Label`               | `MostSevereInjuryType`                            |
+| Filter                                                                 | Component                          | Column                                            |
+| ---------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------- |
+| Date presets (90 Days, YTD, 1 Year, Last Year, 3 Years) + custom range | `Button`s + `Popover` + `Calendar` | `CrashDate`                                       |
+| State / County / City                                                  | `Select`                           | `StateOrProvinceName` / `CountyName` / `CityName` |
+| Mode                                                                   | `ToggleGroup`                      | `Mode`                                            |
+| Injury severity (multi-select)                                         | `Checkbox` + `Label`               | `MostSevereInjuryType`                            |
 
-- Defaults: state Washington, YTD preset (`DEFAULT_DATE_PRESET`; Jan 1 of the newest crash's year → newest crash), all modes, None/Unknown injuries hidden.
+- Defaults: state Washington, 1-year preset (`DEFAULT_DATE_PRESET`; the 365 days ending at the newest crash), all modes, None/Unknown injuries hidden.
 - County and city are decoupled from each other; changing state clears both.
 - Filter state round-trips through the URL (`lib/filterUrlState.ts`); defaults are omitted from the URL.
 
