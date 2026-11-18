@@ -1,0 +1,29 @@
+name: Bug
+description: Something CrashMap does wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Security problem? Don't file it here: report it privately
+        (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Steps, the filters in use (or the page URL) and the browser and device.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors
+      description: Console errors or the Sentry issue, with anything sensitive removed.
+      render: text

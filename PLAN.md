@@ -2,6 +2,8 @@
 
 Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so the agent context stays lean; `AGENTS.md` links here.
 
+From 2026-11-18, [GitHub issues](https://github.com/nickmagruder/crashmap/issues) track pending work (on the CrashMap project board). This file keeps the phases, design notes and results; open items link to their issue.
+
 ## Phase 0: Config
 
 - [x] Domain purchased (crashmap.io)
@@ -144,26 +146,26 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 - [x] Hide None/Unknown injuries by default — Mapbox layer filter excludes the None bucket on initial load
 - [x] Link to Google Street View for location — "Open Street View" link at the bottom of the crash popup opens `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lng}` in a new tab; copy-to-clipboard button (Lucide `Copy`/`Check` icons, 2s confirmation) sits inline next to the report number
 - [x] copy report # and/or autofill report #
-- [ ] Accessibility audit (WCAG 2.1 AA)
-- [ ] Develop and implement SEO strategy
-- [ ] **Stretch goal: Dashboard charts** (see Section 11) — add Recharts/D3 visualizations for severity, mode, time trends, and geographic breakdowns
+- [ ] Accessibility audit (WCAG 2.1 AA): #198, #199, #200
+- [ ] Develop and implement SEO strategy: #201
+- [ ] **Stretch goal: Dashboard charts** (#210; see Section 11) — add Recharts/D3 visualizations for severity, mode, time trends, and geographic breakdowns
       Add comparative analysis features (year-over-year, area comparison)
-- [ ] **Stretch goal: Tour modes:**
+- [ ] **Stretch goal: Tour modes** (#211):
       Statewide, highlight dangerous streets and success stories.
       Individual city versions.
 - [x] Make desktop filters "pinnable"
-- [ ] Develop and implement package management & updating strategy
-- [ ] Monitor query performance — add materialized views only if aggregation queries become slow
-- [ ] If data grows beyond 50K rows or traffic increases, revisit the caching strategy
+- [ ] Develop and implement package management & updating strategy: #202
+- [ ] Monitor query performance — add materialized views only if aggregation queries become slow (#209)
+- [ ] If data grows beyond 50K rows or traffic increases, revisit the caching strategy (#209)
 
 ## Bugs
 
 - [x] **Apollo InMemoryCache merge warning** — resolved: both `lib/apollo-client.ts` and `app/apollo-provider.tsx` now set `FilterOptions: { keyFields: false }` (console warning not re-checked in the browser). Original note: `filterOptions` field on `Query` has no keyFields or merge function, so cached `FilterOptions` objects (states/years vs. counties vs. cities) overwrite each other on every query. Fix: add a `merge: true` type policy for `FilterOptions` in the Apollo Client cache config (in `lib/apollo-client.ts` and/or `app/apollo-provider.tsx`), or give `FilterOptions` a `keyFields` entry. This avoids redundant network requests and silences the console warning.
 - [x] **Sidebar SheetContent missing `Description`** — resolved: `Sidebar.tsx` no longer uses `SheetContent` (the Sheet variant was removed in favor of a simple flex-column panel).
-- [ ] **Mapbox telemetry blocked by ad blockers** — `POST https://events.mapbox.com/events/v2` is blocked (`ERR_BLOCKED_BY_CLIENT`) by uBlock Origin and similar extensions. This is not a real bug — the request is Mapbox's optional usage telemetry and the map functions correctly without it. **Not worth fixing.** Document for future reference so it isn't investigated again.
-- [ ] **Dark Reader hydration mismatches on color spans** — Dark Reader injects `data-darkreader-inline-bgcolor` + CSS custom properties onto elements with inline `backgroundColor` styles (severity filter dots, map key dots). Also injects `data-darkreader-inline-stroke` onto Lucide SVG icons that don't yet have `suppressHydrationWarning`. Error disappears when Dark Reader is disabled. Fix: add `suppressHydrationWarning` to color dot `<span>` elements in `InfoPanelContent.tsx` and `SeverityFilter.tsx`, and to any Lucide icon SVGs in the affected tree (`X` in `InfoSidePanel.tsx`; `ExternalLink` icons in `InfoPanelContent.tsx`).
-- [ ] No severities selected
-- [x] **Local production builds reported to Sentry as production (2026-11-17)** — `Error: aborted` on `POST /api/graphql` (1 event, `url` `http://localhost:3001`) came from a local `next start` used to test PR #195: no `environment` was set, so Sentry used `NODE_ENV=production`. Fix: `resolveSentryEnvironment` in `lib/sentryConfig.ts`, inlined at build by `next.config.ts`; only Render builds report as production/staging, and local production builds are disabled. Verified locally: a local build inlines `environment:"local",enabled:!1` in the browser, server and edge bundles; a build with `RENDER=true RENDER_SERVICE_NAME=crashmap` inlines `"production"`/enabled; a thrown browser error and `/api/sentry-example-api` on the local build sent nothing. Still to check after deploy: new crashmap.io events are tagged `production`, and resolve the localhost issue in Sentry
+- **Mapbox telemetry blocked by ad blockers** (won't fix; in `AGENTS.md` Gotchas) — `POST https://events.mapbox.com/events/v2` is blocked (`ERR_BLOCKED_BY_CLIENT`) by uBlock Origin and similar extensions. This is not a real bug — the request is Mapbox's optional usage telemetry and the map functions correctly without it. **Not worth fixing.** Document for future reference so it isn't investigated again.
+- [ ] **Dark Reader hydration mismatches on color spans** (#207) — Dark Reader injects `data-darkreader-inline-bgcolor` + CSS custom properties onto elements with inline `backgroundColor` styles (severity filter dots, map key dots). Also injects `data-darkreader-inline-stroke` onto Lucide SVG icons that don't yet have `suppressHydrationWarning`. Error disappears when Dark Reader is disabled. Fix: add `suppressHydrationWarning` to color dot `<span>` elements in `InfoPanelContent.tsx` and `SeverityFilter.tsx`, and to any Lucide icon SVGs in the affected tree (`X` in `InfoSidePanel.tsx`; `ExternalLink` icons in `InfoPanelContent.tsx`).
+- [ ] No severities selected (#208)
+- [x] **Local production builds reported to Sentry as production (2026-11-17)** — `Error: aborted` on `POST /api/graphql` (1 event, `url` `http://localhost:3001`) came from a local `next start` used to test PR #195: no `environment` was set, so Sentry used `NODE_ENV=production`. Fix: `resolveSentryEnvironment` in `lib/sentryConfig.ts`, inlined at build by `next.config.ts`; only Render builds report as production/staging, and local production builds are disabled. Verified locally: a local build inlines `environment:"local",enabled:!1` in the browser, server and edge bundles; a build with `RENDER=true RENDER_SERVICE_NAME=crashmap` inlines `"production"`/enabled; a thrown browser error and `/api/sentry-example-api` on the local build sent nothing. Still to check after deploy (#204): new crashmap.io events are tagged `production`, and resolve the localhost issue in Sentry
 - [x] **Sentry issues triaged (2026-11-17)** — "N+1 API Call" (new since Phase 9.1): Mapbox's parallel style/tile GETs on page load; fixed by skipping spans for Mapbox requests. `Can't serialize object of unregistered class "DOMException"` (8 events, release `f7ae4ab`): thrown inside Mapbox's worker and still present in 3.35; filtered in `beforeSend`. "Hydration Error" (1 event, Oct 22): Google Translate (`<font dir="auto">` in the diff) on a Swedish visitor's page; not an app bug. `InvariantError: Expected RSC response` on `/_not-found` (8 events, bots/crawlers, Oct 18–23, Next 16.1.6): a Next.js bug with no events since; Next is now 16.4.6. Production check after PR 190 deployed (release `681b346`, 2026-11-17): a navigation trace on crashmap.io recorded only crashmap.io spans while the page made 20 Mapbox requests; all GraphQL and `/monitoring` requests 200; console clean; Render logs clean for the 10:53 and 11:06 AM Pacific deploys; Sentry has 0 unresolved issues and no N+1 events since the fix went live
 
 ## Phase 7: Build Data Ingestion Pipeline
@@ -236,11 +238,15 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 
 ### Phase 8.2 — High (Required for AA compliance)
 
+Tracked in #198.
+
 - [ ] Wrap crash count `<p>` in `Sidebar.tsx` and `FilterOverlay.tsx` with `role="status"` + `aria-live="polite"` + `aria-atomic="true"`
 - [ ] Add "opens in new window" indication to all `target="_blank"` external links in `InfoPanelContent.tsx`, `SupportPanelContent.tsx`, and `CrashPopup.tsx` — use `aria-label` or `<span className="sr-only"> (opens in new window)</span>`; add `aria-hidden="true"` to all `<ExternalLink>` icons within those links
 - [ ] Fix `Loader2` in `GeographicFilter.tsx` — change `aria-label="Loading"` → `aria-hidden="true"`; add `aria-busy="true"` to parent container when loading
 
 ### Phase 8.3 — Medium (Strongly recommended)
+
+Tracked in #199.
 
 - [ ] Verify color contrast ratios for all severity dot colors in `lib/crashColors.ts` against light and dark backgrounds using WebAIM or DevTools; document rationale for map dot colors (non-text, 3:1 ratio applies)
 - [ ] Wrap decorative emoji in `aria-hidden="true"` spans in `InfoSidePanel.tsx` and `InfoPanelContent.tsx`
@@ -248,6 +254,8 @@ Phased checklist of work for CrashMap. Moved out of `CLAUDE.md` on 2026-11-16 so
 - [ ] Audit all Lucide icon instances inside labeled buttons across `AppShell.tsx`, `InfoSidePanel.tsx`, `InfoPanelContent.tsx` — ensure `aria-hidden="true"` is present on each icon `<svg>` (since `lucide-react` 1.x, Phase 9.2, icons get it automatically unless given an `aria-label`/`title`, so this audit becomes: find icons that have a label but sit inside an already-labeled control)
 
 ### Phase 8.4 — Verification
+
+Tracked in #200.
 
 - [ ] Run axe DevTools automated scan on: home page, mobile overlay open, desktop sidebar open, crash popup open — resolve all Critical and Serious violations
 - [ ] Keyboard-only navigation test: tab through all interactive controls, verify skip link, focus trapping in overlays, Escape closes, focus restores on close
@@ -325,6 +333,8 @@ Decisions: target **Node 24** (Active LTS, EOL 2028-04-30, matches local dev); T
 
 ### Phase 9.7 — Deferred (revisit 2027-Q1)
 
+Tracked in #202 (upgrades), #203 (advisories), #204 (Sentry) and #205 (smoke test).
+
 - [ ] ESLint 10: wait until `eslint-config-next` declares ESLint 10 in its peer dependencies (vercel/next.js#91702); no `--legacy-peer-deps`
 - [ ] `graphql` 17: wait until Apollo Server 5 and graphql-codegen declare support for the final 17.x
 - [ ] `pg` 9 / `pg-connection-string` 3: `sslmode=require` will switch to weaker libpq semantics (`pg` already warns at runtime). Before that upgrade, change `DATABASE_URL` locally and on Render to `sslmode=verify-full` (and update the `AGENTS.md` note)
@@ -381,9 +391,11 @@ checks passed. The backup was dropped after validation.
 - [x] Update the info-panel data range in `components/info/InfoPanelContent.tsx` ("2015 - Nov 2026")
 - [x] Docs: filter defaults in `AGENTS.md`, `ARCHITECTURE.md`, `README.md`, `tutorial.md`; Data Ingestion Log in `data-pipeline.md` (plus a note there on the upsert and the rolling re-fetch); README changelog (no version bump)
 - [x] Follow-up (2026-11-17): new **1yr** preset (365 days ending at the newest crash) as the first-load default instead of YTD; buttons reordered to 90d, YTD, 1yr, Last Year, 3yrs; tests and docs updated
-- [ ] After deploy, smoke test on crashmap.io: first load shows 1yr with no `date` in the URL, ~3,000 crashes; 90d and YTD still work and round-trip (`?date=90d`, `?date=ytd`); check first-load speed on mobile and Lighthouse
+- [ ] After deploy (#205), smoke test on crashmap.io: first load shows 1yr with no `date` in the URL, ~3,000 crashes; 90d and YTD still work and round-trip (`?date=90d`, `?date=ytd`); check first-load speed on mobile and Lighthouse
 
 ### Phase 10.5 — Keep it current
+
+Tracked in #206.
 
 - [ ] Each month, re-fetch a rolling 12 months with the upsert (catches late reports and revisions); update `data-pipeline.md`'s Full Import Checklist to say so
 - [ ] Optional: a monthly reminder, or later a scheduled job that runs the refresh

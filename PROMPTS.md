@@ -73,9 +73,11 @@ files such as `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`, or the re
 
 --- STEP 4: PLAN ---
 - Tick finished items in `PLAN.md`, adding a short note of what was done and verified, as the
-  Phase 9 items do.
-- Add every loose end raised but not finished as an unchecked item with a one-line reason and the
-  date it was flagged: under the relevant phase, or under `## Bugs` for defects.
+  Phase 9 items do. Comment on, or close through the PR, the GitHub issue each item links to.
+- Every loose end raised but not finished becomes a GitHub issue (label `follow-up`, or `bug` for
+  defects; body: why, what, "Done when"), added to the CrashMap board with
+  `gh project item-add 2 --owner nickmagruder --url <issue url>`. Link it from `PLAN.md` under the
+  relevant phase, or under `## Bugs` for defects, with the date it was flagged.
 - Never delete section headings or other people's items. Work that is truly separate and worth
   doing next: propose it, don't start it.
 
@@ -112,20 +114,21 @@ Run this step when work from this session merged to `main` and deployed. Otherwi
 - Don't change Render or Sentry settings, or resolve or archive Sentry issues, without Nick's yes.
 Record the result in `PLAN.md` next to the item it verifies.
 
---- STEP 8: SHIP (offer first) ---
-Per AGENTS.md, commit only when Nick asks in the session. End with a proposed commit message and
-ask whether to ship. On a yes:
+--- STEP 8: SHIP ---
+Per AGENTS.md, shipping is the natural next step for finished work: skip it only for exploratory or
+unfinished work, or when Nick said to hold off (then end with a proposed commit message).
 1. `git status --short`. If on `main`, or on a branch whose PR is already merged
    (`gh pr view --json state`), create a fresh branch from the latest `main`:
-   `git fetch origin && git switch -c <type>/<short-name> origin/main`, carrying the uncommitted
-   changes over. Types: `feat`, `fix`, `chore`, `docs`.
+   `git fetch origin && git switch -c <type>/<issue>-<short-name> origin/main`, carrying the
+   uncommitted changes over. Types: `feat`, `fix`, `chore`, `docs`. No issue yet? Create one first.
 2. Stage only this session's files by path (never `git add -A`). Never stage `.env*`; `.claude/`
    is gitignored. Commit with the proposed message and the attribution line the session's
    instructions specify. The husky pre-commit hook runs lint-staged; fix what it reports.
-3. `git push -u origin <branch>`, then `gh pr create --base main` with a body covering what
-   changed, why, verification, and anything for reviewers or after merge, ending with the PR
+3. `git push -u origin <branch>`, then `gh pr create --base main` with a body that starts
+   `Closes #<issue>` and follows `.github/pull_request_template.md`, ending with the PR
    attribution line.
-4. Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never push
+4. Copilot reviews the PR automatically: fix the valid comments, reply with a reason to the rest,
+   and resolve the threads before handing the PR to Nick. Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never push
    to `main`: Nick merges.
 
 --- STEP 9: REPORT ---
