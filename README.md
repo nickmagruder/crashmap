@@ -881,3 +881,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - New **1yr** date preset: the 365 days ending at the newest crash (today, when the data is current). It's now the first-load default (`DEFAULT_DATE_PRESET = '1y'`) and is omitted from the URL; YTD is now written as `?date=ytd`
 - Preset buttons reordered to 90d, YTD, 1yr, Last Year, 3yrs
 - Tests updated for the new default and the 1-year range
+
+### 2026-11-17 — Sentry Environments
+
+- Sentry's environment is now set explicitly (`resolveSentryEnvironment` in `lib/sentryConfig.ts`, inlined at build time by `next.config.ts`): `production`/`staging` only for Render builds, `development` for `next dev`, `local` otherwise
+- Local production builds (`next build` + `next start`) no longer send anything to Sentry; one of them had reported a client-aborted GraphQL request as a production error
+- Added unit tests for the environment resolution

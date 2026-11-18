@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isMapboxRequest } from '../sentryConfig'
+import { isMapboxRequest, resolveSentryEnvironment } from '../sentryConfig'
 
 describe('isMapboxRequest', () => {
   it.each([
@@ -23,5 +23,36 @@ describe('isMapboxRequest', () => {
 
   it('is false for an unparseable URL', () => {
     expect(isMapboxRequest('http://')).toBe(false)
+  })
+})
+
+describe('resolveSentryEnvironment', () => {
+  it('is production on the Render production service', () => {
+    expect(
+      resolveSentryEnvironment({
+        RENDER: 'true',
+        RENDER_SERVICE_NAME: 'crashmap',
+        NODE_ENV: 'production',
+      })
+    ).toBe('production')
+  })
+
+  it('is staging on the Render staging service', () => {
+    expect(
+      resolveSentryEnvironment({
+        RENDER: 'true',
+        RENDER_SERVICE_NAME: 'crashmap-staging',
+        NODE_ENV: 'production',
+      })
+    ).toBe('staging')
+  })
+
+  it('is development for the local dev server', () => {
+    expect(resolveSentryEnvironment({ NODE_ENV: 'development' })).toBe('development')
+  })
+
+  it('is local for a production build off Render', () => {
+    expect(resolveSentryEnvironment({ NODE_ENV: 'production' })).toBe('local')
+    expect(resolveSentryEnvironment({})).toBe('local')
   })
 })

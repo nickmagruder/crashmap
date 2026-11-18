@@ -6,12 +6,17 @@ import * as Sentry from '@sentry/nextjs'
 import {
   MAPBOX_WORKER_SERIALIZE_ERROR,
   SENTRY_DATA_COLLECTION,
+  SENTRY_ENABLED,
+  SENTRY_ENVIRONMENT,
   SENTRY_TUNNEL_PATH,
   isMapboxRequest,
 } from '@/lib/sentryConfig'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  // production/staging only on Render; local production builds send nothing. See lib/sentryConfig.ts.
+  environment: SENTRY_ENVIRONMENT,
+  enabled: SENTRY_ENABLED,
 
   // Send events to our own origin; serveTunnelIntegration in the server/edge configs forwards them.
   tunnel: SENTRY_TUNNEL_PATH,
