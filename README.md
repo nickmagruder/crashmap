@@ -269,6 +269,10 @@ The health check endpoint (`GET /api/health`) returns `{"status":"ok"}` and is u
 
 This project is developed in the open. To report issues or suggest features, please open an [issue on GitHub](https://github.com/nickmagruder/crashmap/issues). See [CONTRIBUTING.md](CONTRIBUTING.md) for how changes are made and the coding standards, and [SECURITY.md](SECURITY.md) to report a vulnerability privately.
 
+## License
+
+[MIT](LICENSE) © 2026 Nick Magruder
+
 ---
 
 ## Changelog
@@ -896,3 +900,7 @@ This project is developed in the open. To report issues or suggest features, ple
 - New pre-commit gitleaks scan (`scripts/gitleaks-staged.sh`) and commit-msg check (`scripts/commit-msg.ts`, with tests)
 - CI actions are pinned by commit SHA and Node comes from `.nvmrc`; new CodeQL (`security-extended`) and OpenSSF Scorecard workflows and weekly grouped Dependabot updates. Deploy and Lighthouse are unchanged
 - Added `CONTRIBUTING.md`, `SECURITY.md`, issue forms and a PR template; `AGENTS.md` and `PROMPTS.md` now open a PR per issue as the next step and triage Copilot's comments
+
+### 2026-11-18 — MIT License
+
+- CrashMap is now MIT-licensed (`LICENSE`, `"license"` in `package.json`), matching agent-bus and esri-exporter
