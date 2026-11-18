@@ -267,7 +267,7 @@ The health check endpoint (`GET /api/health`) returns `{"status":"ok"}` and is u
 
 ## Contributing
 
-This project is developed in the open. To report issues or suggest features, please open an [issue on GitHub](https://github.com/nickmagruder/crashmap/issues).
+This project is developed in the open. To report issues or suggest features, please open an [issue on GitHub](https://github.com/nickmagruder/crashmap/issues). See [CONTRIBUTING.md](CONTRIBUTING.md) for how changes are made and the coding standards, and [SECURITY.md](SECURITY.md) to report a vulnerability privately.
 
 ---
 
@@ -887,3 +887,12 @@ This project is developed in the open. To report issues or suggest features, ple
 - Sentry's environment is now set explicitly (`resolveSentryEnvironment` in `lib/sentryConfig.ts`, inlined at build time by `next.config.ts`): `production`/`staging` only for Render builds, `development` for `next dev`, `local` otherwise
 - Local production builds (`next build` + `next start`) no longer send anything to Sentry; one of them had reported a client-aborted GraphQL request as a production error
 - Added unit tests for the environment resolution
+
+### 2026-11-18 — Repo Standards
+
+- Pending `PLAN.md` work is now tracked as GitHub issues (#198–#211) on the CrashMap project board; `PLAN.md` links to them
+- `main` is protected by a ruleset: PR required, the `check` job required and up to date, no force pushes; Copilot reviews every PR using `.github/copilot-instructions.md`, path-scoped security instructions and the vendored `code-review` skill
+- Merges are squash-only and delete the branch; Dependabot alerts, security updates and private vulnerability reporting are on
+- New pre-commit gitleaks scan (`scripts/gitleaks-staged.sh`) and commit-msg check (`scripts/commit-msg.ts`, with tests)
+- CI actions are pinned by commit SHA and Node comes from `.nvmrc`; new CodeQL (`security-extended`) and OpenSSF Scorecard workflows and weekly grouped Dependabot updates. Deploy and Lighthouse are unchanged
+- Added `CONTRIBUTING.md`, `SECURITY.md`, issue forms and a PR template; `AGENTS.md` and `PROMPTS.md` now open a PR per issue as the next step and triage Copilot's comments

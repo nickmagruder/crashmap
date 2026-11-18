@@ -22,7 +22,9 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 ## Working rules
 
 - **Repository-local memory:** save project decisions, context, notes, plans, and session follow-ups in tracked repository files (typically `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`, or relevant docs). Do not use sidecar, application, or in-application memory stores. This rule wins over generic memory behavior.
-- **Git:** commit, push or open a PR only when Nick asks in that session (the clankers default). Then branch from the latest `main`, open a PR, and never merge it or push to `main`; Nick merges. Without a request, end the task with a summary and a proposed commit message (Nick often commits in GitHub Desktop). Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
+- **Git (trunk-based):** every change has a GitHub issue (milestone where it fits) on the [CrashMap board](https://github.com/users/nickmagruder/projects/2); branch `<type>/<issue>-<slug>` from the latest `main`; PR body starts `Closes #N` (template in `.github/`). Branch, commit, push and open the PR as the natural next step of finished work (clankers `standards/git.md`), unless the work is exploratory or Nick said to hold off. Only Nick merges (squash), and merging deploys to production; never push to `main`, never `--no-verify`. Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
+- **Copilot review:** reviews every PR automatically (`.github/copilot-instructions.md`, `.github/skills/code-review/`). Before handing a PR to Nick, fix the valid comments, reply with a reason to the rest, and resolve the threads.
+- **Tracking:** status lives in issues; `PLAN.md` keeps phases, design notes and results and links to the issues. Bugs and follow-ups found mid-task become issues (`follow-up` or `bug` label) added to the board with `gh project item-add 2 --owner nickmagruder --url <url>`, not only plan bullets.
 - **Overrides clankers (versioning):** never bump the version on line 2 of `README.md` (`**Version:** x.x.x`); Nick edits it by hand. Agents only add changelog entries (newest at the bottom of `README.md`).
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
 - **Deployment debugging:** check the simple things first: missing env vars, wrong URLs, misconfigured Render settings.
@@ -128,7 +130,9 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 - `README.md`: overview, version (line 2), changelog (bottom)
 - `PROMPTS.md`: project prompts, including `Close-Out-Session`
-- `PLAN.md`: phased checklist and bugs list
+- `PLAN.md`: phases, design notes and bugs list; open items link to GitHub issues
+- `CONTRIBUTING.md`: coding standards and how changes are made (also read by Copilot review)
+- `SECURITY.md`: vulnerability reporting and scope
 - `ARCHITECTURE.md`: data model, GraphQL schema, indexes, security, detailed file notes
 - `tutorial.md`: blog-post draft of the build
 - `data-pipeline.md`: monthly ingestion runbook and Data Ingestion Log
@@ -159,7 +163,11 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `components/ErrorBoundary.tsx`, `app/error.tsx`, `app/global-error.tsx`: error boundaries
 - `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`, `lib/sentryConfig.ts`: Sentry setup (shared tunnel path, `dataCollection` and environment in `lib/sentryConfig.ts`)
 - `render.yaml`: Render services (production + staging)
-- `.github/workflows/ci.yml`: lint, format, typecheck, test, codegen drift, build, deploy hook, Lighthouse
+- `.github/workflows/ci.yml`: lint, format, typecheck, test, codegen drift, build (the required `check` job), deploy hook, Lighthouse; actions pinned by SHA
+- `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates
+- `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: Copilot PR review (the skill is synced from clankers `skills/pr-review`)
+- `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`: issue forms and PR template
+- `.husky/`: pre-commit (lint-staged, then `scripts/gitleaks-staged.sh`) and commit-msg (`scripts/commit-msg.ts`, rules in `scripts/commit-msg-rules.ts`) hooks
 - `.lighthouserc.json`: Lighthouse CI config
 
 ## Close-out
@@ -173,7 +181,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 ## Docs kept in this repo
 
-- `README.md`, `PLAN.md`, `ARCHITECTURE.md`, `tutorial.md` (update after significant steps), `data-pipeline.md`, `PROMPTS.md`
+- `README.md`, `PLAN.md`, `ARCHITECTURE.md`, `tutorial.md` (update after significant steps), `data-pipeline.md`, `PROMPTS.md`, `CONTRIBUTING.md`, `SECURITY.md`
 
 ## Stretch goals
 
