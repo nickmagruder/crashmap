@@ -7645,9 +7645,20 @@ case 'ytd':
 
 Neither the URL helpers nor the presets had tests, so this phase added them. `lib/__tests__/filterUrlState.test.ts` checks that a bare URL decodes to YTD, that YTD is left out of the URL, and that every date filter round-trips. `context/__tests__/presetToDateRange.test.ts` uses Vitest's fake timers (`vi.setSystemTime`) to pin "today", including a January date with December data.
 
+### Step 4: Add a Rolling 1-Year Preset
+
+YTD has its own weakness as a default: early in the year it shows only a few weeks of crashes. A rolling year doesn't, so a fifth preset, `1y`, covers the 365 days ending at the newest crash, just like `90d` covers 90:
+
+```typescript
+case '1y':
+  return { startDate: format(subDays(maxDate, 365), 'yyyy-MM-dd'), endDate: dataBounds.maxDate }
+```
+
+Because `DEFAULT_DATE_PRESET` is a single constant, making `1y` the default was a one-line change; YTD became an ordinary preset written as `?date=ytd`. The buttons now run from shortest to longest: 90d, YTD, 1yr, Last Year, 3yrs.
+
 ### Summary
 
-The map opens on a full, current year again, and the default no longer depends on the import schedule lining up with the calendar.
+The map opens on a full year of current data again, and the default no longer depends on the import schedule lining up with the calendar.
 
 ---
 
