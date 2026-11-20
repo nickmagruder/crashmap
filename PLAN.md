@@ -240,9 +240,9 @@ From 2026-11-18, [GitHub issues](https://github.com/nickmagruder/crashmap/issues
 
 Tracked in #198.
 
-- [ ] Wrap crash count `<p>` in `Sidebar.tsx` and `FilterOverlay.tsx` with `role="status"` + `aria-live="polite"` + `aria-atomic="true"`
-- [ ] Add "opens in new window" indication to all `target="_blank"` external links in `InfoPanelContent.tsx`, `SupportPanelContent.tsx`, and `CrashPopup.tsx` — use `aria-label` or `<span className="sr-only"> (opens in new window)</span>`; add `aria-hidden="true"` to all `<ExternalLink>` icons within those links
-- [ ] Fix `Loader2` in `GeographicFilter.tsx` — change `aria-label="Loading"` → `aria-hidden="true"`; add `aria-busy="true"` to parent container when loading
+- [x] Wrap crash count `<p>` in `Sidebar.tsx` and `FilterOverlay.tsx` with `role="status"` + `aria-live="polite"` + `aria-atomic="true"`
+- [x] Add "opens in new window" indication to all `target="_blank"` external links in `InfoPanelContent.tsx`, `SupportPanelContent.tsx`, and `CrashPopup.tsx` (and `PanelCredit.tsx`) — use `aria-label` or `<span className="sr-only"> (opens in new window)</span>`; add `aria-hidden="true"` to all `<ExternalLink>` icons within those links
+- [x] Fix `Loader2` in `GeographicFilter.tsx` — change `aria-label="Loading"` → `aria-hidden="true"`; add `aria-busy="true"` to parent container when loading
 
 ### Phase 8.3 — Medium (Strongly recommended)
 

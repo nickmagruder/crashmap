@@ -112,6 +112,7 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
                 style={{ color: 'var(--muted-foreground)', textDecoration: 'underline' }}
               >
                 {crash.colliRptNum}
+                <span className="sr-only"> (opens in new window)</span>
               </a>
             </span>
             <button
@@ -139,6 +140,7 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
             style={{ color: 'var(--primary)', textDecoration: 'underline' }}
           >
             Open in Apple Maps
+            <span className="sr-only"> (opens in new window)</span>
           </a>
           <a
             href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${crash.latitude},${crash.longitude}`}
@@ -148,6 +150,7 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
             style={{ color: 'var(--primary)', textDecoration: 'underline' }}
           >
             Open Street View
+            <span className="sr-only"> (opens in new window)</span>
           </a>
         </div>
       </div>

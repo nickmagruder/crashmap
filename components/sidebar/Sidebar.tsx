@@ -17,11 +17,14 @@ function FilterContent() {
   const { filterState } = useFilterContext()
   return (
     <div className="space-y-2 px-4 py-4">
-      {filterState.totalCount !== null && (
-        <p className="text-sm text-muted-foreground">
-          {filterState.totalCount.toLocaleString()} crashes
-        </p>
-      )}
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="text-sm text-muted-foreground"
+      >
+        {filterState.totalCount !== null && `${filterState.totalCount.toLocaleString()} crashes`}
+      </p>
       <ModeToggle />
       <DateFilter />
       <SeverityFilter />

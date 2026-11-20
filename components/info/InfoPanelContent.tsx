@@ -67,7 +67,8 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
             className="text-primary hover:underline inline-flex items-center gap-0.5"
           >
             WSDOT Crash Data Portal
-            <ExternalLink className="size-3 flex-shrink-0" />
+            <span className="sr-only"> (opens in new window)</span>
+            <ExternalLink className="size-3 flex-shrink-0" aria-hidden="true" />
           </a>
           , which is compiled from police reports.
         </p>
@@ -80,7 +81,8 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
             className="text-primary hover:underline inline-flex items-center gap-0.5"
           >
             GitHub
-            <ExternalLink className="size-3 flex-shrink-0" />
+            <span className="sr-only"> (opens in new window)</span>
+            <ExternalLink className="size-3 flex-shrink-0" aria-hidden="true" />
           </a>
           .
         </p>
@@ -127,7 +129,8 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
                 className="text-sm text-primary inline-flex items-center gap-1 hover:underline"
               >
                 {label}
-                <ExternalLink className="size-3 flex-shrink-0" />
+                <span className="sr-only"> (opens in new window)</span>
+                <ExternalLink className="size-3 flex-shrink-0" aria-hidden="true" />
               </a>
             </li>
           ))}
