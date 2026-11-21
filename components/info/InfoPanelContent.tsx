@@ -93,7 +93,7 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
           onClick={onSwitchView}
           className="text-sm text-primary hover:underline flex items-center gap-1"
         >
-          ❤️ Support this App
+          <span aria-hidden="true">❤️</span> Support this App
         </button>
       )}
 
@@ -118,7 +118,9 @@ export function InfoPanelContent({ onSwitchView }: InfoPanelContentProps) {
       </section>
 
       <section>
-        <h3 className="text-sm font-semibold mb-2">📣 Get Involved!</h3>
+        <h3 className="text-sm font-semibold mb-2">
+          <span aria-hidden="true">📣</span> Get Involved!
+        </h3>
         <ul className="space-y-2.5">
           {resources.map(({ href, label }) => (
             <li key={href}>
