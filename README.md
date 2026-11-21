@@ -910,3 +910,11 @@ This project is developed in the open. To report issues or suggest features, ple
 - The crash count in the desktop filter panel and the mobile filter overlay is now a polite live region (`role="status"`), so screen readers announce the new count when filters change
 - Every external link (info, support and credit panels, crash popup) now tells screen readers it opens in a new window; the decorative `ExternalLink` icons are hidden from them
 - The location filter's loading spinner is hidden from screen readers; its container sets `aria-busy` while counties or cities load
+
+### 2026-11-21 — Lint and Test Guards
+
+- Lint now fails on warnings and adds type-aware promise rules; it caught two unhandled promises, including the crash popup showing "copied" when the browser blocked the clipboard (now it only confirms a successful copy)
+- New `npm run knip` CI step for unused files, exports and dependencies (`knip.json`); `@types/geojson` is now a direct dev dependency
+- New change guards in CI (`scripts/change-guards.ts`): fail on focused or skipped tests, `eslint-disable` and `@ts-ignore`-style suppressions, and net-removed assertions (override with a `Test-guard: <reason>` commit line); warn above about 400 changed lines
+- CI reports test coverage (`npm run test:coverage`; 19% of lines at the start); thresholds come later as a ratchet
+- The PR template asks "Tests changed? Why:"
