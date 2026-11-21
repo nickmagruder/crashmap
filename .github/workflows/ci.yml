@@ -95,3 +95,30 @@ jobs:
           configPath: .lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true
+
+  # Post-deploy smoke test against crashmap.io; a failure fails the main run,
+  # which GitHub emails about. Runs after Lighthouse, which already waited for
+  # the deploy, even if Lighthouse itself failed.
+  smoke:
+    needs: [deploy, lighthouse]
+    runs-on: ubuntu-latest
+    if: always() && needs.deploy.result == 'success'
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test crashmap.io
+        run: npm run smoke

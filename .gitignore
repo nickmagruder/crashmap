@@ -56,3 +56,7 @@ next-env.d.ts
 
 # vitest artifacts
 .vitest/
+
+# Playwright smoke tests
+/test-results
+/playwright-report

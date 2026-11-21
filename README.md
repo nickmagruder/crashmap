@@ -910,3 +910,7 @@ This project is developed in the open. To report issues or suggest features, ple
 - The crash count in the desktop filter panel and the mobile filter overlay is now a polite live region (`role="status"`), so screen readers announce the new count when filters change
 - Every external link (info, support and credit panels, crash popup) now tells screen readers it opens in a new window; the decorative `ExternalLink` icons are hidden from them
 - The location filter's loading spinner is hidden from screen readers; its container sets `aria-busy` while counties or cities load
+
+### 2026-11-21 — Post-Deploy Smoke Test
+
+- New Playwright smoke tests (`smoke/site.smoke.ts`, `npm run smoke`) run against crashmap.io after every production deploy, on desktop and mobile: the page loads without uncaught errors, the map renders, the crash count appears, and `/api/graphql` answers. A failure fails the `main` CI run
