@@ -1,12 +1,15 @@
 name: dependabot-auto-merge
 
 # Turns on auto-merge for Dependabot PRs that only bump devDependencies by a
-# patch version (the dev-patch group). The ruleset's required `check` job
-# still has to pass before GitHub merges. Everything else waits for Nick
-# (clankers standards/git.md: auto-merge is for dev patches only).
+# patch version (the dev-patch group). It runs its own dependency review
+# first, since only `check` is a required status check: a patch that adds a
+# high or critical advisory never gets auto-merge. The ruleset's required
+# `check` job still has to pass before GitHub merges. Everything else waits
+# for Nick (clankers standards/git.md: auto-merge is for dev patches only).
 #
-# A merge made by GITHUB_TOKEN doesn't start a new workflow run, so these
-# merges don't deploy on their own; the next merge to main deploys them.
+# A merge made by GITHUB_TOKEN starts no workflow runs, so an auto-merged
+# commit gets no `check`, CodeQL or deploy run on main; the next push to main
+# runs them and deploys it.
 
 'on': pull_request
 
@@ -23,6 +26,15 @@ jobs:
     steps:
       - id: meta
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Fails this job (so auto-merge stays off) on a high or critical advisory.
+      - uses: actions/dependency-review-action@bbc44d14a204704ccc493733616cd1e93a0321ec # v5.0.1
+        with:
+          fail-on-severity: high
 
       - name: Enable auto-merge for devDependency patches
         env:

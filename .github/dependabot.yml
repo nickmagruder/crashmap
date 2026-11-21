@@ -10,6 +10,8 @@ updates:
     cooldown:
       default-days: 3
     # Majors deferred in #202. Remove a rule when its upgrade is planned.
+    # Check Dependabot alerts for these packages by hand: a fix that only
+    # ships in a new major won't arrive as a version-update PR.
     ignore:
       - dependency-name: eslint
         update-types: ['version-update:semver-major']
