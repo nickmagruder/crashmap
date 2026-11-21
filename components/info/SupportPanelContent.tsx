@@ -56,7 +56,8 @@ export function SupportPanelContent({ onSwitchView }: SupportPanelContentProps) 
                 className="text-sm text-primary inline-flex items-center gap-1 hover:underline"
               >
                 {label}
-                <ExternalLink className="size-3 flex-shrink-0" />
+                <span className="sr-only"> (opens in new window)</span>
+                <ExternalLink className="size-3 flex-shrink-0" aria-hidden="true" />
               </a>
             </li>
           ))}
@@ -72,7 +73,8 @@ export function SupportPanelContent({ onSwitchView }: SupportPanelContentProps) 
           className="text-sm text-primary inline-flex items-center gap-1 hover:underline"
         >
           Get in touch
-          <ExternalLink className="size-3 flex-shrink-0" />
+          <span className="sr-only"> (opens in new window)</span>
+          <ExternalLink className="size-3 flex-shrink-0" aria-hidden="true" />
         </a>
       </section>
     </div>

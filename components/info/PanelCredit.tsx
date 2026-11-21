@@ -10,6 +10,7 @@ export function PanelCredit() {
           className="text-primary hover:underline"
         >
           Nick Magruder
+          <span className="sr-only"> (opens in new window)</span>
         </a>
       </p>
       <p className="text-xs text-muted-foreground/60 mt-0.5">

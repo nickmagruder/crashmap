@@ -46,11 +46,15 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
           <h2 id="filter-overlay-title" className="text-base font-semibold">
             Filters
           </h2>
-          {filterState.totalCount !== null && (
-            <p className="text-xs text-muted-foreground">
-              {filterState.totalCount.toLocaleString()} crashes
-            </p>
-          )}
+          <p
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="text-xs text-muted-foreground"
+          >
+            {filterState.totalCount !== null &&
+              `${filterState.totalCount.toLocaleString()} crashes`}
+          </p>
         </div>
         <Button
           ref={closeButtonRef}

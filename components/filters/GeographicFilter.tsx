@@ -68,7 +68,7 @@ export function GeographicFilter() {
   if (countiesLoading && citiesLoading && !countiesData && !citiesData) {
     return (
       <div className="space-y-4">
-        <div className="space-y-2">
+        <div className="space-y-2" aria-busy="true">
           <p className="text-sm font-medium">Location</p>
           <Skeleton className="h-9 w-full" />
           <Skeleton className="h-9 w-full" />
@@ -80,11 +80,11 @@ export function GeographicFilter() {
   return (
     <div className="space-y-4">
       {/* Location selectors */}
-      <div className="space-y-2">
+      <div className="space-y-2" aria-busy={countiesLoading || citiesLoading}>
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium">Location</p>
           {(countiesLoading || citiesLoading) && (
-            <Loader2 className="size-3 animate-spin text-muted-foreground" aria-label="Loading" />
+            <Loader2 className="size-3 animate-spin text-muted-foreground" aria-hidden="true" />
           )}
         </div>
 
