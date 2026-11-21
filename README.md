@@ -910,3 +910,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - The crash count in the desktop filter panel and the mobile filter overlay is now a polite live region (`role="status"`), so screen readers announce the new count when filters change
 - Every external link (info, support and credit panels, crash popup) now tells screen readers it opens in a new window; the decorative `ExternalLink` icons are hidden from them
 - The location filter's loading spinner is hidden from screen readers; its container sets `aria-busy` while counties or cities load
+
+### 2026-11-21 — Dependency Safeguards
+
+- Dependabot waits 3 days before proposing a new release (a guard against compromised fresh publishes) and no longer opens the majors deferred in #202 (ESLint, TypeScript, graphql, `@types/node`)
+- New `dependency-review` workflow fails a PR that adds a dependency with a high or critical advisory; advisories already on `main` stay tracked in #203
+- Dependabot devDependency patch PRs (the new `dev-patch` group) auto-merge once the `check` job passes; everything else still waits for review
