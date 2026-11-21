@@ -13,11 +13,6 @@ interface InfoSidePanelProps {
   onSwitchView?: (view: InfoPanelView) => void
 }
 
-const titles: Record<InfoPanelView, string> = {
-  info: '💥CrashMap',
-  support: '💥CrashMap',
-}
-
 function PanelBody({
   view,
   onSwitchView,
@@ -36,7 +31,9 @@ export function InfoSidePanel({ onClose, view = 'info', onSwitchView }: InfoSide
   return (
     <div className="hidden md:flex flex-col w-80 flex-shrink-0 border-r bg-background h-full overflow-hidden">
       <div className="flex items-center gap-1 border-b px-4 py-3">
-        <h2 className="text-base font-semibold flex-1">{titles[view]}</h2>
+        <h2 className="text-base font-semibold flex-1">
+          <span aria-hidden="true">💥</span>CrashMap
+        </h2>
         <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
           <X className="size-4" />
         </Button>

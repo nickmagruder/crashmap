@@ -248,10 +248,10 @@ Tracked in #198.
 
 Tracked in #199.
 
-- [ ] Verify color contrast ratios for all severity dot colors in `lib/crashColors.ts` against light and dark backgrounds using WebAIM or DevTools; document rationale for map dot colors (non-text, 3:1 ratio applies)
-- [ ] Wrap decorative emoji in `aria-hidden="true"` spans in `InfoSidePanel.tsx` and `InfoPanelContent.tsx`
-- [ ] Add `<span className="sr-only">Active filters: </span>` before badge list in `SummaryBar.tsx`
-- [ ] Audit all Lucide icon instances inside labeled buttons across `AppShell.tsx`, `InfoSidePanel.tsx`, `InfoPanelContent.tsx` — ensure `aria-hidden="true"` is present on each icon `<svg>` (since `lucide-react` 1.x, Phase 9.2, icons get it automatically unless given an `aria-label`/`title`, so this audit becomes: find icons that have a label but sit inside an already-labeled control)
+- [x] Verify color contrast ratios for all severity dot colors in `lib/crashColors.ts` against light and dark backgrounds using WebAIM or DevTools; document rationale for map dot colors (non-text, 3:1 ratio applies). Results in `ARCHITECTURE.md` › Map Icon Design › Contrast; 10 of 16 combinations fall below 3:1, fix tracked in #227
+- [x] Wrap decorative emoji in `aria-hidden="true"` spans in `InfoSidePanel.tsx` and `InfoPanelContent.tsx`
+- [x] Add `<span className="sr-only">Active filters: </span>` before badge list in `SummaryBar.tsx`
+- [x] Audit all Lucide icon instances inside labeled buttons across `AppShell.tsx`, `InfoSidePanel.tsx`, `InfoPanelContent.tsx` — ensure `aria-hidden="true"` is present on each icon `<svg>` (since `lucide-react` 1.x, Phase 9.2, icons get it automatically unless given an `aria-label`/`title`, so this audit becomes: find icons that have a label but sit inside an already-labeled control)
 
 ### Phase 8.4 — Verification
 
