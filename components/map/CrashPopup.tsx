@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react'
 import { Popup } from 'react-map-gl/mapbox'
 import { Check, Copy } from 'lucide-react'
+import { toast } from 'sonner'
+import { copyText } from '@/lib/clipboard'
 
 export type SelectedCrash = {
   longitude: number
@@ -43,10 +45,13 @@ type CrashPopupProps = {
 export function CrashPopup({ crash, onClose }: CrashPopupProps) {
   const [copied, setCopied] = useState(false)
 
-  const handleCopyReportNum = useCallback((num: string) => {
-    navigator.clipboard.writeText(num)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopyReportNum = useCallback(async (num: string) => {
+    if (await copyText(num)) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } else {
+      toast.error(`Couldn't copy the report number. Copy ${num} by hand.`)
+    }
   }, [])
 
   return (
@@ -116,7 +121,7 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
               </a>
             </span>
             <button
-              onClick={() => handleCopyReportNum(crash.colliRptNum!)}
+              onClick={() => void handleCopyReportNum(crash.colliRptNum!)}
               aria-label={copied ? 'Report number copied' : 'Copy report number'}
               style={{ color: 'var(--muted-foreground)', lineHeight: 1 }}
             >

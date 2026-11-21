@@ -67,7 +67,7 @@ export function FilterOverlay({ isOpen, onClose }: FilterOverlayProps) {
         </Button>
       </div>
 
-      <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4">
+      <div className="relative flex-1 space-y-6 overflow-y-auto px-4 py-4">
         <ModeToggle />
         <DateFilter />
         <SeverityFilter />

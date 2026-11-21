@@ -924,3 +924,8 @@ This project is developed in the open. To report issues or suggest features, ple
 - The 📍 on the "Viewport" badge is hidden from screen readers
 - The badges are now a list, so screen readers pause between them
 - `getActiveFilterLabels` returns `{ icon, text, srText }` badge labels instead of strings (the type requires `text` or `srText`), with new unit tests and `SummaryBar` render tests
+
+### 2026-11-21 — Fix Page Scroll and Report-Number Copy
+
+- The page no longer scrolls on desktop when the info panel is open. The hidden "(opens in new window)" text added for screen readers sat outside the panel's scroll area and made the page taller than the screen; the panels' scroll areas now contain it (#234)
+- The crash popup's Copy button says "copied" only when the copy works. When the browser blocks the clipboard, an error message shows the report number to copy by hand, and the error no longer goes uncaught (#235)
