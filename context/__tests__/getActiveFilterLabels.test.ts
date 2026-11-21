@@ -30,19 +30,31 @@ describe('getActiveFilterLabels', () => {
     })
   })
 
-  it('gives every badge something a screen reader can read', () => {
-    const labels = getActiveFilterLabels(
-      state({
-        mode: 'Pedestrian',
-        severity: ['Death'],
-        includeNoInjury: true,
-        updateWithMovement: true,
-      })
-    )
-    for (const label of labels) {
-      expect(label.text ?? label.srText).toBeTruthy()
+  it.each([
+    [null, false],
+    [null, true],
+    ['Bicyclist', false],
+    ['Bicyclist', true],
+    ['Pedestrian', false],
+    ['Pedestrian', true],
+  ] as const)(
+    'gives every badge something a screen reader can read (mode %s, follow map %s)',
+    (mode, updateWithMovement) => {
+      const labels = getActiveFilterLabels(
+        state({
+          mode,
+          updateWithMovement,
+          severity: ['Death'],
+          includeNoInjury: true,
+          county: 'King',
+          city: 'Seattle',
+        })
+      )
+      for (const label of labels) {
+        expect(label.text ?? label.srText).toBeTruthy()
+      }
     }
-  })
+  )
 
   it('shows only the mode and date preset by default', () => {
     expect(getActiveFilterLabels(state())).toEqual([
@@ -67,7 +79,7 @@ describe('getActiveFilterLabels', () => {
     expect(labels).toContainEqual({ text: '2025-01-01 – 2025-06-30' })
   })
 
-  it('hides the pin emoji on the viewport badge but keeps its text', () => {
+  it('puts the viewport pin in icon and keeps "Viewport" as text', () => {
     const labels = getActiveFilterLabels(state({ updateWithMovement: true, county: 'King' }))
     expect(labels).toContainEqual({ icon: '📍', text: 'Viewport' })
     expect(labels).not.toContainEqual({ text: 'King' })

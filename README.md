@@ -922,4 +922,5 @@ This project is developed in the open. To report issues or suggest features, ple
 
 - The summary bar's mode badge still shows emoji, but screen readers now hear "Bicyclists", "Pedestrians" or "All modes" instead of the emoji's Unicode names
 - The 📍 on the "Viewport" badge is hidden from screen readers
-- `getActiveFilterLabels` returns `{ icon, text, srText }` badge labels instead of strings, with new unit tests
+- The badges are now a list, so screen readers pause between them
+- `getActiveFilterLabels` returns `{ icon, text, srText }` badge labels instead of strings (the type requires `text` or `srText`), with new unit tests and `SummaryBar` render tests

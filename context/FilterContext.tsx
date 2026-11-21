@@ -269,13 +269,12 @@ export function toCrashFilter(filterState: FilterState): CrashFilterInput {
 /**
  * One active-filter badge. `icon` is decorative emoji, hidden from screen
  * readers; `text` is shown and read; `srText` is read but not shown, for
- * badges whose only visible content is an icon.
+ * badges whose only visible content is an icon. Every badge needs `text` or
+ * `srText`, so none is silent for screen readers.
  */
-export interface FilterBadgeLabel {
-  icon?: string
-  text?: string
-  srText?: string
-}
+export type FilterBadgeLabel = { icon?: string } & (
+  { text: string; srText?: string } | { text?: undefined; srText: string }
+)
 
 /**
  * Derive badge labels for all active (non-default) filters.
