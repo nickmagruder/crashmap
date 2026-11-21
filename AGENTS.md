@@ -96,8 +96,8 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 | Bucket       | Color     | Opacity | Base size (zoom 10) |
 | ------------ | --------- | ------- | ------------------- |
 | Death        | `#B71C1C` | 85%     | 8px                 |
-| Major Injury | `#E65100` | 70%     | 7px                 |
-| Minor Injury | `#F9A825` | 55%     | 6px                 |
+| Major Injury | `#F57C00` | 70%     | 7px                 |
+| Minor Injury | `#FDD835` | 55%     | 6px                 |
 | None         | `#C5E1A5` | 50%     | 5px                 |
 
 - Four Mapbox layers (`crashes-none` → `crashes-minor` → `crashes-major` → `crashes-death`) so higher severity paints on top; each has a `filter` and static paint.
