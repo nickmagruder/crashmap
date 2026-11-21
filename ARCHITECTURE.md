@@ -354,6 +354,19 @@ Crash points use a **severity-based color and opacity gradient** on the Mapbox c
 
 The accessible palette is toggled via an Eye button in the top-right controls bar (also a Switch in Map Controls in the filter panel). The Paul Tol Muted scheme is distinguishable under all forms of color vision deficiency (protanopia, deuteranopia, tritanopia). Colors are centralized in `lib/crashColors.ts` and consumed by `CrashLayer.tsx`, `SeverityFilter.tsx`, and `InfoPanelContent.tsx`.
 
+#### Contrast (checked 2026-11-21, #199)
+
+WCAG 2.1 SC 1.4.11 asks for 3:1 between a meaningful graphic and what's next to it. The ratios below compare each dot's color, blended at its layer opacity, with the base map's land color (`light-v11` `hsl(220, 3%, 99%)`; `dark-v11` `hsl(0, 0%, 16%)`). The ratio at full opacity is in brackets. Water (`hsl(220, 1%, 86%)` light, `hsl(0, 0%, 12%)` dark) scores lower on the light map and slightly higher on the dark one. Satellite imagery varies too much to measure.
+
+| Bucket       | Standard, light | Standard, dark | Accessible, light | Accessible, dark |
+| ------------ | --------------- | -------------- | ----------------- | ---------------- |
+| Death        | 5.09 (6.41)     | 1.90 (2.21)    | 7.82 (11.87)      | 1.15 (1.20)      |
+| Major Injury | 2.00 (2.64)     | 3.34 (5.38)    | 2.37 (3.57)       | 2.65 (3.97)      |
+| Minor Injury | 1.20 (1.36)     | 4.21 (10.43)   | 1.28 (1.58)       | 3.80 (8.99)      |
+| None         | 1.17 (1.39)     | 3.70 (10.18)   | 1.62 (2.75)       | 2.35 (5.17)      |
+
+**Rationale and status:** the palettes were chosen to rank severity (a hue and opacity ramp, with the most severe painted on top) and, for the accessible palette, to stay distinguishable under color vision deficiency. Contrast against the base map wasn't a goal. Size also encodes severity, and the popup and filters name the bucket, so color isn't the only cue (SC 1.4.1). But 10 of the 16 combinations fall below 3:1, so low-vision users can miss dots. The fix (likely a contrasting outline) is tracked in #227.
+
 **Mapbox implementation** using data-driven styling:
 
 ```javascript

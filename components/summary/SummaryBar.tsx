@@ -24,6 +24,7 @@ export function SummaryBar({ activeFilters = [], isLoading = false, actions }: S
 
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
+          <span className="sr-only">Active filters: </span>
           {activeFilters.map((filter) => (
             <Badge key={filter} variant="secondary" className="text-xs">
               {filter}
