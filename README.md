@@ -913,7 +913,7 @@ This project is developed in the open. To report issues or suggest features, ple
 
 ### 2026-11-21 — Accessibility: Recommended Fixes
 
-- Decorative emoji in the info panel titles, the "Support this App" button and the "Get Involved!" heading are hidden from screen readers
+- Decorative emoji in the desktop info panel title, the "Support this App" button and the "Get Involved!" heading are hidden from screen readers
 - The summary bar's filter badges now start with hidden "Active filters:" text
 - Audited icons: none carries its own label, and all 29 on the page are hidden from screen readers, so no control's name is read twice
 - Measured the severity dots' contrast against the light and dark maps in both palettes (`ARCHITECTURE.md` › Map Icon Design › Contrast). Most fall below WCAG's 3:1; the fix is tracked in #227

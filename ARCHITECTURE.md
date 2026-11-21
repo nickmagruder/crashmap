@@ -363,7 +363,7 @@ WCAG 2.1 SC 1.4.11 asks for 3:1 between a meaningful graphic and what's next to 
 | Death        | 5.09 (6.41)     | 1.90 (2.21)    | 7.82 (11.87)      | 1.15 (1.20)      |
 | Major Injury | 2.00 (2.64)     | 3.34 (5.38)    | 2.37 (3.57)       | 2.65 (3.97)      |
 | Minor Injury | 1.20 (1.36)     | 4.21 (10.43)   | 1.28 (1.58)       | 3.80 (8.99)      |
-| None         | 1.17 (1.39)     | 3.70 (10.18)   | 1.62 (2.75)       | 2.35 (5.17)      |
+| None         | 1.18 (1.39)     | 3.70 (10.18)   | 1.62 (2.75)       | 2.35 (5.17)      |
 
 **Rationale and status:** the palettes were chosen to rank severity (a hue and opacity ramp, with the most severe painted on top) and, for the accessible palette, to stay distinguishable under color vision deficiency. Contrast against the base map wasn't a goal. Size also encodes severity, and the popup and filters name the bucket, so color isn't the only cue (SC 1.4.1). But 10 of the 16 combinations fall below 3:1, so low-vision users can miss dots. The fix (likely a contrasting outline) is tracked in #227.
 
