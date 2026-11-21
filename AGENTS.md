@@ -142,7 +142,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `lib/graphql/resolvers.ts`: resolvers, severity bucket mapping, `buildWhere`
 - `lib/graphql/queries.ts`: client-side GraphQL documents
 - `lib/graphql/__generated__/types.ts`: codegen output (committed; `npm run codegen`; CI drift check)
-- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest); `lib/__tests__/`: other `lib/` unit tests (e.g. `sentryConfig.test.ts`, `filterUrlState.test.ts`); `context/__tests__/`: `presetToDateRange` tests
+- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest); `lib/__tests__/`: other `lib/` unit tests (e.g. `sentryConfig.test.ts`, `filterUrlState.test.ts`); `context/__tests__/`: `presetToDateRange` and `getActiveFilterLabels` tests; `components/summary/__tests__/`: `SummaryBar` render tests (`renderToStaticMarkup`, no DOM)
 - `app/api/graphql/route.ts`: Apollo route handler, CORS, depth limit (5)
 - `app/api/health/route.ts`: `GET /api/health` for Render health checks
 - `lib/rate-limit.ts`: in-memory 60 req/min per-IP limiter
