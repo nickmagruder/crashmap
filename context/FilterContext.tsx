@@ -93,7 +93,7 @@ export const PRESET_LABELS: Record<DatePreset, string> = {
   '3y': '3 Years',
 }
 
-const initialState: FilterState = {
+export const initialState: FilterState = {
   mode: null,
   severity: DEFAULT_SEVERITY,
   includeNoInjury: false,
@@ -267,19 +267,30 @@ export function toCrashFilter(filterState: FilterState): CrashFilterInput {
 }
 
 /**
- * Derive human-readable badge labels for all active (non-default) filters.
+ * One active-filter badge. `icon` is decorative emoji, hidden from screen
+ * readers; `text` is shown and read; `srText` is read but not shown, for
+ * badges whose only visible content is an icon.
+ */
+export interface FilterBadgeLabel {
+  icon?: string
+  text?: string
+  srText?: string
+}
+
+/**
+ * Derive badge labels for all active (non-default) filters.
  * Used by SummaryBar to render active filter chips.
  */
-export function getActiveFilterLabels(filterState: FilterState): string[] {
-  const labels: string[] = []
+export function getActiveFilterLabels(filterState: FilterState): FilterBadgeLabel[] {
+  const labels: FilterBadgeLabel[] = []
 
-  // Mode: use emoji(s) instead of text
+  // Mode: emoji on screen, words for screen readers
   if (filterState.mode === 'Bicyclist') {
-    labels.push('🚲')
+    labels.push({ icon: '🚲', srText: 'Bicyclists' })
   } else if (filterState.mode === 'Pedestrian') {
-    labels.push('🚶🏽‍♀️')
+    labels.push({ icon: '🚶🏽‍♀️', srText: 'Pedestrians' })
   } else {
-    labels.push('🚲 🚶🏽‍♀️')
+    labels.push({ icon: '🚲 🚶🏽‍♀️', srText: 'All modes' })
   }
 
   // Only flag severity when it differs from the default three-bucket set.
@@ -292,24 +303,24 @@ export function getActiveFilterLabels(filterState: FilterState): string[] {
 
   if (severityChanged) {
     const all = [...filterState.severity, ...(filterState.includeNoInjury ? ['None'] : [])]
-    labels.push(all.length === 0 ? 'No severity' : all.join(' + '))
+    labels.push({ text: all.length === 0 ? 'No severity' : all.join(' + ') })
   }
 
   // Date: shorten year to '25 format; omit state (only Washington data available)
   if (filterState.dateFilter.type === 'year') {
-    labels.push(`'${String(filterState.dateFilter.year).slice(2)}`)
+    labels.push({ text: `'${String(filterState.dateFilter.year).slice(2)}` })
   } else if (filterState.dateFilter.type === 'range') {
-    labels.push(`${filterState.dateFilter.startDate} – ${filterState.dateFilter.endDate}`)
+    labels.push({ text: `${filterState.dateFilter.startDate} – ${filterState.dateFilter.endDate}` })
   } else if (filterState.dateFilter.type === 'preset') {
-    labels.push(PRESET_LABELS[filterState.dateFilter.preset])
+    labels.push({ text: PRESET_LABELS[filterState.dateFilter.preset] })
   }
 
   // Geographic: show viewport badge when movement mode is on; otherwise show county/city
   if (filterState.updateWithMovement) {
-    labels.push('📍 Viewport')
+    labels.push({ icon: '📍', text: 'Viewport' })
   } else {
-    if (filterState.county) labels.push(filterState.county)
-    if (filterState.city) labels.push(filterState.city)
+    if (filterState.county) labels.push({ text: filterState.county })
+    if (filterState.city) labels.push({ text: filterState.city })
   }
 
   return labels

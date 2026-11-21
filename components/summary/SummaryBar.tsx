@@ -3,9 +3,10 @@
 import React from 'react'
 import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import type { FilterBadgeLabel } from '@/context/FilterContext'
 
 interface SummaryBarProps {
-  activeFilters?: string[]
+  activeFilters?: FilterBadgeLabel[]
   isLoading?: boolean
   actions?: React.ReactNode
 }
@@ -25,9 +26,11 @@ export function SummaryBar({ activeFilters = [], isLoading = false, actions }: S
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           <span className="sr-only">Active filters: </span>
-          {activeFilters.map((filter) => (
-            <Badge key={filter} variant="secondary" className="text-xs">
-              {filter}
+          {activeFilters.map(({ icon, text, srText }) => (
+            <Badge key={[icon, text, srText].join('|')} variant="secondary" className="text-xs">
+              {icon && <span aria-hidden="true">{icon}</span>}
+              {text}
+              {srText && <span className="sr-only">{srText}</span>}
             </Badge>
           ))}
         </div>
