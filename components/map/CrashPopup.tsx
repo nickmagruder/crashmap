@@ -44,9 +44,15 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopyReportNum = useCallback((num: string) => {
-    navigator.clipboard.writeText(num)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    // Only show "copied" once the write succeeds; it rejects when the browser
+    // blocks clipboard access, and then the button stays as it was.
+    navigator.clipboard.writeText(num).then(
+      () => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      },
+      (err: unknown) => console.warn('Could not copy the report number:', err)
+    )
   }, [])
 
   return (

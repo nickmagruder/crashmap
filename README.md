@@ -930,3 +930,11 @@ This project is developed in the open. To report issues or suggest features, ple
 - Dependabot waits 3 days before proposing a new release (a guard against compromised fresh publishes) and no longer opens the majors deferred in #202 (ESLint, TypeScript, graphql, `@types/node`)
 - New `dependency-review` workflow fails a PR that adds a dependency with a high or critical advisory; advisories already on `main` stay tracked in #203
 - Dependabot devDependency patch PRs (the new `dev-patch` group) auto-merge once the `check` job passes; everything else still waits for review
+
+### 2026-11-21 — Lint and Test Guards
+
+- Lint now fails on warnings and adds type-aware promise rules; it caught two unhandled promises, including the crash popup showing "copied" when the browser blocked the clipboard (now it only confirms a successful copy)
+- New `npm run knip` CI step for unused files, exports and dependencies (`knip.json`); `@types/geojson` is now a direct dev dependency
+- New change guards in CI (`scripts/change-guards.ts`): fail on focused or skipped tests, `eslint-disable` and `@ts-ignore`-style suppressions, and net-removed assertions (override with a `Test-guard: <reason>` commit line); warn above about 400 changed lines
+- CI reports test coverage (`npm run test:coverage`; 19% of lines at the start); thresholds come later as a ratchet
+- The PR template asks "Tests changed? Why:"
