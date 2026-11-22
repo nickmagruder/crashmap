@@ -918,6 +918,13 @@ This project is developed in the open. To report issues or suggest features, ple
 - Audited icons: none carries its own label, and all 29 on the page are hidden from screen readers, so no control's name is read twice
 - Measured the severity dots' contrast against the light and dark maps in both palettes (`ARCHITECTURE.md` › Map Icon Design › Contrast). Most fall below WCAG's 3:1; the fix is tracked in #227
 
+### 2026-11-21 — Accessibility: Filter Badge Text
+
+- The summary bar's mode badge still shows emoji, but screen readers now hear "Bicyclists", "Pedestrians" or "All modes" instead of the emoji's Unicode names
+- The 📍 on the "Viewport" badge is hidden from screen readers
+- The badges are now a list, so screen readers pause between them
+- `getActiveFilterLabels` returns `{ icon, text, srText }` badge labels instead of strings (the type requires `text` or `srText`), with new unit tests and `SummaryBar` render tests
+
 ### 2026-11-21 — Dependency Safeguards
 
 - Dependabot waits 3 days before proposing a new release (a guard against compromised fresh publishes) and no longer opens the majors deferred in #202 (ESLint, TypeScript, graphql, `@types/node`)
