@@ -947,3 +947,7 @@ This project is developed in the open. To report issues or suggest features, ple
 
 - The page no longer scrolls on desktop when the info panel is open. The hidden "(opens in new window)" text added for screen readers sat outside the panel's scroll area and made the page taller than the screen; the panels' scroll areas now contain it (#234)
 - The crash popup's Copy button says "copied" only when the copy works. When the browser blocks the clipboard, an error message shows the report number to copy by hand, and the error no longer goes uncaught (#235). Builds on the Lint and Test Guards fix above, which stopped showing "copied" on failure but only logged the error
+
+### 2026-11-22 — Change Guards Synced from clankers
+
+- The change-guard scripts are now verbatim copies of the canonical version in [clankers](https://github.com/nickmagruder/clankers/tree/main/templates/change-guards); this repo's generated-code paths and test folders moved to `scripts/change-guards.config.ts`. The guards also check Python files and skip more lockfiles; no change to what they flag in this repo
