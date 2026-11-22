@@ -121,6 +121,10 @@ unfinished work, or when Nick said to hold off (then end with a proposed commit 
    (`gh pr view --json state`), create a fresh branch from the latest `main`:
    `git fetch origin && git switch -c <type>/<issue>-<short-name> origin/main`, carrying the
    uncommitted changes over. Types: `feat`, `fix`, `chore`, `docs`. No issue yet? Create one first.
+   If this session's own PR is still open and the close-out changes are docs about that work, you
+   may commit them to that PR's branch instead, but check `gh pr view --json state` right before
+   committing: Nick may merge it mid-close-out (2026-11-21: PR #236 merged while its close-out was
+   running, so the docs went to a new branch).
 2. Stage only this session's files by path (never `git add -A`). Never stage `.env*`; `.claude/`
    is gitignored. Commit with the proposed message and the attribution line the session's
    instructions specify. The husky pre-commit hook runs lint-staged; fix what it reports.
@@ -128,7 +132,9 @@ unfinished work, or when Nick said to hold off (then end with a proposed commit 
    `Closes #<issue>` and follows `.github/pull_request_template.md`, ending with the PR
    attribution line.
 4. Copilot reviews the PR automatically: fix the valid comments, reply with a reason to the rest,
-   and resolve the threads before handing the PR to Nick. Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never push
+   and resolve the threads before handing the PR to Nick. If Copilot says it's out of quota (every
+   PR on 2026-11-20/21), note that on the PR and get a Claude review session as `AGENTS.md`
+   "AI review" describes: a read-only brief, one PR comment with `<!-- ai-review -->`, then stop. Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never push
    to `main`: Nick merges.
 
 --- STEP 9: REPORT ---
