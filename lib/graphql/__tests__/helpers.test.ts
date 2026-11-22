@@ -128,6 +128,11 @@ describe('buildWhere', () => {
     expect(where(null).mostSevereInjuryType).toEqual({ notIn: NONE_RAW })
   })
 
+  // An explicit empty list means every box is unchecked: match nothing (#208)
+  it('matches nothing when severity is an empty list', () => {
+    expect(where({ severity: [] }).mostSevereInjuryType).toEqual({ in: [] })
+  })
+
   // includeNoInjury
   it('does not exclude None when includeNoInjury is true', () => {
     expect(where({ includeNoInjury: true }).mostSevereInjuryType).toBeUndefined()

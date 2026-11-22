@@ -12,7 +12,7 @@ import { SummaryBar } from '@/components/summary/SummaryBar'
 import { ExportButton } from '@/components/export/ExportButton'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { useFilterContext, getActiveFilterLabels } from '@/context/FilterContext'
+import { useFilterContext, getActiveFilterLabels, hasNoSeverity } from '@/context/FilterContext'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { toast } from 'sonner'
 
@@ -68,6 +68,19 @@ export function AppShell() {
       toast.dismiss('no-dates-selected')
     }
   }, [filterState.dateFilter.type])
+
+  // Same for severities: with every box unchecked the map is empty (#208).
+  const noSeverity = hasNoSeverity(filterState)
+  useEffect(() => {
+    if (noSeverity) {
+      toast.warning('No severities selected — use the filters to choose at least one', {
+        id: 'no-severity-selected',
+        duration: Infinity,
+      })
+    } else {
+      toast.dismiss('no-severity-selected')
+    }
+  }, [noSeverity])
 
   return (
     <div className="flex w-full h-full">

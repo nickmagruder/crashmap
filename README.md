@@ -947,3 +947,7 @@ This project is developed in the open. To report issues or suggest features, ple
 
 - The page no longer scrolls on desktop when the info panel is open. The hidden "(opens in new window)" text added for screen readers sat outside the panel's scroll area and made the page taller than the screen; the panels' scroll areas now contain it (#234)
 - The crash popup's Copy button says "copied" only when the copy works. When the browser blocks the clipboard, an error message shows the report number to copy by hand, and the error no longer goes uncaught (#235). Builds on the Lint and Test Guards fix above, which stopped showing "copied" on failure but only logged the error
+
+### 2026-11-22 — Fix Unchecking Every Severity
+
+- Unchecking every injury severity no longer shows every crash. The map is now empty, the count reads 0 and a warning toast says no severities are selected (#208). The API treats an empty `severity` list as matching nothing, and the state survives in the URL as `?severity=`

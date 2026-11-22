@@ -109,7 +109,10 @@ export function decodeFilterParams(params: URLSearchParams): UrlFilterState {
   let severity: SeverityBucket[] = [...DEFAULT_SEVERITY]
   let includeNoInjury = false
   const rawSeverity = params.get('severity')
-  if (rawSeverity !== null) {
+  if (rawSeverity !== null && rawSeverity.trim() === '') {
+    // `severity=` is how encode writes "every box unchecked" (#208)
+    severity = []
+  } else if (rawSeverity !== null) {
     const parsed = rawSeverity
       .split(',')
       .map((s) => s.trim())
