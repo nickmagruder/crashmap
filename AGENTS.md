@@ -168,7 +168,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `render.yaml`: Render services (production + staging)
 - `.github/workflows/ci.yml`: lint, knip, change guards, format, typecheck, test with coverage, codegen drift, build (the required `check` job), deploy hook, Lighthouse, post-deploy `smoke`; actions pinned by SHA
 - `playwright.config.ts`, `smoke/site.smoke.ts`: post-deploy smoke tests against crashmap.io (`SMOKE_URL` overrides the target; files are `*.smoke.ts` so Vitest skips them)
-- `scripts/change-guards.ts` (rules in `scripts/change-guards-rules.ts`, tests in `scripts/__tests__/`): CI check for weakened tests, suppressions and PR size
+- `scripts/change-guards.ts` (rules in `scripts/change-guards-rules.ts`, tests in `scripts/__tests__/`): CI check for weakened tests, suppressions and PR size. Verbatim copies of clankers `templates/change-guards/`: change the rules there and re-sync; this repo's generated paths and test folders live in `scripts/change-guards.config.ts`
 - `knip.json`: unused files, exports and dependencies, with the ignores listed under Working rules
 - `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates (3-day cooldown; majors deferred in #202 ignored)
 - `.github/workflows/dependency-review.yml`: fails a PR that adds a dependency with a high or critical advisory

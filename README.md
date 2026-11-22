@@ -951,3 +951,7 @@ This project is developed in the open. To report issues or suggest features, ple
 ### 2026-11-22 — Fix Unchecking Every Severity
 
 - Unchecking every injury severity no longer shows every crash. The map is now empty, the count reads 0 and a warning toast says no severities are selected (#208). The API treats an empty `severity` list as matching nothing, and the state survives in the URL as `?severity=`
+
+### 2026-11-22 — Change Guards Synced from clankers
+
+- The change-guard scripts are now verbatim copies of the canonical version in [clankers](https://github.com/nickmagruder/clankers/tree/main/templates/change-guards); this repo's generated-code paths and test folders moved to `scripts/change-guards.config.ts`. They now also flag `skipIf`/`runIf` and `.concurrent` focus or skip, check Python files and skip more lockfile types
