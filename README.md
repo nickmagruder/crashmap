@@ -925,7 +925,25 @@ This project is developed in the open. To report issues or suggest features, ple
 - The badges are now a list, so screen readers pause between them
 - `getActiveFilterLabels` returns `{ icon, text, srText }` badge labels instead of strings (the type requires `text` or `srText`), with new unit tests and `SummaryBar` render tests
 
+### 2026-11-21 — Dependency Safeguards
+
+- Dependabot waits 3 days before proposing a new release (a guard against compromised fresh publishes) and no longer opens the majors deferred in #202 (ESLint, TypeScript, graphql, `@types/node`)
+- New `dependency-review` workflow fails a PR that adds a dependency with a high or critical advisory; advisories already on `main` stay tracked in #203
+- Dependabot devDependency patch PRs (the new `dev-patch` group) auto-merge once the `check` job passes; everything else still waits for review
+
+### 2026-11-21 — Lint and Test Guards
+
+- Lint now fails on warnings and adds type-aware promise rules; it caught two unhandled promises, including the crash popup showing "copied" when the browser blocked the clipboard (now it only confirms a successful copy)
+- New `npm run knip` CI step for unused files, exports and dependencies (`knip.json`); `@types/geojson` is now a direct dev dependency
+- New change guards in CI (`scripts/change-guards.ts`): fail on focused or skipped tests, `eslint-disable` and `@ts-ignore`-style suppressions, and net-removed assertions (override with a `Test-guard: <reason>` commit line); warn above about 400 changed lines
+- CI reports test coverage (`npm run test:coverage`; 19% of lines at the start); thresholds come later as a ratchet
+- The PR template asks "Tests changed? Why:"
+
+### 2026-11-21 — Post-Deploy Smoke Test
+
+- New Playwright smoke tests (`smoke/site.smoke.ts`, `npm run smoke`) run against crashmap.io after every production deploy, on desktop and mobile: the page loads without uncaught errors, the map renders, the crash count appears, and `/api/graphql` answers. A failure fails the `main` CI run
+
 ### 2026-11-21 — Fix Page Scroll and Report-Number Copy
 
 - The page no longer scrolls on desktop when the info panel is open. The hidden "(opens in new window)" text added for screen readers sat outside the panel's scroll area and made the page taller than the screen; the panels' scroll areas now contain it (#234)
-- The crash popup's Copy button says "copied" only when the copy works. When the browser blocks the clipboard, an error message shows the report number to copy by hand, and the error no longer goes uncaught (#235)
+- The crash popup's Copy button says "copied" only when the copy works. When the browser blocks the clipboard, an error message shows the report number to copy by hand, and the error no longer goes uncaught (#235). Builds on the Lint and Test Guards fix above, which stopped showing "copied" on failure but only logged the error

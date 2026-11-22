@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0 # change guards diff the branch against main
           persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -36,14 +37,20 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Unused files, exports and dependencies
+        run: npm run knip
+
+      - name: Change guards (weakened tests, suppressions, PR size)
+        run: npm run guards
+
       - name: Format check
         run: npm run format:check
 
       - name: Type check
         run: npm run typecheck
 
-      - name: Test
-        run: npm run test
+      - name: Test (with coverage report)
+        run: npm run test:coverage
 
       - name: Codegen drift check
         run: |
@@ -95,3 +102,39 @@ jobs:
           configPath: .lighthouserc.json
           uploadArtifacts: true
           temporaryPublicStorage: true
+
+  # Post-deploy smoke test against crashmap.io; a failure fails the main run,
+  # which GitHub emails about. Runs after Lighthouse, which already waited for
+  # the deploy, even if Lighthouse itself failed. That wait only checks for
+  # HTTP 200, so a slow Render deploy can mean this tests the previous build.
+  smoke:
+    needs: [deploy, lighthouse]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.deploy.result == 'success' }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test crashmap.io
+        run: npm run smoke
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: smoke-traces
+          path: test-results/
+          retention-days: 14

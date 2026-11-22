@@ -15,9 +15,18 @@ below, and [`AGENTS.md`](AGENTS.md) holds the agent-facing version.
 - **Every PR** links its issue (`Closes #166`), says how it was tested, and
   updates the docs it affects (README changelog, `PLAN.md`,
   `ARCHITECTURE.md`, `AGENTS.md`).
-- **CI must pass** (`check`: lint, Prettier, typecheck, Vitest, codegen drift,
-  build). CodeQL scans every PR. Copilot reviews every PR; address or answer
-  its comments before merging.
+- **CI must pass** (`check`: lint with zero warnings, knip, change guards,
+  Prettier, typecheck, Vitest with a coverage report, codegen drift, build).
+  CodeQL and dependency review scan every PR. Every PR gets an AI review
+  (Copilot, or Codex or Claude when Copilot is out of quota); address or
+  answer its comments before merging.
+- **Never weaken a test to make it pass:** no `.only`/`.skip`, no deleted
+  or loosened assertions, no `eslint-disable` or `@ts-ignore`/`@ts-expect-error`
+  to get past a check. The change guards (`scripts/change-guards.ts`) fail
+  on these; when a change really needs one, add a `Test-guard: <reason>`
+  line to the commit message and explain it under "Tests changed? Why:" in
+  the PR. CI warns above about 400 changed lines (lockfiles and generated
+  code excluded): split such PRs where they divide cleanly.
 - **Commit messages:** imperative summary of 72 characters or fewer ("Add
   1yr date preset", not "Added…"), no trailing period, a blank line before
   the body; a body explains why when it isn't obvious; one logical change per
