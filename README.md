@@ -950,4 +950,4 @@ This project is developed in the open. To report issues or suggest features, ple
 
 ### 2026-11-22 — Change Guards Synced from clankers
 
-- The change-guard scripts are now verbatim copies of the canonical version in [clankers](https://github.com/nickmagruder/clankers/tree/main/templates/change-guards); this repo's generated-code paths and test folders moved to `scripts/change-guards.config.ts`. The guards also check Python files and skip more lockfiles; no change to what they flag in this repo
+- The change-guard scripts are now verbatim copies of the canonical version in [clankers](https://github.com/nickmagruder/clankers/tree/main/templates/change-guards); this repo's generated-code paths and test folders moved to `scripts/change-guards.config.ts`. They now also flag `skipIf`/`runIf` and `.concurrent` focus or skip, check Python files and skip more lockfile types
