@@ -3,7 +3,7 @@
 import { Download, Loader2 } from 'lucide-react'
 import { useLazyQuery } from '@apollo/client/react'
 import { Button } from '@/components/ui/button'
-import { useFilterContext, toCrashFilter } from '@/context/FilterContext'
+import { useFilterContext, toCrashFilter, hasNoSeverity } from '@/context/FilterContext'
 import { GET_CRASHES_EXPORT, type GetCrashesExportQuery } from '@/lib/graphql/queries'
 import { generateCsv, downloadCsv } from '@/lib/csv-export'
 import type { FilterState } from '@/context/FilterContext'
@@ -39,6 +39,8 @@ interface ExportButtonProps {
 export function ExportButton({ variant = 'icon' }: ExportButtonProps) {
   const { filterState } = useFilterContext()
   const [fetchCrashes, { loading }] = useLazyQuery<GetCrashesExportQuery>(GET_CRASHES_EXPORT)
+  // Nothing can match with every severity unchecked, so there's nothing to export (#208)
+  const disabled = loading || hasNoSeverity(filterState)
 
   async function handleExport() {
     const { data } = await fetchCrashes({
@@ -56,7 +58,7 @@ export function ExportButton({ variant = 'icon' }: ExportButtonProps) {
         variant="outline"
         size="sm"
         onClick={handleExport}
-        disabled={loading}
+        disabled={disabled}
         className="w-full gap-2"
       >
         {loading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
@@ -70,7 +72,7 @@ export function ExportButton({ variant = 'icon' }: ExportButtonProps) {
       variant="ghost"
       size="icon"
       onClick={handleExport}
-      disabled={loading}
+      disabled={disabled}
       aria-label="Export CSV"
       title="Export CSV"
     >

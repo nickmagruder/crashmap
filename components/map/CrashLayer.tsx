@@ -153,6 +153,7 @@ export function CrashLayer() {
   // Surface the true total count to the filter context so SummaryBar can display it.
   useEffect(() => {
     if (!loading) {
+      // A no-severity skip is a known-empty result, so show 0 rather than no count.
       dispatch({
         type: 'SET_TOTAL_COUNT',
         payload: noSeverity ? 0 : (data?.crashes.totalCount ?? null),
