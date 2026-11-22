@@ -37,9 +37,10 @@ export function buildWhere(filter?: CrashFilter | null) {
   const { severity, mode, state, county, city, dateFrom, dateTo, year, bbox, includeNoInjury } =
     filter ?? {}
 
-  // Severity: if buckets specified, expand to raw values; otherwise exclude None by default.
+  // Severity: if a bucket list is given, expand it to raw values (an empty list
+  // matches nothing, #208); if it's absent, exclude None by default.
   let severityWhere = {}
-  if (severity && severity.length > 0) {
+  if (severity) {
     severityWhere = { mostSevereInjuryType: { in: bucketsToRawValues(severity) } }
   } else if (!includeNoInjury) {
     severityWhere = { mostSevereInjuryType: { notIn: NONE_VALUES } }

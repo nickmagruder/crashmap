@@ -85,6 +85,11 @@ export type CrashFilterInput = {
 
 export const DEFAULT_SEVERITY: SeverityBucket[] = ['Death', 'Major Injury', 'Minor Injury']
 
+/** True when every severity box, including None/Unknown, is unchecked, so nothing can match. */
+export function hasNoSeverity(state: Pick<FilterState, 'severity' | 'includeNoInjury'>): boolean {
+  return state.severity.length === 0 && !state.includeNoInjury
+}
+
 export const PRESET_LABELS: Record<DatePreset, string> = {
   '90d': '90 Days',
   ytd: 'YTD',

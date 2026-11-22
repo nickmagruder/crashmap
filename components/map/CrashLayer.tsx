@@ -7,7 +7,12 @@ import type { LayerProps } from 'react-map-gl/mapbox'
 import type { FeatureCollection, Point } from 'geojson'
 import { toast } from 'sonner'
 import { GET_CRASHES } from '@/lib/graphql/queries'
-import { useFilterContext, toCrashFilter, type CrashFilterInput } from '@/context/FilterContext'
+import {
+  useFilterContext,
+  toCrashFilter,
+  hasNoSeverity,
+  type CrashFilterInput,
+} from '@/context/FilterContext'
 import { STANDARD_COLORS, ACCESSIBLE_COLORS } from '@/lib/crashColors'
 
 const DISPLAY_LIMIT = 40_000
@@ -124,7 +129,9 @@ export function CrashLayer() {
   const noDateFilter = filterState.dateFilter.type === 'none'
   const presetWithoutBounds =
     filterState.dateFilter.type === 'preset' && filterState.dataBounds === null
-  const skipQuery = noDateFilter || presetWithoutBounds
+  // With every severity unchecked nothing can match, so skip the request (#208).
+  const noSeverity = hasNoSeverity(filterState)
+  const skipQuery = noDateFilter || presetWithoutBounds || noSeverity
 
   const { data, previousData, error, loading } = useQuery<GetCrashesQuery>(GET_CRASHES, {
     variables: { filter: queryFilter, limit: DISPLAY_LIMIT },
@@ -146,9 +153,13 @@ export function CrashLayer() {
   // Surface the true total count to the filter context so SummaryBar can display it.
   useEffect(() => {
     if (!loading) {
-      dispatch({ type: 'SET_TOTAL_COUNT', payload: data?.crashes.totalCount ?? null })
+      // A no-severity skip is a known-empty result, so show 0 rather than no count.
+      dispatch({
+        type: 'SET_TOTAL_COUNT',
+        payload: noSeverity ? 0 : (data?.crashes.totalCount ?? null),
+      })
     }
-  }, [data, loading, dispatch])
+  }, [data, loading, noSeverity, dispatch])
 
   // Show a persistent warning toast when the result set is truncated at DISPLAY_LIMIT.
   // Auto-dismisses when filters are narrowed below the limit or the query is skipped.

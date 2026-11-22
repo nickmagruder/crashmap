@@ -76,3 +76,26 @@ describe('date filter round-trip', () => {
     }
   )
 })
+
+describe('severity with every box unchecked (#208)', () => {
+  const emptyState = (): FilterState => ({
+    ...makeState({ type: 'preset', preset: DEFAULT_DATE_PRESET }),
+    severity: [],
+    includeNoInjury: false,
+  })
+
+  it('encodes as an empty severity param', () => {
+    expect(encodeFilterParams(emptyState()).get('severity')).toBe('')
+  })
+
+  it('round-trips to no severities instead of the defaults', () => {
+    const decoded = decodeFilterParams(encodeFilterParams(emptyState()))
+    expect(decoded.severity).toEqual([])
+    expect(decoded.includeNoInjury).toBe(false)
+  })
+
+  it('still falls back to the defaults when every token is invalid', () => {
+    const decoded = decodeFilterParams(new URLSearchParams('severity=bogus'))
+    expect(decoded.severity).toEqual(DEFAULT_SEVERITY)
+  })
+})
