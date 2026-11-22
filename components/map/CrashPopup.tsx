@@ -51,7 +51,7 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       },
-      () => {}
+      (err: unknown) => console.warn('Could not copy the report number:', err)
     )
   }, [])
 

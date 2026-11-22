@@ -1,10 +1,11 @@
 // CI change guards, run by the `check` job as `node scripts/change-guards.ts`.
-// Fails when the branch adds a focused or skipped test, an eslint-disable
-// comment or a TypeScript suppression comment, or removes test assertions on
-// net; warns when
-// it changes more than SIZE_WARNING lines. A commit on the branch with a
-// `Test-guard: <reason>` line turns the failures into warnings, for changes
-// that really need one (say why in the PR too). Rules: change-guards-rules.ts.
+// On a branch, fails when the branch adds a focused or skipped test, an
+// eslint-disable comment or a TypeScript suppression comment, or removes test
+// assertions on net, and warns when it changes more than SIZE_WARNING lines.
+// A commit on the branch with a `Test-guard: <reason>` line turns the
+// failures into warnings, for changes that really need one (say why in the PR
+// too). On main it only warns: the PR was already gated and reviewed, and a
+// failure there would block the deploy. Rules: change-guards-rules.ts.
 
 import { execFileSync } from 'node:child_process'
 import { checkDiff, OVERRIDE, SIZE_WARNING } from './change-guards-rules.ts'
@@ -33,10 +34,14 @@ if (problems.length === 0) {
   process.exit(0)
 }
 
-const overridden = OVERRIDE.test(messages)
-for (const problem of problems) console.log(`::${overridden ? 'warning' : 'error'}::${problem}`)
-if (overridden) {
-  console.log('change-guards: overridden by a `Test-guard:` commit trailer')
+const lenient = onMain || OVERRIDE.test(messages)
+for (const problem of problems) console.log(`::${lenient ? 'warning' : 'error'}::${problem}`)
+if (lenient) {
+  console.log(
+    onMain
+      ? 'change-guards: on main, problems are warnings (the PR was gated)'
+      : 'change-guards: overridden by a `Test-guard:` commit trailer'
+  )
   process.exit(0)
 }
 console.error(

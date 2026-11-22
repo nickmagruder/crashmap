@@ -90,6 +90,22 @@ describe('checkDiff', () => {
     expect(checkDiff(diffOf('lib/big.ts', big)).changedLines).toBe(SIZE_WARNING + 1)
   })
 
+  it('skips generated code, which carries its own suppressions', () => {
+    expect(
+      checkDiff(diffOf('lib/graphql/__generated__/types.ts', ['/* eslint-disable */'])).problems
+    ).toEqual([])
+  })
+
+  it('treats hunk lines that look like headers as content', () => {
+    // A removed `-- note` shows as `--- note`; an added `++ x` as `+++ x`.
+    const diff = diffOf('lib/__tests__/x.test.ts', ['++ x', 'it.only("a", () => {})'], ['-- note'])
+    const files = parseDiff(diff)
+    expect(files).toHaveLength(1)
+    expect(files[0].added).toEqual(['++ x', 'it.only("a", () => {})'])
+    expect(files[0].removed).toEqual(['-- note'])
+    expect(checkDiff(diff).problems).toHaveLength(1)
+  })
+
   it('leaves the guard files themselves alone', () => {
     expect(checkDiff(diffOf('scripts/change-guards-rules.ts', ['/it.only/'])).problems).toEqual([])
   })

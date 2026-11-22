@@ -5,7 +5,7 @@
 /** Changed lines above this get a CI warning (never a failure). */
 export const SIZE_WARNING = 400
 
-/** Paths left out of the size count: lockfiles and generated code. */
+/** Paths the guards skip entirely: lockfiles and generated code. */
 const GENERATED = [/^package-lock\.json$/, /(^|\/)__generated__\//, /^lib\/generated\//]
 
 /** The guard's own files, which name the patterns they look for. */
@@ -15,7 +15,9 @@ const SELF = [
 ]
 
 const CODE = /\.(ts|tsx|js|jsx|mjs|cjs)$/
-const TEST_FILE = /(^|\/)__tests__\/|\.(test|spec)\.[jt]sx?$/
+/** A test file: anything under a `__tests__/` folder, or a `*.test`/`*.spec` file. */
+const IN_TESTS_DIR = /(?:^|\/)__tests__\//
+const TEST_NAME = /\.(?:test|spec)\.[jt]sx?$/
 
 /** Escape hatch: a commit on the branch with `Test-guard: <reason>`. */
 export const OVERRIDE = /^Test-guard:\s*\S/m
@@ -34,48 +36,40 @@ const RULES: Rule[] = [
 
 export type FileDiff = { path: string; added: string[]; removed: string[] }
 
-/** Splits a `git diff` (unified, no renames detection needed) into files. */
+/**
+ * Splits a `git diff --no-renames` into files. `---`/`+++` lines count as
+ * headers only between `diff --git` and the first `@@`, so content lines such
+ * as a removed `-- comment` (shown as `--- comment`) stay content. A deleted
+ * file (`+++ /dev/null`) keeps its old path and its removed lines.
+ */
 export function parseDiff(diff: string): FileDiff[] {
   const files: FileDiff[] = []
   let current: FileDiff | null = null
+  let inHeader = false
+  let oldPath = ''
+  let newPath = ''
   for (const line of diff.split('\n')) {
     if (line.startsWith('diff --git ')) {
       current = null
+      inHeader = true
+      oldPath = newPath = ''
       continue
     }
-    if (line.startsWith('+++ ')) {
-      const path = line.slice(4).replace(/^b\//, '')
-      if (path === '/dev/null') continue
-      current = { path, added: [], removed: [] }
-      files.push(current)
+    if (inHeader) {
+      if (line.startsWith('--- ')) oldPath = line.slice(4).replace(/^a\//, '')
+      else if (line.startsWith('+++ ')) newPath = line.slice(4).replace(/^b\//, '')
+      else if (line.startsWith('@@')) {
+        inHeader = false
+        current = { path: newPath === '/dev/null' ? oldPath : newPath, added: [], removed: [] }
+        files.push(current)
+      }
       continue
     }
-    if (line.startsWith('--- ')) continue
-    if (!current) {
-      // A deleted file: `+++ /dev/null` came after `--- a/path`.
-      continue
-    }
+    if (!current || line.startsWith('@@')) continue
     if (line.startsWith('+')) current.added.push(line.slice(1))
     else if (line.startsWith('-')) current.removed.push(line.slice(1))
   }
   return files
-}
-
-/** Files deleted outright (their `+++` is /dev/null), with their removed lines. */
-export function deletedFiles(diff: string): FileDiff[] {
-  const out: FileDiff[] = []
-  const chunks = diff.split(/^diff --git /m).slice(1)
-  for (const chunk of chunks) {
-    if (!/^\+\+\+ \/dev\/null$/m.test(chunk)) continue
-    const path = (chunk.match(/^--- a\/(.+)$/m) ?? [])[1]
-    if (!path) continue
-    const removed = chunk
-      .split('\n')
-      .filter((l) => l.startsWith('-') && !l.startsWith('--- '))
-      .map((l) => l.slice(1))
-    out.push({ path, added: [], removed })
-  }
-  return out
 }
 
 const countAssertions = (lines: string[]) =>
@@ -87,12 +81,13 @@ export type GuardResult = { problems: string[]; changedLines: number }
 export function checkDiff(diff: string): GuardResult {
   const problems: string[] = []
   let changedLines = 0
-  const files = [...parseDiff(diff), ...deletedFiles(diff)]
-  for (const file of files) {
-    if (!GENERATED.some((g) => g.test(file.path)))
-      changedLines += file.added.length + file.removed.length
+  for (const file of parseDiff(diff)) {
+    // Generated code carries its own suppressions (codegen's
+    // `/* eslint-disable */`), so it's out of the rules and the size count.
+    if (GENERATED.some((g) => g.test(file.path))) continue
+    changedLines += file.added.length + file.removed.length
     if (SELF.some((s) => s.test(file.path)) || !CODE.test(file.path)) continue
-    const isTest = TEST_FILE.test(file.path)
+    const isTest = IN_TESTS_DIR.test(file.path) || TEST_NAME.test(file.path)
     for (const rule of RULES) {
       if (rule.tests && !isTest) continue
       for (const line of file.added) {
