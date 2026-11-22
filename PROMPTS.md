@@ -134,7 +134,8 @@ unfinished work, or when Nick said to hold off (then end with a proposed commit 
 4. Copilot reviews the PR automatically: fix the valid comments, reply with a reason to the rest,
    and resolve the threads before handing the PR to Nick. If Copilot says it's out of quota (every
    PR on 2026-11-20/21), note that on the PR and get a Claude review session as `AGENTS.md`
-   "AI review" describes: a read-only brief, one PR comment with `<!-- ai-review -->`, then stop. Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never push
+   "AI review" describes: a read-only brief, one PR comment with `<!-- ai-review -->`, then stop.
+   Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never push
    to `main`: Nick merges.
 
 --- STEP 9: REPORT ---

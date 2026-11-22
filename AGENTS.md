@@ -124,7 +124,7 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 - **react-map-gl v8:** import `Map`, `MapRef`, etc. from `react-map-gl/mapbox`.
 - **Skipped queries:** `previousData` isn't cleared when `skip` turns on; override the display data explicitly (see `CrashLayer.tsx`).
 - **Map-anchored banners:** render inside AppShell's `flex-1 relative` map div with `pointer-events-none` so they don't block the map.
-- **`sr-only` and other absolute elements in scroll areas:** an `overflow-y-auto` area clips absolutely positioned descendants only if it (or something inside it) is positioned. Keep panel scroll areas `relative`; otherwise `sr-only` text below the fold escapes and makes the page scroll (#234).
+- **`sr-only` and other absolute elements in scroll areas:** an `overflow-y-auto` area clips absolutely positioned descendants only if it, or an ancestor of that element inside it, is positioned. Keep panel scroll areas `relative`; otherwise `sr-only` text below the fold escapes and makes the page scroll (#234).
 
 ## Key files
 

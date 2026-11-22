@@ -240,7 +240,7 @@ From 2026-11-18, [GitHub issues](https://github.com/nickmagruder/crashmap/issues
 
 ### Phase 8.2 — High (Required for AA compliance)
 
-Tracked in #198. Done in PR #220 (2026-11-20). Verified on crashmap.io 2026-11-21: the count live region updated from "3,067 crashes" to "1,913 crashes" on switching to Pedestrian, and all 8 new-window links on the page carry the sr-only text with their icons `aria-hidden`. A screen-reader pass is still in #200. The sr-only spans caused a page-scroll regression, fixed by #234.
+Tracked in #198. Done in PR #220 (2026-11-21). Verified on crashmap.io 2026-11-21: the count live region updated from "3,067 crashes" to "1,913 crashes" on switching to Pedestrian, and all 8 new-window links on the page carry the sr-only text with their icons `aria-hidden`. A screen-reader pass is still in #200. The sr-only spans caused a page-scroll regression, tracked in #234 and fixed by #236.
 
 - [x] Wrap crash count `<p>` in `Sidebar.tsx` and `FilterOverlay.tsx` with `role="status"` + `aria-live="polite"` + `aria-atomic="true"`
 - [x] Add "opens in new window" indication to all `target="_blank"` external links in `InfoPanelContent.tsx`, `SupportPanelContent.tsx`, and `CrashPopup.tsx` (and `PanelCredit.tsx`) — use `aria-label` or `<span className="sr-only"> (opens in new window)</span>`; add `aria-hidden="true"` to all `<ExternalLink>` icons within those links
