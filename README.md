@@ -938,3 +938,7 @@ This project is developed in the open. To report issues or suggest features, ple
 - New change guards in CI (`scripts/change-guards.ts`): fail on focused or skipped tests, `eslint-disable` and `@ts-ignore`-style suppressions, and net-removed assertions (override with a `Test-guard: <reason>` commit line); warn above about 400 changed lines
 - CI reports test coverage (`npm run test:coverage`; 19% of lines at the start); thresholds come later as a ratchet
 - The PR template asks "Tests changed? Why:"
+
+### 2026-11-21 — Post-Deploy Smoke Test
+
+- New Playwright smoke tests (`smoke/site.smoke.ts`, `npm run smoke`) run against crashmap.io after every production deploy, on desktop and mobile: the page loads without uncaught errors, the map renders, the crash count appears, and `/api/graphql` answers. A failure fails the `main` CI run

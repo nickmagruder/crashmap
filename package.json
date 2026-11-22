@@ -21,7 +21,8 @@
     "guards": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/change-guards.ts",
     "codegen": "graphql-codegen --config codegen.ts && prettier --write lib/graphql/__generated__/types.ts",
     "postinstall": "prisma generate",
-    "prepare": "husky"
+    "prepare": "husky",
+    "smoke": "playwright test"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs}": [
@@ -62,6 +63,7 @@
     "@graphql-codegen/cli": "^8.0.0",
     "@graphql-codegen/typescript": "^7.0.1",
     "@graphql-codegen/typescript-resolvers": "^7.0.1",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4.3.5",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^24.19.2",
