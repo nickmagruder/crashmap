@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Popup } from 'react-map-gl/mapbox'
 import { Check, Copy } from 'lucide-react'
+import { toast } from 'sonner'
+import { copyText } from '@/lib/clipboard'
 
 export type SelectedCrash = {
   longitude: number
@@ -42,17 +44,19 @@ type CrashPopupProps = {
 
 export function CrashPopup({ crash, onClose }: CrashPopupProps) {
   const [copied, setCopied] = useState(false)
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  const handleCopyReportNum = useCallback((num: string) => {
-    // Only show "copied" once the write succeeds; it rejects when the browser
-    // blocks clipboard access, and then the button stays as it was.
-    navigator.clipboard.writeText(num).then(
-      () => {
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      },
-      (err: unknown) => console.warn('Could not copy the report number:', err)
-    )
+  useEffect(() => () => clearTimeout(copiedTimer.current), [])
+
+  const handleCopyReportNum = useCallback(async (num: string) => {
+    if (await copyText(num)) {
+      setCopied(true)
+      // Restart the timer so a second click keeps "copied" up for the full 2s
+      clearTimeout(copiedTimer.current)
+      copiedTimer.current = setTimeout(() => setCopied(false), 2000)
+    } else {
+      toast.error(`Couldn't copy the report number. Copy ${num} by hand.`, { duration: 8000 })
+    }
   }, [])
 
   return (
@@ -122,7 +126,7 @@ export function CrashPopup({ crash, onClose }: CrashPopupProps) {
               </a>
             </span>
             <button
-              onClick={() => handleCopyReportNum(crash.colliRptNum!)}
+              onClick={() => void handleCopyReportNum(crash.colliRptNum!)}
               aria-label={copied ? 'Report number copied' : 'Copy report number'}
               style={{ color: 'var(--muted-foreground)', lineHeight: 1 }}
             >

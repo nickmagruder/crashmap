@@ -160,6 +160,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `components/info/`: info and support panels (desktop side panel, mobile overlay)
 - `components/summary/SummaryBar.tsx`: active filter badges and export action
 - `components/export/ExportButton.tsx`, `lib/csv-export.ts`: CSV export
+- `lib/clipboard.ts`: `copyText`, a clipboard write that resolves `false` instead of rejecting (used by `CrashPopup`)
 - `lib/crashColors.ts`: standard and accessible severity palettes
 - `components/ErrorBoundary.tsx`, `app/error.tsx`, `app/global-error.tsx`: error boundaries
 - `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`, `lib/sentryConfig.ts`: Sentry setup (shared tunnel path, `dataCollection` and environment in `lib/sentryConfig.ts`)

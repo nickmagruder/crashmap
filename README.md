@@ -942,3 +942,8 @@ This project is developed in the open. To report issues or suggest features, ple
 ### 2026-11-21 — Post-Deploy Smoke Test
 
 - New Playwright smoke tests (`smoke/site.smoke.ts`, `npm run smoke`) run against crashmap.io after every production deploy, on desktop and mobile: the page loads without uncaught errors, the map renders, the crash count appears, and `/api/graphql` answers. A failure fails the `main` CI run
+
+### 2026-11-21 — Fix Page Scroll and Report-Number Copy
+
+- The page no longer scrolls on desktop when the info panel is open. The hidden "(opens in new window)" text added for screen readers sat outside the panel's scroll area and made the page taller than the screen; the panels' scroll areas now contain it (#234)
+- The crash popup's Copy button says "copied" only when the copy works. When the browser blocks the clipboard, an error message shows the report number to copy by hand, and the error no longer goes uncaught (#235). Builds on the Lint and Test Guards fix above, which stopped showing "copied" on failure but only logged the error

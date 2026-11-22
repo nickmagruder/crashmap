@@ -38,7 +38,7 @@ export function InfoSidePanel({ onClose, view = 'info', onSwitchView }: InfoSide
           <X className="size-4" />
         </Button>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="relative flex-1 overflow-y-auto px-4 py-4">
         <PanelBody view={view} onSwitchView={onSwitchView} />
       </div>
     </div>

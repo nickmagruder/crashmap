@@ -54,7 +54,7 @@ export function InfoOverlay({ isOpen, onClose, view = 'info', onSwitchView }: In
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div className="relative flex-1 overflow-y-auto px-4 py-4">
         {view === 'support' ? (
           <SupportPanelContent
             onSwitchView={onSwitchView ? () => onSwitchView('info') : undefined}
