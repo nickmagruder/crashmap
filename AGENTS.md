@@ -143,7 +143,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `lib/graphql/resolvers.ts`: resolvers, severity bucket mapping, `buildWhere`
 - `lib/graphql/queries.ts`: client-side GraphQL documents
 - `lib/graphql/__generated__/types.ts`: codegen output (committed; `npm run codegen`; CI drift check)
-- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest); `lib/__tests__/`: other `lib/` unit tests (e.g. `sentryConfig.test.ts`, `filterUrlState.test.ts`); `context/__tests__/`: `presetToDateRange` tests
+- `lib/graphql/__tests__/`: helper unit tests and resolver integration tests (Vitest); `lib/__tests__/`: other `lib/` unit tests (e.g. `sentryConfig.test.ts`, `filterUrlState.test.ts`); `context/__tests__/`: `presetToDateRange` and `getActiveFilterLabels` tests; `components/summary/__tests__/`: `SummaryBar` render tests (`renderToStaticMarkup`, no DOM)
 - `app/api/graphql/route.ts`: Apollo route handler, CORS, depth limit (5)
 - `app/api/health/route.ts`: `GET /api/health` for Render health checks
 - `lib/rate-limit.ts`: in-memory 60 req/min per-IP limiter
@@ -167,7 +167,9 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `.github/workflows/ci.yml`: lint, knip, change guards, format, typecheck, test with coverage, codegen drift, build (the required `check` job), deploy hook, Lighthouse; actions pinned by SHA
 - `scripts/change-guards.ts` (rules in `scripts/change-guards-rules.ts`, tests in `scripts/__tests__/`): CI check for weakened tests, suppressions and PR size
 - `knip.json`: unused files, exports and dependencies, with the ignores listed under Working rules
-- `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates
+- `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates (3-day cooldown; majors deferred in #202 ignored)
+- `.github/workflows/dependency-review.yml`: fails a PR that adds a dependency with a high or critical advisory
+- `.github/workflows/dependabot-auto-merge.yml`: auto-merges Dependabot devDependency patch PRs once its own dependency review and `check` pass; nothing else auto-merges. Auto-merged commits get no CI run on main until the next push
 - `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: Copilot PR review (the skill is synced from clankers `skills/pr-review`)
 - `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`: issue forms and PR template
 - `.husky/`: pre-commit (lint-staged, then `scripts/gitleaks-staged.sh`) and commit-msg (`scripts/commit-msg.ts`, rules in `scripts/commit-msg-rules.ts`) hooks

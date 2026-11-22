@@ -918,6 +918,19 @@ This project is developed in the open. To report issues or suggest features, ple
 - Audited icons: none carries its own label, and all 29 on the page are hidden from screen readers, so no control's name is read twice
 - Measured the severity dots' contrast against the light and dark maps in both palettes (`ARCHITECTURE.md` › Map Icon Design › Contrast). Most fall below WCAG's 3:1; the fix is tracked in #227
 
+### 2026-11-21 — Accessibility: Filter Badge Text
+
+- The summary bar's mode badge still shows emoji, but screen readers now hear "Bicyclists", "Pedestrians" or "All modes" instead of the emoji's Unicode names
+- The 📍 on the "Viewport" badge is hidden from screen readers
+- The badges are now a list, so screen readers pause between them
+- `getActiveFilterLabels` returns `{ icon, text, srText }` badge labels instead of strings (the type requires `text` or `srText`), with new unit tests and `SummaryBar` render tests
+
+### 2026-11-21 — Dependency Safeguards
+
+- Dependabot waits 3 days before proposing a new release (a guard against compromised fresh publishes) and no longer opens the majors deferred in #202 (ESLint, TypeScript, graphql, `@types/node`)
+- New `dependency-review` workflow fails a PR that adds a dependency with a high or critical advisory; advisories already on `main` stay tracked in #203
+- Dependabot devDependency patch PRs (the new `dev-patch` group) auto-merge once the `check` job passes; everything else still waits for review
+
 ### 2026-11-21 — Lint and Test Guards
 
 - Lint now fails on warnings and adds type-aware promise rules; it caught two unhandled promises, including the crash popup showing "copied" when the browser blocked the clipboard (now it only confirms a successful copy)

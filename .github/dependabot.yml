@@ -6,10 +6,31 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    # Wait out compromised fresh releases (e.g. Shai-Hulud) before proposing them.
+    cooldown:
+      default-days: 3
+    # Majors deferred in #202. Remove a rule when its upgrade is planned.
+    # Check Dependabot alerts for these packages by hand: a fix that only
+    # ships in a new major won't arrive as a version-update PR.
+    ignore:
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      - dependency-name: graphql
+        update-types: ['version-update:semver-major']
+      # CrashMap runs Node 24 (.nvmrc, engines), so its types stay on 24.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
-      dev-dependencies:
+      # Patch-only dev group: the one kind of PR that auto-merges
+      # (.github/workflows/dependabot-auto-merge.yml).
+      dev-patch:
         dependency-type: development
-        update-types: [minor, patch]
+        update-types: [patch]
+      dev-minor:
+        dependency-type: development
+        update-types: [minor]
       dependencies:
         dependency-type: production
         update-types: [minor, patch]
@@ -19,6 +40,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 3
     groups:
       actions:
         patterns: ['*']
