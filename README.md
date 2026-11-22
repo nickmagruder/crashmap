@@ -924,3 +924,9 @@ This project is developed in the open. To report issues or suggest features, ple
 - The 📍 on the "Viewport" badge is hidden from screen readers
 - The badges are now a list, so screen readers pause between them
 - `getActiveFilterLabels` returns `{ icon, text, srText }` badge labels instead of strings (the type requires `text` or `srText`), with new unit tests and `SummaryBar` render tests
+
+### 2026-11-21 — Dependency Safeguards
+
+- Dependabot waits 3 days before proposing a new release (a guard against compromised fresh publishes) and no longer opens the majors deferred in #202 (ESLint, TypeScript, graphql, `@types/node`)
+- New `dependency-review` workflow fails a PR that adds a dependency with a high or critical advisory; advisories already on `main` stay tracked in #203
+- Dependabot devDependency patch PRs (the new `dev-patch` group) auto-merge once the `check` job passes; everything else still waits for review

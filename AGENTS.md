@@ -164,7 +164,9 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`, `lib/sentryConfig.ts`: Sentry setup (shared tunnel path, `dataCollection` and environment in `lib/sentryConfig.ts`)
 - `render.yaml`: Render services (production + staging)
 - `.github/workflows/ci.yml`: lint, format, typecheck, test, codegen drift, build (the required `check` job), deploy hook, Lighthouse; actions pinned by SHA
-- `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates
+- `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates (3-day cooldown; majors deferred in #202 ignored)
+- `.github/workflows/dependency-review.yml`: fails a PR that adds a dependency with a high or critical advisory
+- `.github/workflows/dependabot-auto-merge.yml`: auto-merges Dependabot devDependency patch PRs once its own dependency review and `check` pass; nothing else auto-merges. Auto-merged commits get no CI run on main until the next push
 - `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: Copilot PR review (the skill is synced from clankers `skills/pr-review`)
 - `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`: issue forms and PR template
 - `.husky/`: pre-commit (lint-staged, then `scripts/gitleaks-staged.sh`) and commit-msg (`scripts/commit-msg.ts`, rules in `scripts/commit-msg-rules.ts`) hooks
