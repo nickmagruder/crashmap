@@ -4,8 +4,9 @@ Closes #
 
 ## How tested
 
-- [ ] `npm run lint`, `npm run format:check`, `npm run typecheck` and `npm test` pass
+- [ ] `npm run lint`, `npm run knip`, `npm run format:check`, `npm run typecheck` and `npm test` pass
 - [ ] Checked in the browser (dev server), where the UI changed
+- [ ] Tests changed? Why:
 
 ## Docs
 

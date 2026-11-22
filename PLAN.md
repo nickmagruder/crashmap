@@ -252,6 +252,7 @@ Tracked in #199.
 - [x] Wrap decorative emoji in `aria-hidden="true"` spans in `InfoSidePanel.tsx` and `InfoPanelContent.tsx`
 - [x] Add `<span className="sr-only">Active filters: </span>` before badge list in `SummaryBar.tsx`
 - [x] Audit all Lucide icon instances inside labeled buttons across `AppShell.tsx`, `InfoSidePanel.tsx`, `InfoPanelContent.tsx` — ensure `aria-hidden="true"` is present on each icon `<svg>` (since `lucide-react` 1.x, Phase 9.2, icons get it automatically unless given an `aria-label`/`title`, so this audit becomes: find icons that have a label but sit inside an already-labeled control)
+- [x] Give the emoji-only filter badges in `SummaryBar.tsx` words for screen readers ("Bicyclists", "Pedestrians", "All modes"; the Viewport pin hidden) and list the badges so screen readers pause between them (#229)
 
 ### Phase 8.4 — Verification
 

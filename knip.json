@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["scripts/commit-msg.ts"],
+  "ignore": ["components/ui/**", "lib/apollo-client.ts"],
+  "ignoreDependencies": ["@prisma/client", "@types/mapbox-gl"],
+  "ignoreExportsUsedInFile": true
+}
