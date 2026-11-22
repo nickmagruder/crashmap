@@ -28,7 +28,7 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 - **Overrides clankers (versioning):** never bump the version on line 2 of `README.md` (`**Version:** x.x.x`); Nick edits it by hand. Agents only add changelog entries (newest at the bottom of `README.md`).
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
 - **Deployment debugging:** check the simple things first: missing env vars, wrong URLs, misconfigured Render settings.
-- **Smoke testing:** PRs merge straight to `main` and deploy to production, so browser smoke tests run on https://crashmap.io after the `main` CI run (check, deploy, Lighthouse) finishes. `crashmap-staging.onrender.com` doesn't serve anything. Checklist: map loads, filters and date presets, custom date range, county/city selects, crash popup + copy, URL round-trip on reload, light/dark and accessible palette, mobile overlays (<768px), CSV export, no console errors, `/api/graphql` and `/monitoring` return 200.
+- **Smoke testing:** PRs merge straight to `main` and deploy to production. After each deploy, CI runs automated Playwright smoke tests (`npm run smoke`, `smoke/site.smoke.ts`) on https://crashmap.io: page loads with no uncaught errors, map renders, crash count appears, API answers. For anything beyond that critical path, smoke-test by hand once the `main` CI run (check, deploy, Lighthouse, smoke) finishes. `crashmap-staging.onrender.com` doesn't serve anything. Checklist: map loads, filters and date presets, custom date range, county/city selects, crash popup + copy, URL round-trip on reload, light/dark and accessible palette, mobile overlays (<768px), CSV export, no console errors, `/api/graphql` and `/monitoring` return 200.
 
 ## Data model
 
@@ -163,7 +163,8 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `components/ErrorBoundary.tsx`, `app/error.tsx`, `app/global-error.tsx`: error boundaries
 - `instrumentation.ts`, `instrumentation-client.ts`, `sentry.*.config.ts`, `lib/sentryConfig.ts`: Sentry setup (shared tunnel path, `dataCollection` and environment in `lib/sentryConfig.ts`)
 - `render.yaml`: Render services (production + staging)
-- `.github/workflows/ci.yml`: lint, format, typecheck, test, codegen drift, build (the required `check` job), deploy hook, Lighthouse; actions pinned by SHA
+- `.github/workflows/ci.yml`: lint, format, typecheck, test, codegen drift, build (the required `check` job), deploy hook, Lighthouse, post-deploy `smoke`; actions pinned by SHA
+- `playwright.config.ts`, `smoke/site.smoke.ts`: post-deploy smoke tests against crashmap.io (`SMOKE_URL` overrides the target; files are `*.smoke.ts` so Vitest skips them)
 - `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates
 - `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: Copilot PR review (the skill is synced from clankers `skills/pr-review`)
 - `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`: issue forms and PR template
