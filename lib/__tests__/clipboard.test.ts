@@ -15,7 +15,23 @@ describe('copyText', () => {
     await expect(copyText('E123456', { writeText })).resolves.toBe(false)
   })
 
-  it('resolves false when there is no clipboard', async () => {
-    await expect(copyText('E123456', undefined)).resolves.toBe(false)
+  it('resolves false when the browser has no clipboard', async () => {
+    vi.stubGlobal('navigator', {})
+    try {
+      await expect(copyText('E123456')).resolves.toBe(false)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('uses navigator.clipboard by default', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    try {
+      await expect(copyText('E123456')).resolves.toBe(true)
+      expect(writeText).toHaveBeenCalledWith('E123456')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })
