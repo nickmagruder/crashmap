@@ -974,5 +974,6 @@ This project is developed in the open. To report issues or suggest features, ple
 - New tracked `CLAUDE.md` (no longer gitignored) imports `AGENTS.md` and both memory indexes
   (`memory/MEMORY.md`, `memory/local/MEMORY.md`); `AGENTS.md` says to read
   them at the start of a session.
+- `.gitignore` now ignores `CLAUDE.local.md` (personal notes) instead of `CLAUDE.md`.
 - The PR template points at `AGENTS.md` for the version rule; `AGENTS.md`
   notes that `package.json`'s version isn't used. Bumped version to 0.7.5.

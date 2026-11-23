@@ -24,11 +24,14 @@ rules; this project's only exceptions are the ones listed for it under
 
 ## Working rules
 
-- **Memory:** clankers `global/AGENTS.md` "Memory": this project's memory goes in `memory/` (index `memory/MEMORY.md`; `memory/local/` is gitignored; read both indexes at the start of a session, and `CLAUDE.md` imports them), and project decisions, plans and follow-ups in the tracked docs (`AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`). Never a tool's own memory store.
+- **Memory:** clankers `global/AGENTS.md` "Memory". This project's memory goes in `memory/` (index `memory/MEMORY.md`; `memory/local/` is gitignored), never a tool's own memory store.
+  - Read both indexes at the start of a session; `CLAUDE.md` imports them.
+  - Project decisions, plans and follow-ups go in the tracked docs (`AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`).
+  - Personal Claude notes go in `CLAUDE.local.md` (gitignored), never in `CLAUDE.md`.
 - **Git, PRs and AI review:** clankers `standards/git.md`. crashmap facts: PRs squash-merge, and **merging deploys to production**, so a PR waits for Nick's explicit ask to merge; the review skill reviewers use is `.github/skills/code-review/` (synced from clankers `skills/pr-review`). Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
 - **Tests and checks:** never weaken a test or suppress a lint or type error to get past a check; `npm run guards` (CI) fails on `.only`/`.skip`, `eslint-disable`, `@ts-ignore`-style comments and net-removed assertions unless a commit carries `Test-guard: <reason>`. Lint runs with `--max-warnings 0` and type-aware promise rules; `npm run knip` must pass (its ignores in `knip.json`: shadcn `components/ui/**`, the unused RSC client `lib/apollo-client.ts`, `@prisma/client` (used by the generated client) and `@types/mapbox-gl`).
 - **Tracking:** clankers `standards/github.md`. crashmap facts: issues go on the [CrashMap board](https://github.com/users/nickmagruder/projects/2) (`gh project item-add 2 --owner nickmagruder --url <url>`) with a phase milestone where it fits; `PLAN.md` keeps phases, design notes and results and links to the issues.
-- **Version and changelog:** clankers `standards/docs.md`; the version is on line 2 of `README.md` and the changelog is at the bottom, newest last. `package.json`'s version (0.1.0) isn't used: don't bump it.
+- **Version and changelog:** the version is on line 2 of `README.md` and the changelog is at the bottom, newest last. `package.json`'s version (0.1.0) isn't used, so neither it nor `package-lock.json` changes on a bump. The maintainer bumps the version, not outside contributors.
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
 - **Smoke testing:** PRs merge straight to `main` and deploy to production. After each deploy, CI runs automated Playwright smoke tests (`npm run smoke`, `smoke/site.smoke.ts`) on https://crashmap.io: page loads with no uncaught errors, map renders, crash count appears, API answers. For anything beyond that critical path, smoke-test by hand once the `main` CI run (check, deploy, Lighthouse, smoke) finishes. `crashmap-staging.onrender.com` doesn't serve anything. Checklist: map loads, filters and date presets, custom date range, county/city selects, crash popup + copy, URL round-trip on reload, light/dark and accessible palette, mobile overlays (<768px), CSV export, the page doesn't scroll (desktop, info panel open: `document.documentElement.scrollHeight === innerHeight`), no console errors, `/api/graphql` and `/monitoring` return 200.
 
@@ -132,6 +135,7 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 - `README.md`: overview, version (line 2), changelog (bottom)
+- `CLAUDE.md`: `@AGENTS.md` and the memory indexes, for Claude Code
 - `memory/MEMORY.md`: this project's memory index (`memory/local/` is gitignored)
 - `PROMPTS.md`: project prompts, including `Close-Out-Session`
 - `PLAN.md`: phases, design notes and bugs list; open items link to GitHub issues
