@@ -955,3 +955,14 @@ This project is developed in the open. To report issues or suggest features, ple
 ### 2026-11-22 — Change Guards Synced from clankers
 
 - The change-guard scripts are now verbatim copies of the canonical version in [clankers](https://github.com/nickmagruder/clankers/tree/main/templates/change-guards); this repo's generated-code paths and test folders moved to `scripts/change-guards.config.ts`. They now also flag `skipIf`/`runIf` and `.concurrent` focus or skip, check Python files and skip more lockfile types
+
+### 2026-11-23 — Follow clankers Standards
+
+- `AGENTS.md` points to the clankers standards for git, PRs, AI review and
+  issues instead of restating them, and keeps only crashmap facts (merges
+  deploy to production, the board). Clankers is checked first; this repo's
+  only exception is its own close-out, until clankers#46 (#249).
+- AI review comes from whichever reviewer is best at the time, requested by
+  the agent that opened the PR; the ruleset no longer requests Copilot.
+- Agents may bump the version on line 2 when a change warrants it; the
+  manual-version rule is gone (`PROMPTS.md` and the PR template follow).

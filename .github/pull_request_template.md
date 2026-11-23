@@ -10,7 +10,7 @@ Closes #
 
 ## Docs
 
-- [ ] README changelog entry (newest at the bottom; no version bump)
+- [ ] README changelog entry (newest at the bottom); version bump on line 2 where the change warrants it
 - [ ] `PLAN.md`, `ARCHITECTURE.md`, `AGENTS.md` or `tutorial.md`, where affected
 
 ## After merge
