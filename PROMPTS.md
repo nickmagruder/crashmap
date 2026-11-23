@@ -53,8 +53,8 @@ files such as `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`, or the re
 
 --- STEP 3: PROJECT DOCS AND LINKS ---
 - `README.md` changelog: one entry per piece of work, appended at the bottom, headed
-  `### YYYY-MM-DD — Title`. Use the local Pacific date (`date +%F`), never UTC. Never edit the
-  version on line 2; Nick bumps it by hand.
+  `### YYYY-MM-DD — Title`. Use the local Pacific date (`date +%F`), never UTC. Bump the
+  version on line 2 when the change warrants it (clankers `standards/docs.md`).
 - `ARCHITECTURE.md` §11: update notes for every source file whose behavior changed.
 - `tutorial.md`: update after significant steps (a new feature or architecture change), not for
   routine fixes or upgrades. Earlier chapters record the build as it happened, so don't rewrite
