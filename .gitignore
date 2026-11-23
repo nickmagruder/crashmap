@@ -60,3 +60,6 @@ next-env.d.ts
 # Playwright smoke tests
 /test-results
 /playwright-report
+
+# Agent memory that must not be committed (clankers "Memory")
+memory/local/

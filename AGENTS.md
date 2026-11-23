@@ -4,10 +4,13 @@
 
 ## Shared standards (clankers)
 
-Universal standards, skills and agents come from the **clankers** repo
-(<https://github.com/nickmagruder/clankers>, local: `~/.claude/clankers`) and
-load globally. This file holds only what is specific to this project and wins
-on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
+Check clankers first. Universal standards, skills and agents come from the
+**clankers** repo (<https://github.com/nickmagruder/clankers>, local:
+`~/.claude/clankers`) and load globally: git, PRs, AI review, issues and docs
+follow `~/.claude/clankers/standards/` here as in every repo. This file holds
+only facts specific to this project and doesn't restate or override those
+rules; this project's only exceptions are the ones listed for it under
+"Exceptions to clankers standards" in `~/.claude/clankers/registry/PROJECTS.md`.
 
 ## Stack
 
@@ -21,14 +24,12 @@ on conflict. All projects: `~/.claude/clankers/registry/PROJECTS.md`.
 
 ## Working rules
 
-- **Repository-local memory:** save project decisions, context, notes, plans, and session follow-ups in tracked repository files (typically `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`, or relevant docs). Do not use sidecar, application, or in-application memory stores. This rule wins over generic memory behavior.
-- **Git (trunk-based):** every change has a GitHub issue (milestone where it fits) on the [CrashMap board](https://github.com/users/nickmagruder/projects/2); branch `<type>/<issue>-<slug>` from the latest `main`; PR body starts `Closes #N` (template in `.github/`). Branch, commit, push and open the PR as the natural next step of finished work (clankers `standards/git.md`), unless the work is exploratory or Nick said to hold off. Only Nick merges (squash), and merging deploys to production; never push to `main`, never `--no-verify`. Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
-- **AI review:** Copilot reviews every PR automatically (`.github/copilot-instructions.md`, `.github/skills/code-review/`); when it is out of quota, run a Codex or Claude review and post it with `<!-- ai-review -->` (clankers `standards/git.md`). A Claude review session gets a read-only brief: run the `pr-review` skill, post one PR comment (with the marker), and stop; no issues, smoke tests or merges (the #230 reviewer, briefed without that, filed and closed issues and ran its own smoke test). Before handing a PR to Nick, fix the valid comments, reply with a reason to the rest, and resolve the threads.
+- **Memory:** clankers `global/AGENTS.md` "Memory": this project's memory goes in `memory/` (index `memory/MEMORY.md`; `memory/local/` is gitignored), and project decisions, plans and follow-ups in the tracked docs (`AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`). Never a tool's own memory store.
+- **Git, PRs and AI review:** clankers `standards/git.md`. crashmap facts: PRs squash-merge, and **merging deploys to production**, so a PR waits for Nick's explicit ask to merge; the review skill reviewers use is `.github/skills/code-review/` (synced from clankers `skills/pr-review`). Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
 - **Tests and checks:** never weaken a test or suppress a lint or type error to get past a check; `npm run guards` (CI) fails on `.only`/`.skip`, `eslint-disable`, `@ts-ignore`-style comments and net-removed assertions unless a commit carries `Test-guard: <reason>`. Lint runs with `--max-warnings 0` and type-aware promise rules; `npm run knip` must pass (its ignores in `knip.json`: shadcn `components/ui/**`, the unused RSC client `lib/apollo-client.ts`, `@prisma/client` (used by the generated client) and `@types/mapbox-gl`).
-- **Tracking:** status lives in issues; `PLAN.md` keeps phases, design notes and results and links to the issues. Bugs and follow-ups found mid-task become issues (`follow-up` or `bug` label) added to the board with `gh project item-add 2 --owner nickmagruder --url <url>`, not only plan bullets.
-- **Overrides clankers (versioning):** never bump the version on line 2 of `README.md` (`**Version:** x.x.x`); Nick edits it by hand. Agents only add changelog entries (newest at the bottom of `README.md`).
+- **Tracking:** clankers `standards/github.md`. crashmap facts: issues go on the [CrashMap board](https://github.com/users/nickmagruder/projects/2) (`gh project item-add 2 --owner nickmagruder --url <url>`) with a phase milestone where it fits; `PLAN.md` keeps phases, design notes and results and links to the issues.
+- **Version and changelog:** clankers `standards/docs.md`; the version is on line 2 of `README.md` and the changelog is at the bottom, newest last.
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
-- **Deployment debugging:** check the simple things first: missing env vars, wrong URLs, misconfigured Render settings.
 - **Smoke testing:** PRs merge straight to `main` and deploy to production. After each deploy, CI runs automated Playwright smoke tests (`npm run smoke`, `smoke/site.smoke.ts`) on https://crashmap.io: page loads with no uncaught errors, map renders, crash count appears, API answers. For anything beyond that critical path, smoke-test by hand once the `main` CI run (check, deploy, Lighthouse, smoke) finishes. `crashmap-staging.onrender.com` doesn't serve anything. Checklist: map loads, filters and date presets, custom date range, county/city selects, crash popup + copy, URL round-trip on reload, light/dark and accessible palette, mobile overlays (<768px), CSV export, the page doesn't scroll (desktop, info panel open: `document.documentElement.scrollHeight === innerHeight`), no console errors, `/api/graphql` and `/monitoring` return 200.
 
 ## Data model
@@ -131,9 +132,10 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 - `README.md`: overview, version (line 2), changelog (bottom)
+- `memory/MEMORY.md`: this project's memory index (`memory/local/` is gitignored)
 - `PROMPTS.md`: project prompts, including `Close-Out-Session`
 - `PLAN.md`: phases, design notes and bugs list; open items link to GitHub issues
-- `CONTRIBUTING.md`: coding standards and how changes are made (also read by Copilot review)
+- `CONTRIBUTING.md`: coding standards and how changes are made (also read by PR reviewers)
 - `SECURITY.md`: vulnerability reporting and scope
 - `ARCHITECTURE.md`: data model, GraphQL schema, indexes, security, detailed file notes
 - `tutorial.md`: blog-post draft of the build
@@ -173,17 +175,17 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates (3-day cooldown; majors deferred in #202 ignored)
 - `.github/workflows/dependency-review.yml`: fails a PR that adds a dependency with a high or critical advisory
 - `.github/workflows/dependabot-auto-merge.yml`: auto-merges Dependabot devDependency patch PRs once its own dependency review and `check` pass; nothing else auto-merges. Auto-merged commits get no CI run on main until the next push
-- `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: Copilot PR review (the skill is synced from clankers `skills/pr-review`)
+- `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: PR reviewers' instructions (the skill is synced from clankers `skills/pr-review`)
 - `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`: issue forms and PR template
 - `.husky/`: pre-commit (lint-staged, then `scripts/gitleaks-staged.sh`) and commit-msg (`scripts/commit-msg.ts`, rules in `scripts/commit-msg-rules.ts`) hooks
 - `.lighthouserc.json`: Lighthouse CI config
 
 ## Close-out
 
-"Close out session" runs `Close-Out-Session` in `PROMPTS.md`, which replaces the generic clankers `close-out-session` skill for this repo. In brief:
+"Close out session" runs `Close-Out-Session` in `PROMPTS.md`, which replaces the generic clankers `close-out-session` skill for this repo. That is an explicit exception listed in the clankers registry until nickmagruder/clankers#46 reconciles the two. In brief:
 
 - After a data import, update the Data Ingestion Log and the data date range in `InfoPanelContent.tsx` (steps in `data-pipeline.md`).
-- Tick finished items in `PLAN.md`; never bump the version.
+- Tick finished items in `PLAN.md`.
 - Production checks (CI, crashmap.io smoke test, Render logs, Sentry) run only when the session deployed.
 - Offer to ship; on Nick's yes, branch from `main`, commit and open a PR, but never merge.
 
@@ -193,4 +195,6 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 ## Stretch goals
 
-Dashboard charts (Recharts/D3), mobile bottom sheet (`vaul` or `react-modal-sheet`), tour modes, screen-reader map navigation. See `PLAN.md` and `ARCHITECTURE.md` §10.
+Dashboard charts (Recharts/D3), mobile bottom sheet (`vaul` or
+`react-modal-sheet`), tour modes, screen-reader map navigation. See `PLAN.md`
+and `ARCHITECTURE.md` §10.

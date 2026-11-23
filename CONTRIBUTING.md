@@ -18,8 +18,8 @@ below, and [`AGENTS.md`](AGENTS.md) holds the agent-facing version.
 - **CI must pass** (`check`: lint with zero warnings, knip, change guards,
   Prettier, typecheck, Vitest with a coverage report, codegen drift, build).
   CodeQL and dependency review scan every PR. Every PR gets an AI review
-  (Copilot, or Codex or Claude when Copilot is out of quota); address or
-  answer its comments before merging.
+  from a reviewer other than its author (whichever is the best choice at
+  the time); address or answer its comments before merging.
 - **Never weaken a test to make it pass:** no `.only`/`.skip`, no deleted
   or loosened assertions, no `eslint-disable` or `@ts-ignore`/`@ts-expect-error`
   to get past a check. The change guards (`scripts/change-guards.ts`) fail
