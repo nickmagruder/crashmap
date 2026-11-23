@@ -1,11 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { MapLoadingOverlay, MapLoadingOverlayView } from '@/components/map/MapLoadingOverlay'
+import {
+  MapLoadingOverlay,
+  MapLoadingOverlayView,
+  scheduleDelayedFlag,
+} from '@/components/map/MapLoadingOverlay'
 
 const renderView = (visible: boolean) =>
   renderToStaticMarkup(<MapLoadingOverlayView visible={visible} />)
 
 describe('MapLoadingOverlayView', () => {
+  it('puts the spinner on a solid disc so it keeps contrast over any basemap', () => {
+    expect(renderView(true)).toMatch(/<div class="rounded-full border bg-background\/90[^"]*"><svg/)
+  })
+
   it('dims the map and centers a large spinner with visible loading text', () => {
     const html = renderView(true)
     expect(html).toContain('bg-black/25')
@@ -34,6 +42,58 @@ describe('MapLoadingOverlayView', () => {
     const html = renderView(false)
     expect(html).toMatch(/^<div role="status" aria-live="polite"[^>]*><\/div>$/)
     expect(html).not.toContain('Loading crashes…')
+  })
+})
+
+describe('scheduleDelayedFlag', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('shows the flag only once loading has lasted the full delay', () => {
+    const setShown = vi.fn()
+    scheduleDelayedFlag(true, 300, setShown)
+    vi.advanceTimersByTime(299)
+    expect(setShown).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(setShown).toHaveBeenCalledExactlyOnceWith(true)
+  })
+
+  it('never shows the flag when loading ends before the delay', () => {
+    const setShown = vi.fn()
+    const cleanup = scheduleDelayedFlag(true, 300, setShown)
+    vi.advanceTimersByTime(200)
+    cleanup?.()
+    vi.advanceTimersByTime(1000)
+    expect(setShown).toHaveBeenCalledExactlyOnceWith(false)
+  })
+
+  it('hides the flag as soon as loading ends after it was shown', () => {
+    const setShown = vi.fn()
+    const cleanup = scheduleDelayedFlag(true, 300, setShown)
+    vi.advanceTimersByTime(300)
+    cleanup?.()
+    expect(setShown.mock.calls).toEqual([[true], [false]])
+  })
+
+  it('restarts the full delay after a rapid stop and start', () => {
+    const setShown = vi.fn()
+    scheduleDelayedFlag(true, 300, setShown)?.()
+    scheduleDelayedFlag(true, 300, setShown)
+    vi.advanceTimersByTime(299)
+    expect(setShown).not.toHaveBeenCalledWith(true)
+    vi.advanceTimersByTime(1)
+    expect(setShown).toHaveBeenLastCalledWith(true)
+  })
+
+  it('does nothing while not loading', () => {
+    const setShown = vi.fn()
+    expect(scheduleDelayedFlag(false, 300, setShown)).toBeUndefined()
+    vi.advanceTimersByTime(1000)
+    expect(setShown).not.toHaveBeenCalled()
   })
 })
 

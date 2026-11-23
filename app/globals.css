@@ -125,6 +125,12 @@
   }
 }
 
+/* Keep an open crash popup above the map loading overlay (z-1, MapLoadingOverlay.tsx)
+   and below the z-10 map controls. */
+.mapboxgl-popup {
+  z-index: 2;
+}
+
 /* ── Mapbox popup dark mode overrides ─────────────────────────────────────── */
 /* The Popup component renders outside React's style scope, so Tailwind classes
    on inner divs won't affect the container shell. Override it via global CSS. */
