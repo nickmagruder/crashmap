@@ -162,6 +162,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `components/map/MapContainer.tsx`: Mapbox map, styles, popup camera behavior
 - `components/map/CrashLayer.tsx`: crash query, GeoJSON layers, auto-zoom, display cap
 - `components/map/CrashPopup.tsx`: crash detail popup
+- `components/map/MapLoadingOverlay.tsx`: centered, delayed loading overlay over the map
 - `components/filters/`: date, geographic, mode and severity filters
 - `components/sidebar/Sidebar.tsx`, `components/overlay/FilterOverlay.tsx`: desktop and mobile filter panels
 - `components/info/`: info and support panels (desktop side panel, mobile overlay)

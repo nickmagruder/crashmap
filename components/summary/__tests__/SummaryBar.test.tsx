@@ -28,6 +28,10 @@ describe('SummaryBar', () => {
     expect(html.match(/<li>/g)).toHaveLength(2)
   })
 
+  it('shows no loading spinner (the centered map overlay does that)', () => {
+    expect(render({ activeFilters: [{ text: '1 Year' }] })).not.toContain('animate-spin')
+  })
+
   it('renders no list when there are no active filters', () => {
     expect(render({ activeFilters: [] })).not.toContain('<ul')
   })
