@@ -1,6 +1,6 @@
 # CrashMap
 
-**Version:** 0.7.4
+**Version:** 0.7.5
 
 **CrashMap** ([crashmap.io](https://crashmap.io)) is a public-facing web application for visualizing crash data involving injuries and fatalities to bicyclists and pedestrians in Washington State. Crash data is self-collected from state DOT sources and displayed on an interactive, filterable map — making it easy to explore where and how crashes happen in your community.
 
@@ -968,3 +968,11 @@ This project is developed in the open. To report issues or suggest features, ple
   `standards/docs.md`; the manual-version rule is gone (`PROMPTS.md` and the
   PR template follow). Memory goes in `memory/` per clankers, never a tool's
   own store. Bumped version to 0.7.4.
+
+### 2026-11-23 — Load the memory indexes
+
+- New tracked `CLAUDE.md` (no longer gitignored) imports `AGENTS.md` and both memory indexes
+  (`memory/MEMORY.md`, `memory/local/MEMORY.md`); `AGENTS.md` says to read
+  them at the start of a session.
+- The PR template points at `AGENTS.md` for the version rule; `AGENTS.md`
+  notes that `package.json`'s version isn't used. Bumped version to 0.7.5.

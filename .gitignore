@@ -39,7 +39,6 @@ prisma/migrations/
 
 # claude
 .claude/
-CLAUDE.md
 
 # vercel
 .vercel
