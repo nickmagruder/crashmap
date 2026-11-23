@@ -980,5 +980,5 @@ This project is developed in the open. To report issues or suggest features, ple
 
 ### 2026-11-23 — Centered Loading Overlay
 
-- While crashes load, the map dims and a large spinner with "Loading crashes…" shows in its center (`components/map/MapLoadingOverlay.tsx`), replacing the small spinner in the bottom summary bar, which was easy to miss (#253).
-- It appears only after 300ms so fast or cached responses don't flash it, never blocks panning or zooming, stops spinning under reduced motion, and announces its text to screen readers. The filter-button spinners stay.
+- While crashes load, the map dims and a large spinner shows in its center (screen readers hear "Loading crashes…") (`components/map/MapLoadingOverlay.tsx`), replacing the small spinner in the bottom summary bar, which was easy to miss (#253).
+- It appears only after 300ms so fast or cached responses don't flash it, never blocks panning or zooming, and stops spinning under reduced motion. The filter-button spinners stay.

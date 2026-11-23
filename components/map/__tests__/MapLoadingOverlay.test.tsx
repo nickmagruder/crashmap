@@ -14,24 +14,25 @@ describe('MapLoadingOverlayView', () => {
     expect(renderView(true)).toMatch(/<div class="rounded-full border bg-background\/90[^"]*"><svg/)
   })
 
-  it('dims the map and centers a large spinner with visible loading text', () => {
+  it('dims the map and centers a large spinner with no visible text', () => {
     const html = renderView(true)
     expect(html).toContain('bg-black/25')
-    expect(html).toContain('Loading crashes…')
     expect(html).toMatch(/<svg[^>]*class="[^"]*size-12[^"]*"/)
+    expect(html).toContain('<span class="sr-only">Loading crashes…</span>')
+    expect(html.match(/Loading crashes…/g)).toHaveLength(1)
   })
 
-  it('stops the spinner under reduced motion but keeps the text', () => {
+  it('stops the spinner under reduced motion', () => {
     const html = renderView(true)
     expect(html).toContain('motion-safe:animate-spin')
     expect(html).not.toMatch(/[" ]animate-spin/)
-    expect(html).toContain('Loading crashes…')
   })
 
-  it('hides the spinner icon from screen readers and announces the text in a status region', () => {
+  it('hides the spinner icon from screen readers and announces sr-only text in a status region', () => {
     const html = renderView(true)
     expect(html).toMatch(/^<div role="status" aria-live="polite"/)
     expect(html).toMatch(/<svg[^>]*aria-hidden="true"/)
+    expect(html).toContain('<span class="sr-only">Loading crashes…</span>')
   })
 
   it('never blocks map panning or zooming', () => {

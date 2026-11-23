@@ -32,8 +32,9 @@ function useDelayedFlag(active: boolean, delayMs: number): boolean {
 }
 
 /**
- * Presentational overlay: dims the map and centers a large spinner with "Loading crashes…".
- * The `role="status"` region always renders so screen readers announce the text when it appears.
+ * Presentational overlay: dims the map and centers a large spinner (no visible text).
+ * The `role="status"` region always renders so screen readers announce the sr-only
+ * "Loading crashes…" when it appears.
  * `pointer-events-none` keeps the map pannable and zoomable underneath.
  */
 export function MapLoadingOverlayView({ visible }: { visible: boolean }) {
@@ -41,18 +42,14 @@ export function MapLoadingOverlayView({ visible }: { visible: boolean }) {
     <div role="status" aria-live="polite" className="pointer-events-none absolute inset-0 z-[1]">
       {visible && (
         <div className="flex h-full w-full items-center justify-center bg-black/25 dark:bg-black/45 animate-in fade-in duration-200 motion-reduce:animate-none">
-          <div className="flex flex-col items-center gap-3">
-            {/* Solid disc so the spinner keeps its contrast over light, dark and satellite maps */}
-            <div className="rounded-full border bg-background/90 p-2 shadow-md">
-              <Loader2
-                className="size-12 text-foreground motion-safe:animate-spin"
-                aria-hidden="true"
-              />
-            </div>
-            <span className="rounded-md border bg-background/90 px-3 py-1 text-sm font-medium shadow-md backdrop-blur-sm">
-              Loading crashes…
-            </span>
+          {/* Solid disc so the spinner keeps its contrast over light, dark and satellite maps */}
+          <div className="rounded-full border bg-background/90 p-2 shadow-md">
+            <Loader2
+              className="size-12 text-foreground motion-safe:animate-spin"
+              aria-hidden="true"
+            />
           </div>
+          <span className="sr-only">Loading crashes…</span>
         </div>
       )}
     </div>
