@@ -24,13 +24,12 @@ rules; this project's only exceptions are the ones listed for it under
 
 ## Working rules
 
-- **Repository-local memory:** save project decisions, context, notes, plans, and session follow-ups in tracked repository files (typically `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`, or relevant docs). Do not use sidecar, application, or in-application memory stores. This rule wins over generic memory behavior.
-- **Git, PRs and AI review:** clankers `standards/git.md` (trunk-based; the agent requests each PR's AI review itself; only Nick merges). crashmap facts: PRs squash-merge, and **merging deploys to production**; the review skill reviewers use is `.github/skills/code-review/` (synced from clankers `skills/pr-review`). Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
+- **Memory:** clankers `global/AGENTS.md` "Memory": this project's memory goes in `memory/` (index `memory/MEMORY.md`; `memory/local/` is gitignored), and project decisions, plans and follow-ups in the tracked docs (`AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`). Never a tool's own memory store.
+- **Git, PRs and AI review:** clankers `standards/git.md`. crashmap facts: PRs squash-merge, and **merging deploys to production**, so a PR waits for Nick's explicit ask to merge; the review skill reviewers use is `.github/skills/code-review/` (synced from clankers `skills/pr-review`). Agent context (`AGENTS.md`, `CLAUDE.md`, `PROMPTS.md`) is committed; `.claude/` is gitignored.
 - **Tests and checks:** never weaken a test or suppress a lint or type error to get past a check; `npm run guards` (CI) fails on `.only`/`.skip`, `eslint-disable`, `@ts-ignore`-style comments and net-removed assertions unless a commit carries `Test-guard: <reason>`. Lint runs with `--max-warnings 0` and type-aware promise rules; `npm run knip` must pass (its ignores in `knip.json`: shadcn `components/ui/**`, the unused RSC client `lib/apollo-client.ts`, `@prisma/client` (used by the generated client) and `@types/mapbox-gl`).
 - **Tracking:** clankers `standards/github.md`. crashmap facts: issues go on the [CrashMap board](https://github.com/users/nickmagruder/projects/2) (`gh project item-add 2 --owner nickmagruder --url <url>`) with a phase milestone where it fits; `PLAN.md` keeps phases, design notes and results and links to the issues.
 - **Version and changelog:** clankers `standards/docs.md`; the version is on line 2 of `README.md` and the changelog is at the bottom, newest last.
 - **Prisma:** the table already exists. Use `prisma db pull` to introspect; never run `prisma migrate dev`.
-- **Deployment debugging:** check the simple things first: missing env vars, wrong URLs, misconfigured Render settings.
 - **Smoke testing:** PRs merge straight to `main` and deploy to production. After each deploy, CI runs automated Playwright smoke tests (`npm run smoke`, `smoke/site.smoke.ts`) on https://crashmap.io: page loads with no uncaught errors, map renders, crash count appears, API answers. For anything beyond that critical path, smoke-test by hand once the `main` CI run (check, deploy, Lighthouse, smoke) finishes. `crashmap-staging.onrender.com` doesn't serve anything. Checklist: map loads, filters and date presets, custom date range, county/city selects, crash popup + copy, URL round-trip on reload, light/dark and accessible palette, mobile overlays (<768px), CSV export, the page doesn't scroll (desktop, info panel open: `document.documentElement.scrollHeight === innerHeight`), no console errors, `/api/graphql` and `/monitoring` return 200.
 
 ## Data model
@@ -133,9 +132,10 @@ A few thousand rows, possibly tens of thousands; low traffic; no real-time data.
 Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 
 - `README.md`: overview, version (line 2), changelog (bottom)
+- `memory/MEMORY.md`: this project's memory index (`memory/local/` is gitignored)
 - `PROMPTS.md`: project prompts, including `Close-Out-Session`
 - `PLAN.md`: phases, design notes and bugs list; open items link to GitHub issues
-- `CONTRIBUTING.md`: coding standards and how changes are made (also read by Copilot review)
+- `CONTRIBUTING.md`: coding standards and how changes are made (also read by PR reviewers)
 - `SECURITY.md`: vulnerability reporting and scope
 - `ARCHITECTURE.md`: data model, GraphQL schema, indexes, security, detailed file notes
 - `tutorial.md`: blog-post draft of the build
@@ -175,7 +175,7 @@ Per-file detail lives in `ARCHITECTURE.md` §11 "Implementation Notes".
 - `.github/workflows/codeql.yml`, `scorecard.yml`, `.github/dependabot.yml`: code scanning, OpenSSF Scorecard, weekly grouped updates (3-day cooldown; majors deferred in #202 ignored)
 - `.github/workflows/dependency-review.yml`: fails a PR that adds a dependency with a high or critical advisory
 - `.github/workflows/dependabot-auto-merge.yml`: auto-merges Dependabot devDependency patch PRs once its own dependency review and `check` pass; nothing else auto-merges. Auto-merged commits get no CI run on main until the next push
-- `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: Copilot PR review (the skill is synced from clankers `skills/pr-review`)
+- `.github/copilot-instructions.md`, `.github/instructions/security.instructions.md`, `.github/skills/code-review/`: PR reviewers' instructions (the skill is synced from clankers `skills/pr-review`)
 - `.github/ISSUE_TEMPLATE/`, `.github/pull_request_template.md`: issue forms and PR template
 - `.husky/`: pre-commit (lint-staged, then `scripts/gitleaks-staged.sh`) and commit-msg (`scripts/commit-msg.ts`, rules in `scripts/commit-msg-rules.ts`) hooks
 - `.lighthouserc.json`: Lighthouse CI config

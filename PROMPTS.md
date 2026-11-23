@@ -54,7 +54,7 @@ files such as `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `PROMPTS.md`, or the re
 --- STEP 3: PROJECT DOCS AND LINKS ---
 - `README.md` changelog: one entry per piece of work, appended at the bottom, headed
   `### YYYY-MM-DD — Title`. Use the local Pacific date (`date +%F`), never UTC. Bump the
-  version on line 2 when the change warrants it (clankers `standards/docs.md`).
+  version on line 2 in the PR per clankers `standards/docs.md` (PATCH for fixes and docs).
 - `ARCHITECTURE.md` §11: update notes for every source file whose behavior changed.
 - `tutorial.md`: update after significant steps (a new feature or architecture change), not for
   routine fixes or upgrades. Earlier chapters record the build as it happened, so don't rewrite
@@ -131,12 +131,11 @@ unfinished work, or when Nick said to hold off (then end with a proposed commit 
 3. `git push -u origin <branch>`, then `gh pr create --base main` with a body that starts
    `Closes #<issue>` and follows `.github/pull_request_template.md`, ending with the PR
    attribution line.
-4. Copilot reviews the PR automatically: fix the valid comments, reply with a reason to the rest,
-   and resolve the threads before handing the PR to Nick. If Copilot says it's out of quota (every
-   PR on 2026-11-20/21), note that on the PR and get a Claude review session as `AGENTS.md`
-   "AI review" describes: a read-only brief, one PR comment with `<!-- ai-review -->`, then stop.
-   Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never push
-   to `main`: Nick merges.
+4. Request the PR's AI review right away, per clankers `standards/git.md` "PR review policy"
+   (the best reviewer available, never you; no review runs automatically), then fix the valid
+   comments, reply with a reason to the rest, and resolve the threads before handing the PR to
+   Nick. Offer to turn on Auto-fix for the PR. Never merge it, never enable auto-merge, and never
+   push to `main`: merging deploys to production, so it waits for Nick's ask.
 
 --- STEP 9: REPORT ---
 List: files created and edited; repository-local context changes (and any proposals for clankers);
