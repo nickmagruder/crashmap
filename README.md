@@ -977,3 +977,8 @@ This project is developed in the open. To report issues or suggest features, ple
 - `.gitignore` now ignores `CLAUDE.local.md` (personal notes) instead of `CLAUDE.md`.
 - The PR template points at `AGENTS.md` for the version rule; `AGENTS.md`
   notes that `package.json`'s version isn't used. Bumped version to 0.7.5.
+
+### 2026-11-23 — Centered Loading Overlay
+
+- While crashes load, the map dims and a large spinner shows in its center (screen readers hear "Loading crashes…") (`components/map/MapLoadingOverlay.tsx`), replacing the small spinner in the bottom summary bar, which was easy to miss (#253).
+- It appears only after 300ms so fast or cached responses don't flash it, never blocks panning or zooming, and stops spinning under reduced motion. The filter-button spinners stay.

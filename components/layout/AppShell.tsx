@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react'
 import { Box, Eye, Heart, Info, Loader2, Minus, Plus, SlidersHorizontal } from 'lucide-react'
 import type { MapRef } from 'react-map-gl/mapbox'
 import { MapContainer } from '@/components/map/MapContainer'
+import { MapLoadingOverlay } from '@/components/map/MapLoadingOverlay'
 import { Sidebar } from '@/components/sidebar/Sidebar'
 import { FilterOverlay } from '@/components/overlay/FilterOverlay'
 import { InfoSidePanel, type InfoPanelView } from '@/components/info/InfoSidePanel'
@@ -98,6 +99,9 @@ export function AppShell() {
         <ErrorBoundary fallback={mapFallback}>
           <MapContainer ref={mapRef} />
         </ErrorBoundary>
+
+        {/* Center: dimmed loading overlay (below the z-10 controls; doesn't block the map) */}
+        <MapLoadingOverlay isLoading={filterState.isLoading} />
 
         {/* Top-left: info/about toggle + support */}
         <div className="absolute top-4 left-4 z-10 flex gap-2">
@@ -259,7 +263,6 @@ export function AppShell() {
 
         <SummaryBar
           activeFilters={getActiveFilterLabels(filterState)}
-          isLoading={filterState.isLoading}
           actions={<ExportButton variant="icon" />}
         />
 

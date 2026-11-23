@@ -1,17 +1,16 @@
 'use client'
 
 import React from 'react'
-import { Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type { FilterBadgeLabel } from '@/context/FilterContext'
 
 interface SummaryBarProps {
   activeFilters?: FilterBadgeLabel[]
-  isLoading?: boolean
   actions?: React.ReactNode
 }
 
-export function SummaryBar({ activeFilters = [], isLoading = false, actions }: SummaryBarProps) {
+// Loading is shown by MapLoadingOverlay in the center of the map, not here.
+export function SummaryBar({ activeFilters = [], actions }: SummaryBarProps) {
   return (
     <div
       // Mobile: fixed strip flush against the viewport bottom, full width, minimal height.
@@ -21,8 +20,6 @@ export function SummaryBar({ activeFilters = [], isLoading = false, actions }: S
       aria-live="polite"
       aria-label="Summary"
     >
-      {isLoading && <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden="true" />}
-
       {activeFilters.length > 0 && (
         <>
           <span className="sr-only">Active filters: </span>

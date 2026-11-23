@@ -145,7 +145,7 @@ export function CrashLayer() {
   // When no date filter is active or preset bounds not yet loaded, clear the map.
   const displayData = skipQuery ? undefined : (data ?? previousData)
 
-  // Surface loading state so SummaryBar can show a refetch indicator.
+  // Surface loading state for MapLoadingOverlay and the filter-button spinners.
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: loading })
   }, [loading, dispatch])
